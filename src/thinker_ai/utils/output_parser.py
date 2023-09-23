@@ -125,7 +125,7 @@ class OutputParser:
                 # 尝试解析list
                 try:
                     content = cls.parse_list(text=content)
-                except Exception:
+                except Exception as e:
                     print(f"Error: {e}")
                     pass
             if get_origin(typing) is dict:
