@@ -1,9 +1,9 @@
+import os
 from typing import Any, Dict, Optional, Tuple
 
 import aiohttp
 from pydantic import BaseModel, Field, validator
 
-from thinker_ai.config import configs
 
 
 class SerpAPIWrapper(BaseModel):
@@ -25,7 +25,7 @@ class SerpAPIWrapper(BaseModel):
     @validator("serpapi_api_key", always=True)
     @classmethod
     def check_serpapi_api_key(cls, val: str):
-        val = val or configs.get("SERPAPI_API_KEY")
+        val = val or os.environ.get("SERPAPI_API_KEY")
         if not val:
             raise ValueError(
                 "To use, make sure you provide the serpapi_api_key when constructing an object. Alternatively, "

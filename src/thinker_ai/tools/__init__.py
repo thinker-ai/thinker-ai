@@ -1,8 +1,7 @@
 from __future__ import annotations
 
+import os
 from enum import Enum
-
-from thinker_ai.config import configs
 
 
 class SearchEngineType(Enum):
@@ -15,7 +14,7 @@ class SearchEngineType(Enum):
         return SearchEngineType._value2member_map_.get(type_str)
 
 
-search_engine_type = SearchEngineType.type_of(configs.get("search_engine"))
+search_engine_type = SearchEngineType.type_of(os.environ.get("search_engine"))
 
 
 class WebBrowserEngineType(Enum):
@@ -30,4 +29,4 @@ class WebBrowserEngineType(Enum):
             raise ValueError(f"'{type_str}' is not a valid WebBrowserEngineType.")
 
 
-web_browser_engine_type = WebBrowserEngineType.type_of(configs.get("web_browser_engine"))
+web_browser_engine_type = WebBrowserEngineType.type_of(os.environ.get("web_browser_engine"))

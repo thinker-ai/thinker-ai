@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 from playwright.async_api import async_playwright
-from thinker_ai.config import configs
 from thinker_ai.tools import web_browser_engine_type
 from thinker_ai.utils.html_parser import WebPage
 from thinker_ai.utils.logs import logger
@@ -27,8 +27,8 @@ class PlaywrightWrapper:
         **kwargs,
     ) -> None:
         launch_kwargs = launch_kwargs or {}
-        if configs.get("HTTP_PROXY") and "proxy" not in launch_kwargs:
-            launch_kwargs["proxy"] = {"server": configs.get("HTTP_PROXY")}
+        if os.environ.get("HTTP_PROXY") and "proxy" not in launch_kwargs:
+            launch_kwargs["proxy"] = {"server": os.environ.get("HTTP_PROXY")}
         self.launch_kwargs = launch_kwargs
         context_kwargs = {}
         if "ignore_https_errors" in kwargs:
@@ -68,8 +68,8 @@ class PlaywrightWrapper:
         executable_path = Path(browser_type.executable_path)
         if not executable_path.exists() and "executable_path" not in self.launch_kwargs:
             kwargs = {}
-            if configs.get("HTTP_PROXY"):
-                kwargs["env"] = {"ALL_PROXY": configs.get("HTTP_PROXY")}
+            if os.environ.get("HTTP_PROXY"):
+                kwargs["env"] = {"ALL_PROXY": os.environ.get("HTTP_PROXY")}
             await _install_browsers(web_browser_engine_type, **kwargs)
 
             if self._has_run_precheck:

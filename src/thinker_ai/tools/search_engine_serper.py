@@ -1,10 +1,10 @@
 import json
+import os
 from typing import Any, Dict, Optional, Tuple
 
 import aiohttp
 from pydantic import BaseModel, Field, validator
 
-from thinker_ai.config import configs
 
 
 class SerperWrapper(BaseModel):
@@ -19,7 +19,7 @@ class SerperWrapper(BaseModel):
     @validator("serper_api_key", always=True)
     @classmethod
     def check_serper_api_key(cls, val: str):
-        val = val or configs.get("SERPER_API_KEY")
+        val = val or os.environ.get("SERPER_API_KEY")
         if not val:
             raise ValueError(
                 "To use, make sure you provide the serper_api_key when constructing an object. Alternatively, "

@@ -1,7 +1,7 @@
+import os
 import subprocess
 from pathlib import Path
 
-from thinker_ai.config import configs
 from thinker_ai.utils.common import check_cmd_exists
 from thinker_ai.utils.logs import logger
 
@@ -28,12 +28,12 @@ def mermaid_to_file(mermaid_code, output_file_without_suffix, width=2048, height
         # Call the `mmdc` command to convert the Mermaid code to a PNG
         logger.info(f"Generating {output_file}..")
 
-        if configs.get(""):
+        if os.environ.get("PUPPETEER_CONFIG"):
             subprocess.run(
                 [
-                    configs.get("MMDC"),
+                    os.environ.get("MMDC"),
                     "-p",
-                    configs.get("PUPPETEER_CONFIG"),
+                    os.environ.get("PUPPETEER_CONFIG"),
                     "-i",
                     str(tmp),
                     "-o",
@@ -45,5 +45,5 @@ def mermaid_to_file(mermaid_code, output_file_without_suffix, width=2048, height
                 ]
             )
         else:
-            subprocess.run([configs.get("MMDC"), "-i", str(tmp), "-o", output_file, "-w", str(width), "-H", str(height)])
+            subprocess.run([os.environ.get("MMDC"), "-i", str(tmp), "-o", output_file, "-w", str(width), "-H", str(height)])
     return 0

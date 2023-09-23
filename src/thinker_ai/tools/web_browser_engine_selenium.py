@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import asyncio
 import importlib
+import os
 from concurrent import futures
 from copy import deepcopy
 from telnetlib import EC
 
-from thinker_ai.config import configs
 from thinker_ai.tools import web_browser_engine_type
 from thinker_ai.utils.html_parser import WebPage
 from selenium.webdriver.common.by import By
@@ -34,8 +34,8 @@ class SeleniumWrapper:
         executor: futures.Executor | None = None,
     ) -> None:
         launch_kwargs = launch_kwargs or {}
-        if configs.get("HTTP_PROXY") and "proxy-server" not in launch_kwargs:
-            launch_kwargs["proxy-server"] = configs.get("HTTP_PROXY")
+        if os.environ.get("HTTP_PROXY") and "proxy-server" not in launch_kwargs:
+            launch_kwargs["proxy-server"] = os.environ.get("HTTP_PROXY")
 
         self.executable_path = launch_kwargs.pop("executable_path", None)
         self.launch_args = [f"--{k}={v}" for k, v in launch_kwargs.items()]

@@ -5,7 +5,6 @@ from __future__ import annotations
 import importlib
 from typing import Any, Callable, Coroutine, Literal, overload
 
-from thinker_ai.config import configs
 from thinker_ai.tools import WebBrowserEngineType, web_browser_engine_type
 from thinker_ai.utils.html_parser import WebPage
 

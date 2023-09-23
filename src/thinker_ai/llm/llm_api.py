@@ -1,12 +1,8 @@
-import os
+
 from abc import abstractmethod, ABC
-from enum import Enum
 from typing import List, Dict, Optional
 
 from pydantic import BaseModel
-
-from thinker_ai.config import configs
-from thinker_ai.llm import LLM_TYPE
 
 
 class FunctionCall(BaseModel):

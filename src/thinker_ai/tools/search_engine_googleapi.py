@@ -4,14 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from concurrent import futures
 from typing import Optional
 from urllib.parse import urlparse
 
 import httplib2
 from pydantic import BaseModel, validator
-
-from thinker_ai.config import configs
+from thinker_ai.utils.logs import logger
 
 try:
     from googleapiclient.discovery import build
@@ -35,7 +35,7 @@ class GoogleAPIWrapper(BaseModel):
     @validator("google_api_key", always=True)
     @classmethod
     def check_google_api_key(cls, val: str):
-        val = val or configs.get("GOOGLE_API_KEY")
+        val = val or os.environ.get("GOOGLE_API_KEY")
         if not val:
             raise ValueError(
                 "To use, make sure you provide the google_api_key when constructing an object. Alternatively, "
@@ -47,7 +47,7 @@ class GoogleAPIWrapper(BaseModel):
     @validator("google_cse_id", always=True)
     @classmethod
     def check_google_cse_id(cls, val: str):
-        val = val or configs.get("GOOGLE_CSE_ID")
+        val = val or os.environ.get("GOOGLE_CSE_ID")
         if not val:
             raise ValueError(
                 "To use, make sure you provide the google_cse_id when constructing an object. Alternatively, "
@@ -59,8 +59,8 @@ class GoogleAPIWrapper(BaseModel):
     @property
     def google_api_client(self):
         build_kwargs = {"developerKey": self.google_api_key}
-        if configs.get("HTTP_PROXY"):
-            parse_result = urlparse(configs.get("HTTP_PROXY"))
+        if os.environ.get("HTTP_PROXY"):
+            parse_result = urlparse(os.environ.get("HTTP_PROXY"))
             proxy_type = parse_result.scheme
             if proxy_type == "https":
                 proxy_type = "http"

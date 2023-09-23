@@ -3,8 +3,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
-from tenacity import stop_after_attempt, wait_fixed, retry
-
 from thinker_ai.action.action_output import ActionOutput
 from thinker_ai.context import Context
 from thinker_ai.llm.llm_factory import get_llm
