@@ -35,3 +35,6 @@ class Action(ABC):
     @abstractmethod
     async def run(self, *args, **kwargs):
         """The run method should be implemented in a subclass"""
+
+    def load_ile(self,file_path:str):
+        return self.fileLoader.load_file(file_path)
