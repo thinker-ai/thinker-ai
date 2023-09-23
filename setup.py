@@ -46,7 +46,7 @@ setup(
     description='base package for ddd-gpt',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
-    url='https://github.com/ddd-gpt/thinker-ai.git',
+    url='https://github.com/thinker-ai/thinker-ai.git',
     license='Apache 2.0',
     include_package_data=True,
     python_requires=">=3.10",
