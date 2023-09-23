@@ -2,7 +2,7 @@ import sys
 
 from loguru import logger as _logger
 
-from thinker_ai import get_project_root
+from thinker_ai.context import get_project_root
 
 
 def define_log_level(log_dir:str,print_level="INFO", logfile_level="DEBUG"):
