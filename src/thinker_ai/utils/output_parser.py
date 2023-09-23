@@ -1,8 +1,8 @@
 import ast
 import contextlib
 import re
-from typing import Tuple, get_origin
-
+from typing import Tuple, get_origin, Dict
+import yaml
 
 class OutputParser:
 
@@ -131,7 +131,10 @@ class OutputParser:
             if get_origin(typing) is dict:
                 # 尝试解析list
                 try:
-                    content =ast.literal_eval(content)
+                    if typing==Dict[str,str]:
+                        content=yaml.safe_load(content) #解决json解析器解决不了的字符换行问题，但目前只对Dict[str,str]有效
+                    else:
+                        content =ast.literal_eval(content)
                     #如果使用json.load(),检查过于严苛，容易出现无法预期的错误
                 except Exception as e:
                     print(f"Error: {e}")
