@@ -49,5 +49,5 @@ class ActionOutput:
     @classmethod
     def preprocess_json_str(cls,json_str: str) -> str:
         # 替换字符串内的实际换行为 \n
-        return re.sub(r'(?<=")([^"]*?)(?=")', lambda m: m.group(0).replace("\n", "\\n"), json_str)
+        return re.sub(r'(?<=")([^"]*?)(?=")', lambda m: m.group(0).replace("\n", ""), json_str)
 
