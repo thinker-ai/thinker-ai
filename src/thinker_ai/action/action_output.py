@@ -40,7 +40,6 @@ class ActionOutput:
     @classmethod
     def parse_data_with_class(cls, content, output_class_name, output_data_mapping):
         output_class = ActionOutput.create_model_class(output_class_name, output_data_mapping)
-        content = cls.preprocess_json_str(content)
         parsed_data = OutputParser.parse_data_with_mapping(content, output_data_mapping)
         logger.debug(parsed_data)
         instruct_content = output_class(**parsed_data)
