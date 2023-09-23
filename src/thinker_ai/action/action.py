@@ -4,13 +4,14 @@ from typing import Optional, Tuple
 from thinker_ai.action.action_output import ActionOutput
 from thinker_ai.context import Context
 from thinker_ai.llm.llm_factory import get_llm
+from thinker_ai.utils.file_loader import FileLoader
 from thinker_ai.utils.logs import logger
 
 
 class Action(ABC):
     def __init__(self, context: Context):
         self.context = context
-
+        self.fileLoader=FileLoader(context)
     def __str__(self):
         return self.__class__.__name__
 
