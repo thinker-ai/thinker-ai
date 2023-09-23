@@ -29,5 +29,4 @@ dependencies:
     - httplib2
     - playwright
     - selenium
-    - simplejson
     - asynctest
