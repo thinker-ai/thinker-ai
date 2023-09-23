@@ -1,0 +1,33 @@
+name: thinker-ai
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - fastapi
+  - SpeechRecognition
+  - pydub
+  - pydantic
+  - starlette<0.28.0,>=0.27.0
+  - pip
+  - pip:
+    - aim
+    - edge-tts
+    - promptlayer
+    - edge_tts
+    - langchain
+    - google-cloud-speech
+    - openai
+    - tiktoken
+    - anthropic
+    - loguru
+    - bs4
+    - libcst
+    - python-docx
+    - scipy
+    - open-interpreter
+    - llama-cpp-python
+    - httplib2
+    - playwright
+    - selenium
+    - simplejson
+    - asynctest
