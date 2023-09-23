@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Optional, Tuple
 
+from thinker_ai import get_project_root
 from thinker_ai.action.action_output import ActionOutput
 from thinker_ai.context import Context
 from thinker_ai.llm.llm_factory import get_llm
@@ -37,15 +38,18 @@ class Action(ABC):
     async def run(self, *args, **kwargs):
         """The run method should be implemented in a subclass"""
 
+    def get_workspace_path(self)->Path:
+        return get_project_root() / 'workspace' / self.context.organization_id / self.context.solution_name
 
-def recreate_workspace(workspace: Path)->Tuple[Path,Path]:
-    try:
-        shutil.rmtree(workspace)
-    except FileNotFoundError:
-        pass
-    workspace.mkdir(parents=True, exist_ok=True)
-    docs_path = workspace / 'docs'
-    resources_path = workspace / 'resources'
-    docs_path.mkdir(parents=True, exist_ok=True)
-    resources_path.mkdir(parents=True, exist_ok=True)
-    return docs_path, resources_path
+    def recreate_workspace(self)->Tuple[Path,Path]:
+        workspace=self.get_workspace_path()
+        try:
+            shutil.rmtree(workspace)
+        except FileNotFoundError:
+            pass
+        workspace.mkdir(parents=True, exist_ok=True)
+        docs_path = workspace / 'docs'
+        resources_path = workspace / 'resources'
+        docs_path.mkdir(parents=True, exist_ok=True)
+        resources_path.mkdir(parents=True, exist_ok=True)
+        return docs_path, resources_path
