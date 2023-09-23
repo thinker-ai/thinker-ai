@@ -41,3 +41,10 @@ class Context:
         docs_path.mkdir(parents=True, exist_ok=True)
         resources_path.mkdir(parents=True, exist_ok=True)
         return docs_path, resources_path
+
+    def load_file(self, file_dir: str) -> str:
+        file_path = self.get_workspace_path()
+        file = file_path / file_dir
+        with open(file, 'r') as file:
+            content = file.read()
+        return content
