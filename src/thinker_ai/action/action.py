@@ -18,7 +18,7 @@ class Action(ABC):
     @classmethod
     async def _a_generate_stream(self, user_msg: str, system_msg: Optional[str] = None) -> str:
         """Append default prefix"""
-        content = await get_llm() .a_generate_stream(user_msg, system_msg)
+        content = await get_llm().a_generate_stream(user_msg, system_msg)
         logger.debug(content)
         return content
     @classmethod
