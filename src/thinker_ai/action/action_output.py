@@ -16,7 +16,7 @@ class ActionOutput:
         self.instruct_content = instruct_content
 
     @classmethod
-    def create_model_class(cls, class_name: str, mapping: Dict[str, Type]):
+    def create_model_class(cls, class_name: str, mapping: Dict):
         new_class = create_model(class_name, **mapping)
 
         @validator('*', allow_reuse=True)
