@@ -46,6 +46,18 @@ class Context:
         file_dir = self.get_workspace_path()
         return self.load_file(file_dir, file_name)
 
+    def load_all_files_from_workspace(self, dir_name: str)-> dict:
+        workspace_path = self.get_workspace_path()
+        dir_path:Path = workspace_path / dir_name
+        if not dir_path.exists() or not dir_path.is_dir():
+            raise ValueError(f"{dir_path} is not a valid directory")
+        file_data = {}
+        for file in dir_path.iterdir():
+            if file.is_file():
+                with open(file, 'r', encoding='utf-8') as f:
+                    file_data[file.name] = f.read()
+        return file_data
+
     def load_file_from_project(self, file_name: str) -> str:
         file_dir = get_project_root()
         return self.load_file(file_dir, file_name)
