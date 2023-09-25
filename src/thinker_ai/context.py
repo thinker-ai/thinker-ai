@@ -42,9 +42,16 @@ class Context:
         resources_path.mkdir(parents=True, exist_ok=True)
         return docs_path, resources_path
 
-    def load_file(self, file_dir: str) -> str:
-        file_path = self.get_workspace_path()
-        file = file_path / file_dir
+    def load_file_from_workspace(self, file_name: str) -> str:
+        file_dir = self.get_workspace_path()
+        return self.load_file(file_dir, file_name)
+
+    def load_file_from_project(self, file_name: str) -> str:
+        file_dir = get_project_root()
+        return self.load_file(file_dir, file_name)
+
+    def load_file(self, file_dir, file_name):
+        file = file_dir / file_name
         with open(file, 'r') as file:
             content = file.read()
         return content
