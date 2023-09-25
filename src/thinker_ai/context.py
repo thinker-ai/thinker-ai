@@ -51,7 +51,7 @@ class Context:
         return self.load_file(file_dir, file_name)
 
     def load_file(self, file_dir, file_name):
-        file = file_dir / file_name
+        file = Path(file_dir) / file_name
         with open(file, 'r') as file:
             content = file.read()
         return content
