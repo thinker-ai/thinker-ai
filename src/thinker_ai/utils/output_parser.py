@@ -9,7 +9,7 @@ class OutputParser:
     @classmethod
     def parse_blocks(cls, text: str):
         # 首先根据"##"将文本分割成不同的block
-        blocks = text.split("##")
+        blocks = re.split(r'(?<!#)##(?!#)', text)
 
         # 创建一个字典，用于存储每个block的标题和内容
         block_dict = {}
