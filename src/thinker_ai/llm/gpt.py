@@ -30,8 +30,9 @@ class RateLimiter:
         self.interval = 1.1 * 60 / rpm
         self.rpm = rpm
 
-    def split_batches(self, batch: list[PromptMessage]) -> list[list[PromptMessage]]:
-        return [batch[i: i + self.rpm] for i in range(0, len(batch), self.rpm)]
+    def split_batches(self, batch: dict[str, PromptMessage]) -> list[dict[str, PromptMessage]]:
+        items = list(batch.items())
+        return [{k: v for k, v in items[i:i + self.rpm]} for i in range(0, len(items), self.rpm)]
 
     async def wait_if_needed(self, num_requests):
         current_time = time.time()
@@ -239,37 +240,24 @@ class GPT(LLM_API, metaclass=Singleton):
         except Exception as e:
             logger.error("usage calculation failed!", e)
 
-    async def a_generate_batch(self, user_msgs: list[str],sys_msg:Optional[str] = None) -> list[str]:
+    async def a_generate_batch(self, user_msgs: dict[str,str],sys_msg:Optional[str] = None) -> dict[str,str]:
         """仅返回纯文本"""
-        messages: list[dict] = await self._a_completion_batch(user_msgs, sys_msg)
-        results = []
-        for message in messages:
-            result = self._get_choice_text(message)
-            results.append(result)
-            logger.info(f"Result of task: {result}")
+        messages: dict[str,dict] = await self._a_completion_batch(user_msgs, sys_msg)
+        results:dict[str,str]= {key:self._get_choice_text(message) for key,message in messages}
         return results
 
-    async def _a_completion_batch(self, user_msgs: list[str], sys_msg: Optional[str] = None) -> list[dict]:
-        batch_prompt = [PromptMessage(user_msg, sys_msg) for user_msg in user_msgs]
-        split_batches: list[list[PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
-        all_results_dict: dict[int, dict] = {}  # 使用字典暂存结果
-        index_offset = 0  # 用于跟踪处理到哪个小批次
-
+    async def _a_completion_batch(self, user_msgs: dict[str,str], sys_msg: Optional[str] = None) -> dict[str,dict]:
+        batch_prompt = {key:PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs}
+        split_batches: list[dict[str,PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
+        all_results = {}
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
-            # 使用 enumerate 记录每个请求的索引
-            future = [self._a_chat_completion(prompt.user_message, prompt.system_message) for prompt in small_batch]
-            indexes = [i + index_offset for i, _ in enumerate(small_batch)]
-            # 为了保留原始顺序，分别等待每个future的结果
-            for i, fut in zip(indexes, future):
-                result = await fut
-                logger.info(result)
-                all_results_dict[i] = result
-            index_offset += len(small_batch)  # 更新索引偏移量以处理下一个小批次
-
-        # 将字典转换为列表
-        all_results = [all_results_dict[i] for i in range(len(user_msgs))]
-
+            future_map = {key:self._a_chat_completion(prompt.user_message, prompt.system_message) for key,prompt in small_batch}
+            # Gather the results of these futures
+            results = await asyncio.gather(*future_map.values())
+            # Map the results back to their respective keys
+            for key, result in zip(future_map.keys(), results):
+                all_results[key] = result
         return all_results
 
     def generate_function_call(self, user_msg, candidate_functions: List[Dict],
