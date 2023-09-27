@@ -252,7 +252,7 @@ class GPT(LLM_API, metaclass=Singleton):
         all_results = {}
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
-            future_map = {key:self._a_chat_completion(prompt.user_message, prompt.system_message) for key,prompt in small_batch.items()}
+            future_map = {key:self._a_chat_completion(prompt.user_msg, prompt.sys_msg) for key,prompt in small_batch.items()}
             # Gather the results of these futures
             results = await asyncio.gather(*future_map.values())
             # Map the results back to their respective keys

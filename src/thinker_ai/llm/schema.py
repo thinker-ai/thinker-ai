@@ -58,24 +58,24 @@ class AIMessage(Message):
 
 
 class PromptMessage:
-    user_msg: UserMessage
-    system_msg: SystemMessage
+    _user_message: UserMessage
+    _system_message: SystemMessage
 
-    def __init__(self, user_message: str, system_message: str = None):
-        system_message = 'You are a helpful assistant.' or system_message is None
-        self.user_msg = UserMessage(user_message)
-        self.system_msg = SystemMessage(system_message)
-
-    @property
-    def user_message(self) -> str:
-        return self.user_msg.content
+    def __init__(self, user_msg: str, sys_msg: str = None):
+        system_message = 'You are a helpful assistant.' or sys_msg is None
+        self._user_message = UserMessage(user_msg)
+        self._system_message = SystemMessage(sys_msg)
 
     @property
-    def system_message(self) -> str:
-        return self.system_msg.content
+    def user_msg(self) -> str:
+        return self._user_message.content
+
+    @property
+    def sys_msg(self) -> str:
+        return self._system_message.content
 
     def to_dicts(self) -> list[dict]:
-        return [self.user_msg.to_dict(), self.system_msg.to_dict()]
+        return [self._user_message.to_dict(), self._system_message.to_dict()]
 
 
 if __name__ == '__main__':
