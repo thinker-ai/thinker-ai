@@ -249,16 +249,26 @@ class GPT(LLM_API, metaclass=Singleton):
             logger.info(f"Result of task: {result}")
         return results
 
-    async def _a_completion_batch(self, user_msgs: list[str], sys_msg:Optional[str] = None) -> list[dict]:
+    async def _a_completion_batch(self, user_msgs: list[str], sys_msg: Optional[str] = None) -> list[dict]:
         batch_prompt = [PromptMessage(user_msg, sys_msg) for user_msg in user_msgs]
         split_batches: list[list[PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
-        all_results = []
+        all_results_dict: dict[int, dict] = {}  # 使用字典暂存结果
+        index_offset = 0  # 用于跟踪处理到哪个小批次
+
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
+            # 使用 enumerate 记录每个请求的索引
             future = [self._a_chat_completion(prompt.user_message, prompt.system_message) for prompt in small_batch]
-            results = await asyncio.gather(*future)
-            logger.info(results)
-            all_results.extend(results)
+            indexes = [i + index_offset for i, _ in enumerate(small_batch)]
+            # 为了保留原始顺序，分别等待每个future的结果
+            for i, fut in zip(indexes, future):
+                result = await fut
+                logger.info(result)
+                all_results_dict[i] = result
+            index_offset += len(small_batch)  # 更新索引偏移量以处理下一个小批次
+
+        # 将字典转换为列表
+        all_results = [all_results_dict[i] for i in range(len(user_msgs))]
 
         return all_results
 
