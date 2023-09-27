@@ -12,11 +12,11 @@ class FunctionCall(BaseModel):
 
 class LLM_API(ABC):
     @abstractmethod
-    def generate(self, prompt,system_prompt: Optional[str] = None) -> str:
+    def generate(self, user_msg:str,system_msg: Optional[str] = None) -> str:
         pass
 
     @abstractmethod
-    async def a_generate(self, prompt, system_prompt: Optional[str] = None,stream=False) -> str:
+    async def a_generate(self, user_msg:str,system_msg: Optional[str] = None,stream=False) -> str:
         pass
 
     @abstractmethod
@@ -24,9 +24,9 @@ class LLM_API(ABC):
         pass
 
     @abstractmethod
-    def generate_function_call(self, prompt, candidate_functions: List[Dict], system_prompt: Optional[str] = None)-> FunctionCall:
+    def generate_function_call(self, user_msg:str, candidate_functions: List[Dict], system_prompt: Optional[str] = None)-> FunctionCall:
         pass
 
     @abstractmethod
-    async def a_generate_function_call(self, prompt, candidate_functions: List[Dict],system_prompt: Optional[str] = None) -> FunctionCall:
+    async def a_generate_function_call(self, user_msg:str, candidate_functions: List[Dict],system_prompt: Optional[str] = None) -> FunctionCall:
         pass
