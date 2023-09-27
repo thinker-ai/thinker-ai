@@ -20,13 +20,13 @@ class LLM_API(ABC):
         pass
 
     @abstractmethod
-    async def a_generate_batch(self, user_msgs: list[str], system_prompt: Optional[str]= None) -> list[str]:
+    async def a_generate_batch(self, user_msgs: list[str], sys_msg: Optional[str]= None) -> list[str]:
         pass
 
     @abstractmethod
-    def generate_function_call(self, user_msg:str, candidate_functions: List[Dict], system_prompt: Optional[str] = None)-> FunctionCall:
+    def generate_function_call(self, user_msg:str, candidate_functions: List[Dict], sys_msg: Optional[str] = None)-> FunctionCall:
         pass
 
     @abstractmethod
-    async def a_generate_function_call(self, user_msg:str, candidate_functions: List[Dict],system_prompt: Optional[str] = None) -> FunctionCall:
+    async def a_generate_function_call(self, user_msg:str, candidate_functions: List[Dict],sys_msg: Optional[str] = None) -> FunctionCall:
         pass
