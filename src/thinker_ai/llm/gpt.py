@@ -164,12 +164,12 @@ class GPT(LLM_API,metaclass=Singleton):
         return {"role": "system", "content": msg}
 
     def generate(self, user_msg: str, system_msg: Optional[str] = None) -> str:
-        input = self._create_inputs(user_msg, system_msg)
+        input = self.create_input(user_msg, system_msg)
         output = self.completion(input)
         return self._get_choice_text(output)
 
     async def a_generate(self, user_msg: str, system_msg: Optional[str] = None) -> str:
-        input = self._create_inputs(user_msg, system_msg)
+        input = self.create_input(user_msg, system_msg)
         output = await self.a_completion(input)
         return self._get_choice_text(output)
 
@@ -181,28 +181,25 @@ class GPT(LLM_API,metaclass=Singleton):
         # logger.debug(rsp)
         return rsp
 
+    def completion(self, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
+        if isinstance(messages[0], Message):
+            messages = self._messages_to_dict(messages)
+        return self._chat_completion(messages, candidate_functions)
+
+    async def a_completion(self, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
+        if isinstance(messages[0], Message):
+            messages = self._messages_to_dict(messages)
+        return await self._a_chat_completion(messages, candidate_functions)
+
+    async def a_completion_text(self, messages: list[dict], stream=False) -> str:
+        """when streaming, print each token in place."""
+        if stream:
+            return await self._a_chat_completion_stream(messages)
+        rsp = await self._a_chat_completion(messages)
+        return self._get_choice_text(rsp)
+
     def _extract_assistant_rsp(self, context):
         return "\n".join([i["content"] for i in context if i["role"] == "assistant"])
-
-    def generate_batch(self, msgs: list[str]) -> str:
-        context = []
-        for msg in msgs:
-            umsg = self._to_user_message(msg)
-            context.append(umsg)
-            rsp = self.completion(context)
-            rsp_text = self._get_choice_text(rsp)
-            context.append(self._to_assistant_message(rsp_text))
-        return self._extract_assistant_rsp(context)
-
-    async def a_generate_batch_to_text(self, prompts: list[str]) -> str:
-        """Sequential questioning"""
-        context = []
-        for prompt in prompts:
-            user_message = self._to_user_message(prompt)
-            context.append(user_message)
-            rsp_text = await self.a_completion_text(context)
-            context.append(self._to_assistant_message(rsp_text))
-        return self._extract_assistant_rsp(context)
 
     def _get_choice_text(self, rsp: dict) -> str:
         return rsp.get("choices")[0]["message"]["content"]
@@ -259,16 +256,6 @@ class GPT(LLM_API,metaclass=Singleton):
         self._update_costs(rsp.get("usage"))
         return rsp
 
-    def completion(self, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
-        if isinstance(messages[0], Message):
-            messages = self._messages_to_dict(messages)
-        return self._chat_completion(messages, candidate_functions)
-
-    async def a_completion(self, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
-        if isinstance(messages[0], Message):
-            messages = self._messages_to_dict(messages)
-        return await self._a_chat_completion(messages, candidate_functions)
-
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(1),
@@ -276,12 +263,7 @@ class GPT(LLM_API,metaclass=Singleton):
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
-    async def a_completion_text(self, messages: list[dict], stream=False) -> str:
-        """when streaming, print each token in place."""
-        if stream:
-            return await self._a_chat_completion_stream(messages)
-        rsp = await self._a_chat_completion(messages)
-        return self._get_choice_text(rsp)
+
 
     def _calc_usage(self, messages: list[dict], rsp: str) -> dict:
         usage = {}
@@ -293,6 +275,16 @@ class GPT(LLM_API,metaclass=Singleton):
             return usage
         except Exception as e:
             logger.error("usage calculation failed!", e)
+
+    async def a_completion_batch_text(self, batch: list[list[dict]]) -> list[str]:
+        """仅返回纯文本"""
+        raw_results = await self.a_completion_batch(batch)
+        results = []
+        for idx, raw_result in enumerate(raw_results, start=1):
+            result = self._get_choice_text(raw_result)
+            results.append(result)
+            logger.info(f"Result of task {idx}: {result}")
+        return results
 
     async def a_completion_batch(self, batch: list[list[dict]]) -> list[dict]:
         split_batches = self.rateLimiter.split_batches(batch)
@@ -309,16 +301,6 @@ class GPT(LLM_API,metaclass=Singleton):
 
         return all_results
 
-    async def a_completion_batch_text(self, batch: list[list[dict]]) -> list[str]:
-        """仅返回纯文本"""
-        raw_results = await self.a_completion_batch(batch)
-        results = []
-        for idx, raw_result in enumerate(raw_results, start=1):
-            result = self._get_choice_text(raw_result)
-            results.append(result)
-            logger.info(f"Result of task {idx}: {result}")
-        return results
-
     def _parse_function_call(self, output: Dict) -> FunctionCall:
         function_call = output.get("choices")[0]["message"]["function_call"]
         if function_call:
@@ -327,17 +309,17 @@ class GPT(LLM_API,metaclass=Singleton):
 
     def generate_function_call(self, msg, candidate_functions: List[Dict],
                                system_prompt: Optional[str] = None) -> FunctionCall:
-        input = self._create_inputs(msg, system_prompt)
+        input = self.create_input(msg, system_prompt)
         output = self.completion(input, candidate_functions)
         return self._parse_function_call(output)
 
     async def a_generate_function_call(self, msg, candidate_functions: List[Dict],
                                        system_prompt: Optional[str] = None) -> FunctionCall:
-        input = self._create_inputs(msg, system_prompt)
+        input = self.create_input(msg, system_prompt)
         output = await self.a_completion(input, candidate_functions)
         return self._parse_function_call(output)
 
-    def _create_inputs(self, msg, system_msg) -> list[dict]:
+    def create_input(self, msg:str, system_msg:str=None) -> list[dict]:
         system_msg = system_msg if system_msg else self.default_system_msg
         message = [self._to_system_message(system_msg), self._to_user_message(msg)]
         return message

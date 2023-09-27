@@ -11,6 +11,13 @@ class TestTestGPT(asynctest.TestCase):
         await llm.a_generate_stream(
             "如果我不用session.request()向你发送消息，而是每次都新建一个request，你就不能获取我们之前交流的上下文，是吗？")
 
+    async def test_a_completion_batch_text(self):
+        llm = get_llm()
+        inputs:list[list[dict]]=[]
+        inputs.append(llm.create_input("我用session.request()向你发送消息，你才能记住我们之前交流的上下文是吗，能记住多少条上下文？"))
+        inputs.append(llm.create_input("如果我不用session.request()向你发送消息，而是每次都新建一个request，你就不能获取我们之前交流的上下文，是吗？"))
+        result:list[str] = await llm.a_completion_batch_text(inputs)
+        self.assertEqual(2,len(result))
 
 if __name__ == '__main__':
     asynctest.main()  # 使用asynctest的main方法

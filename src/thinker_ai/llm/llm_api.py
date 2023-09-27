@@ -33,8 +33,13 @@ class LLM_API(ABC):
         pass
 
     @abstractmethod
-    def generate_batch(self, msgs)-> str:
+    def create_input(self, msg:str, system_msg:str=None) -> list[dict]:
         pass
 
+    @abstractmethod
+    async def a_completion_batch_text(self, batch: list[list[dict]]) -> list[str]:
+        pass
 
-
+    @abstractmethod
+    async def a_completion_batch(self, batch: list[list[dict]]) -> list[dict]:
+        pass
