@@ -243,16 +243,16 @@ class GPT(LLM_API, metaclass=Singleton):
     async def a_generate_batch(self, user_msgs: dict[str,str],sys_msg:Optional[str] = None) -> dict[str,str]:
         """仅返回纯文本"""
         messages: dict[str,dict] = await self._a_completion_batch(user_msgs, sys_msg)
-        results:dict[str,str]= {key:self._get_choice_text(message) for key,message in messages}
+        results:dict[str,str]= {key:self._get_choice_text(message) for key,message in messages.items()}
         return results
 
     async def _a_completion_batch(self, user_msgs: dict[str,str], sys_msg: Optional[str] = None) -> dict[str,dict]:
-        batch_prompt = {key:PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs}
+        batch_prompt = {key:PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs.items()}
         split_batches: list[dict[str,PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
         all_results = {}
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
-            future_map = {key:self._a_chat_completion(prompt.user_message, prompt.system_message) for key,prompt in small_batch}
+            future_map = {key:self._a_chat_completion(prompt.user_message, prompt.system_message) for key,prompt in small_batch.items()}
             # Gather the results of these futures
             results = await asyncio.gather(*future_map.values())
             # Map the results back to their respective keys

@@ -20,7 +20,7 @@ class LLM_API(ABC):
         pass
 
     @abstractmethod
-    async def a_generate_batch(self, user_msgs: list[str], sys_msg: Optional[str]= None) -> list[str]:
+    async def a_generate_batch(self, user_msgs: dict[str,str], sys_msg: Optional[str]= None) -> dict[str,str]:
         pass
 
     @abstractmethod
