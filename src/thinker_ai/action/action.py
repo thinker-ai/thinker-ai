@@ -20,7 +20,7 @@ class Action(ABC):
     async def _a_generate_action_output(self, user_msg: str, output_class_name: str,
                                         output_data_mapping: dict,
                                         system_msg: Optional[str] = None) -> ActionOutput:
-        content = await get_llm().a_generate_stream(user_msg, system_msg)
+        content = await get_llm().a_generate(user_msg, system_msg,stream=True)
         instruct_content = ActionOutput.parse_data_with_class(content, output_class_name, output_data_mapping)
         return ActionOutput(content, instruct_content)
 
