@@ -1,8 +1,8 @@
 import os
 
 from thinker_ai.llm import llm_type, LLM_TYPE
-from thinker_ai.llm.claude2 import Claude2, ClaudeConfig
-from thinker_ai.llm.gpt import GPT, GPT_Config
+from thinker_ai.llm.claude2_api import Claude2, ClaudeConfig
+from thinker_ai.llm.gpt_api import GPT, GPT_Config
 from thinker_ai.llm.llm_api import LLM_API
 
 _instances = {}

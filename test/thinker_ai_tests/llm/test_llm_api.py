@@ -1,6 +1,5 @@
 import asynctest
 
-from thinker_ai.llm.gpt import GPT
 from thinker_ai.llm.llm_factory import get_llm
 
 class TestTestGPT(asynctest.TestCase):

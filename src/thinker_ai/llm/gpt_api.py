@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import time
 from typing import NamedTuple, Optional, List, Dict
 
@@ -9,7 +10,7 @@ from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
 from thinker_ai.llm.llm_api import LLM_API, FunctionCall
-from thinker_ai.llm.schema import PromptMessage
+from thinker_ai.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.logs import logger
 from thinker_ai.utils.singleton import Singleton
 from thinker_ai.utils.token_counter import (
@@ -176,7 +177,6 @@ class GPT(LLM_API, metaclass=Singleton):
     async def _a_chat_completion_stream(self, user_msg: str, system_msg: Optional[str] = None) -> str:
         prompt = PromptMessage(user_msg, system_msg)
         response = await openai.ChatCompletion.acreate(**self._cons_kwargs(prompt.to_dicts()), stream=True)
-
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []

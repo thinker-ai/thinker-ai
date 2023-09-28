@@ -31,3 +31,4 @@ dependencies:
     - selenium
     - asynctest
     - pyyaml
+    - pytest-asyncio
