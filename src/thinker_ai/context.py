@@ -43,6 +43,8 @@ class Context:
         return docs_path, resources_path
 
     def load_file_from_workspace(self, file_name: str) -> str:
+        if file_name.startswith('/'):
+            file_name=file_name[1:]#否则会误判为根路径
         file_dir = self.get_workspace_path()
         return self.load_file(file_dir, file_name)
 
@@ -59,6 +61,8 @@ class Context:
         return file_data
 
     def load_file_from_project(self, file_name: str) -> str:
+        if file_name.startswith('/'):
+            file_name=file_name[1:]#否则会误判为根路径
         file_dir = get_project_root()
         return self.load_file(file_dir, file_name)
 
