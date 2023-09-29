@@ -62,9 +62,8 @@ class PromptMessage:
     system_message: SystemMessage
 
     def __init__(self, user_msg: str, sys_msg: str = None):
-        sys_msg = 'You are a helpful assistant.' or sys_msg is None
         self.user_message = UserMessage(user_msg)
-        self.system_message = SystemMessage(sys_msg)
+        self.system_message = SystemMessage(sys_msg or 'You are a helpful assistant.')
 
     @property
     def user_message_content(self) -> str:
