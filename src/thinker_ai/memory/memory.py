@@ -26,7 +26,7 @@ class Memory:
             self.add(message)
 
     def get_by_role(self, role: str) -> list[Message]:
-        """Return all messages of a specified role"""
+        """Return all messages of a specified agent"""
         return [message for message in self.storage if message.role == role]
 
     def get_by_content(self, content: str) -> list[Message]:

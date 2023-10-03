@@ -16,7 +16,7 @@ def _serialize_message(msg: Message) -> dict:
     msg_dict = {
         "content": msg.content,
         "instruct_content_class": class_name if class_name != "NoneType" else None,
-        "role": msg.role,
+        "agent": msg.role,
         "cause_by": msg.cause_by.__name__ if msg.cause_by else None,
         "sent_from": msg.sent_from,
         "send_to": msg.send_to
@@ -31,7 +31,7 @@ def _deserialize_message(msg_data: dict, data_mappings: dict) -> Message:
         content=msg_data["content"],
         instruct_content=ActionOutput.parse_data_with_class(msg_data["content"], class_name, data_mappings.get(class_name))
         if class_name and data_mappings.get(class_name) else None,
-        role=msg_data["role"],
+        role=msg_data["agent"],
         cause_by=ACTION_SUBCLASSES.get(msg_data["cause_by"]),
         sent_from=msg_data["sent_from"],
         send_to=msg_data["send_to"]

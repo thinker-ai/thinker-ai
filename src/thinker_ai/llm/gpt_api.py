@@ -169,7 +169,7 @@ class GPT(LLM_API, metaclass=Singleton):
         return self._get_choice_text(rsp)
 
     def _extract_assistant_rsp(self, context):
-        return "\n".join([i["content"] for i in context if i["role"] == "assistant"])
+        return "\n".join([i["content"] for i in context if i["agent"] == "assistant"])
 
     def _get_choice_text(self, rsp: dict) -> str:
         return rsp.get("choices")[0]["message"]["content"]

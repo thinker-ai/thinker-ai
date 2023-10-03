@@ -1,7 +1,7 @@
 import unittest
 
 from thinker_ai.task import Actor
-from thinker_ai.role.agent_with_tools import AgentWithTools
+from thinker_ai.agent.agent_with_tools import AgentWithTools
 from thinker_ai.context import Context
 
 

@@ -1,6 +1,6 @@
 from typing import Dict
 
-from thinker_ai.role.role import Role
+from thinker_ai.agent.role import Role
 
 
 class Organization:

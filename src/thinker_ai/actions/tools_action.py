@@ -3,16 +3,17 @@ from typing import Callable, Optional, Type, Union, Dict
 from langchain.tools import BaseTool
 from pydantic import BaseModel
 
+from thinker_ai.actions.action import BaseAction
 from thinker_ai.llm.llm_factory import get_llm
 from thinker_ai.tools.tools_register import ToolsRegister
 
 
-class ToolsAgent:
+class ToolsAction(BaseAction):
     tools_register = ToolsRegister()
 
-    async def a_ask_with_function_call(self, content: str) -> str:
+    async def act(self,content: str, *args, **kwargs):
         function_call = get_llm().generate_function_call(content, candidate_functions=self.tools_register.tools_schema)
-        execute_result = self.call_tool(function_call.name, function_call.arguments)
+        execute_result = self._call_tool(function_call.name, function_call.arguments)
         rsp_str = await self._generate_answer_from_result(content, execute_result)
         return rsp_str
 
@@ -25,7 +26,7 @@ class ToolsAgent:
     def register_langchain_tools(self, tool_names: list[str]):
         self.tools_register.register_langchain_tools(tool_names)
 
-    def call_tool(self, name: str, arguments: Union[str, Dict]):
+    def _call_tool(self, name: str, arguments: Union[str, Dict]):
         tool = self.tools_register.get_tool(name)
         result = tool.run(arguments)
         return result

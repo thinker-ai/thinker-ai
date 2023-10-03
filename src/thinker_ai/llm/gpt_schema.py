@@ -6,15 +6,15 @@ from thinker_ai.utils.logs import logger
 
 @dataclass
 class Message:
-    """list[<role>: <content>]"""
+    """list[<agent>: <content>]"""
     content: str
     role: str = field(default='customer')  # system / customer / assistant
 
     def to_dict(self) -> dict:
-        return {"role": self.role, "content": self.content}
+        return {"agent": self.role, "content": self.content}
 
     def __str__(self):
-        # prefix = '-'.join([self.role, str(self.cause_by)])
+        # prefix = '-'.join([self.agent, str(self.cause_by)])
         return f"{self.role}: {self.content}"
 
     def __repr__(self):
@@ -22,7 +22,7 @@ class Message:
 
     def to_dict(self) -> dict:
         return {
-            "role": self.role,
+            "agent": self.role,
             "content": self.content
         }
 

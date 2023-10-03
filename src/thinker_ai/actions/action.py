@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
 
-from thinker_ai.context import Context
+from pydantic import BaseModel
 
 
 class BaseAction(ABC):
-    def __init__(self,name:str):
+    def __init__(self, name: str):
         self.name = name
 
     def __str__(self):
@@ -19,12 +19,20 @@ class BaseAction(ABC):
         raise NotImplementedError
 
 
+class Criteria(BaseModel):
+    name: str
+    guide: str
+    checklist: Dict
+    goals: str
+
+
 class ProposeAction(BaseAction, ABC):
-    def __init__(self):
+    def __init__(self, criteria: Criteria):
         super().__init__("propose")
+        self.criteria = criteria
 
     @abstractmethod
-    async def act(self, previous_review_results: Any = None) -> Any:
+    async def act(self, msg: str, previous_review_results: Any = None) -> Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -33,8 +41,9 @@ class ProposeAction(BaseAction, ABC):
 
 
 class ReviewAction(BaseAction, ABC):
-    def __init__(self):
+    def __init__(self, criteria: Criteria):
         super().__init__("review")
+        self.criteria = criteria
 
     @abstractmethod
     async def act(self, propose_results: Any = None, *args, **kwargs):
@@ -46,8 +55,10 @@ class ReviewAction(BaseAction, ABC):
 
 
 class AcceptAction(BaseAction, ABC):
-    def __init__(self):
+    def __init__(self, criteria: Criteria):
         super().__init__("accept")
+        self.criteria = criteria
+
     @abstractmethod
     async def act(self, propose_results: Any, review_results: Any = None, *args, **kwargs):
         raise NotImplementedError
@@ -63,16 +74,16 @@ class AcceptAction(BaseAction, ABC):
 
 class PRA_Action(BaseAction, ABC):
 
-    def __init__(self, propose: ProposeAction, review: ReviewAction, accept: AcceptAction, name: str, max_try: int = 3):
+    def __init__(self, criteria: Criteria, max_try: int = 3):
         super().__init__("think")
-        self.propose = propose
-        self.review = review
-        self.accept = accept
+        self.propose = ProposeAction(criteria)
+        self.review = ReviewAction(criteria)
+        self.accept = AcceptAction(criteria)
         self.max_try = max_try
 
     async def act(self, *args, **kwargs):
         try_times = 1
-        while self.accept or try_times > self.max_try:
+        while self.accept.is_accept() or try_times > self.max_try:
             await self.propose.act(*args, **kwargs)
             await self.review.act(self.propose.get_result(), *args, **kwargs)
             await self.accept.act(self.propose.get_result(), self.review.get_result() * args, **kwargs)

@@ -3,25 +3,28 @@ from typing import Dict
 
 from pydantic import BaseModel
 
-from thinker_ai.role.role_factory import RoleFactory
+from thinker_ai.actions.action import Criteria
+from thinker_ai.agent.worker_factory import WorkerFactory
 
 
 class Task(BaseModel):
-    role_factory: RoleFactory
+    worker_factory: WorkerFactory
     solution_id: str
     task_id: str
     input_file: str
+    max_try: str
+    criteria: Criteria
 
     def __init__(self, id: str, name: str, role_name: str, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
         self.id = id
         self.name = name
         self.role_name = role_name
 
     @abstractmethod
     def do(self):
-        role = self.role_factory.get_role(self.role_name)
-        role.do_task(self)
+        worker = self.worker_factory.get_worker(self.role_name)
+        worker.work(self)
 
 
 class CompositeTask(Task, ABC):
