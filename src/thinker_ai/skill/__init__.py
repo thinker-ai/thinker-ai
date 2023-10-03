@@ -1,6 +1,6 @@
 from typing import Optional
 
-from thinker_ai.action.action_output import ActionOutput
+from thinker_ai.skill.action_output import ActionOutput
 
 from thinker_ai.llm.llm_factory import get_llm
 

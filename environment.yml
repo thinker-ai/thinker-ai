@@ -1,4 +1,4 @@
-name: thinker-ai
+name: task-ai
 channels:
   - defaults
   - conda-forge

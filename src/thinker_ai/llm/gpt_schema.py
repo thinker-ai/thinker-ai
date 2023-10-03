@@ -8,7 +8,7 @@ from thinker_ai.utils.logs import logger
 class Message:
     """list[<role>: <content>]"""
     content: str
-    role: str = field(default='user')  # system / user / assistant
+    role: str = field(default='customer')  # system / customer / assistant
 
     def to_dict(self) -> dict:
         return {"role": self.role, "content": self.content}
@@ -34,7 +34,7 @@ class UserMessage(Message):
     """
 
     def __init__(self, content: str):
-        super().__init__(content, 'user')
+        super().__init__(content, 'customer')
 
 
 @dataclass

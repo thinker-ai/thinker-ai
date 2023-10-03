@@ -7,7 +7,7 @@ from thinker_ai.utils.logs import logger
 from thinker_ai.utils.output_parser import OutputParser
 
 
-class ActionOutput:
+class ResultParser:
     content: str
     instruct_content: BaseModel
 
@@ -39,7 +39,7 @@ class ActionOutput:
 
     @classmethod
     def parse_data_with_class(cls, content, output_class_name, output_data_mapping):
-        output_class = ActionOutput.create_model_class(output_class_name, output_data_mapping)
+        output_class = ResultParser.create_model_class(output_class_name, output_data_mapping)
         parsed_data = OutputParser.parse_data_with_mapping(content, output_data_mapping)
         logger.debug(parsed_data)
         instruct_content = output_class(**parsed_data)

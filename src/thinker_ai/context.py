@@ -2,8 +2,6 @@ import shutil
 from pathlib import Path
 from typing import Tuple
 
-from thinker_ai.actor import Actor
-
 
 def get_project_root() -> Path:
     """逐级向上寻找项目根目录"""
@@ -21,9 +19,8 @@ def get_project_root() -> Path:
 
 class Context:
 
-    def __init__(self, organization_id: str, actor: Actor, solution_name: str):
+    def __init__(self, organization_id: str,solution_name: str):
         self.organization_id = organization_id
-        self.actor = actor
         self.solution_name = solution_name
 
     def get_workspace_path(self) -> Path:

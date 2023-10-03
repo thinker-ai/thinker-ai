@@ -22,7 +22,7 @@ install_reqs = parse_environment_yml()
 
 
 setup(
-    name='thinker-ai',
+    name='task-ai',
     version='0.1.0', # 这是一个初始版本
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
@@ -40,9 +40,9 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.10',
     ],
-    keywords='ai thinker',
+    keywords='ai task',
     author='wunglee', # 添加你的名字
-    author_email='wunglee@thinker-ai.net',
+    author_email='wunglee@task-ai.net',
     description='base package for ddd-gpt',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',

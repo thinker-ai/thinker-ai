@@ -3,13 +3,13 @@ import json
 from pathlib import Path
 from typing import Iterable
 
-from thinker_ai.action.action import Action
-from thinker_ai.action.action_output import ActionOutput
+from thinker_ai.skill.action import Skill
+from thinker_ai.skill.action_output import ActionOutput
 from thinker_ai.llm.schema import Message
 from thinker_ai.memory.memory import Memory
 
 
-ACTION_SUBCLASSES = {cls.__name__: cls for cls in Action.__subclasses__()}
+ACTION_SUBCLASSES = {cls.__name__: cls for cls in Skill.__subclasses__()}
 
 def _serialize_message(msg: Message) -> dict:
     class_name = msg.instruct_content.__class__.__name__

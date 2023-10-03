@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import Iterable, Type
 
-from thinker_ai.action.action import Action
+from thinker_ai.skill.action import Skill
 from thinker_ai.llm.schema import Message
 
 
@@ -11,7 +11,7 @@ class Memory:
     def __init__(self):
         """Initialize an empty storage list and an empty index dictionary"""
         self.storage: list[Message] = []
-        self.index: dict[Type[Action], list[Message]] = defaultdict(list)
+        self.index: dict[Type[Skill], list[Message]] = defaultdict(list)
 
     def add(self, message: Message):
         """Add a new message to storage, while updating the index"""
@@ -66,11 +66,11 @@ class Memory:
             news.append(i)
         return news
 
-    def get_by_action(self, action: Type[Action]) -> list[Message]:
+    def get_by_action(self, action: Type[Skill]) -> list[Message]:
         """Return all messages triggered by a specified Action"""
         return self.index[action]
 
-    def get_by_actions(self, actions: Iterable[Type[Action]]) -> list[Message]:
+    def get_by_actions(self, actions: Iterable[Type[Skill]]) -> list[Message]:
         """Return all messages triggered by specified Actions"""
         rsp = []
         for action in actions:
