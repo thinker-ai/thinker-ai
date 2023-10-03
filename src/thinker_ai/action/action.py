@@ -1,29 +1,76 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Any
 
-from thinker_ai.action.action_output import ActionOutput
 from thinker_ai.context import Context
-from thinker_ai.llm.llm_factory import get_llm
 
 
 class Action(ABC):
     def __init__(self, context: Context):
         self.context = context
+
     def __str__(self):
         return self.__class__.__name__
 
     def __repr__(self):
         return self.__str__()
 
-    @classmethod
-    # @retry(stop=stop_after_attempt(2), wait=wait_fixed(1))
-    async def _a_generate_action_output(self, user_msg: str, output_class_name: str,
-                                        output_data_mapping: dict,
-                                        system_msg: Optional[str] = None) -> ActionOutput:
-        content = await get_llm().a_generate(user_msg, system_msg,stream=True)
-        instruct_content = ActionOutput.parse_data_with_class(content, output_class_name, output_data_mapping)
-        return ActionOutput(content, instruct_content)
-
     @abstractmethod
     async def run(self, *args, **kwargs):
         """The run method should be implemented in a subclass"""
+
+
+class DoAction(ABC):
+    def __init__(self, context: Context):
+        self.context = context
+
+    @abstractmethod
+    async def run(self, previous_review_results: Any = None) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_result(self) -> Any:
+        raise NotImplementedError
+
+
+class ReviewAction(ABC):
+    def __init__(self, context: Context):
+        self.context = context
+
+    @abstractmethod
+    async def run(self, do_results: Any = None, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_result(self) -> Any:
+        raise NotImplementedError
+
+
+class AcceptAction(ABC):
+    def __init__(self, context: Context):
+        self.context = context
+
+    @abstractmethod
+    async def run(self, do_results: Any, review_results: Any = None, *args, **kwargs) -> bool:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_result(self) -> Any:
+        raise NotImplementedError
+
+
+class ThinkerAction(Action, ABC):
+    def __init__(self, do: DoAction, review: ReviewAction, accept: AcceptAction, context: Context, max_try: int = 3):
+        super().__init__(context)
+        self.do = do
+        self.review = review
+        self.accept = accept
+        self.max_try = max_try
+
+    async def run(self, *args, **kwargs):
+        try_times = 0
+        while try_times < self.max_try:
+            await self.do.run(*args, **kwargs)
+            await self.review.run(self.do.get_result(), *args, **kwargs)
+            if await self.accept.run(self.do.get_result(), self.review.get_result() * args, **kwargs):
+                break
+            try_times += 1
