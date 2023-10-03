@@ -4,7 +4,7 @@ from typing import Dict
 from pydantic import BaseModel
 
 from thinker_ai.actions.action import Criteria
-from thinker_ai.agent.worker_factory import WorkerFactory
+from thinker_ai.agent.worker import WorkerFactory
 
 
 class Task(BaseModel):
