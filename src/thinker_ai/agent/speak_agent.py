@@ -1,9 +1,7 @@
 import base64
-from io import BytesIO
-from typing import Dict, Tuple
+from typing import Dict
 
 from langchain import LLMChain, PromptTemplate, OpenAI
-from pydantic import BaseModel
 from langchain.memory import ConversationBufferWindowMemory
 
 from thinker_ai.actions.action import BaseAction, Criteria
@@ -17,8 +15,8 @@ AI助理:"""
 
 
 class SpeakAgent(Agent):
-    def __init__(self, actions: Dict[str, BaseAction], criteria: Criteria):
-        super().__init__(actions, criteria)
+    def __init__(self,name:str, actions: Dict[str, BaseAction]):
+        super().__init__(name,actions)
         self.speaker = Speaker()
 
     async def ask(self, msg: str) -> tuple[str, str]:
