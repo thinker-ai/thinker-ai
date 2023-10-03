@@ -50,11 +50,15 @@ class AcceptAction(ABC):
         self.context = context
 
     @abstractmethod
-    async def run(self, do_results: Any, review_results: Any = None, *args, **kwargs) -> bool:
+    async def run(self, do_results: Any, review_results: Any = None, *args, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
     def get_result(self) -> Any:
+        raise NotImplementedError
+
+    @abstractmethod
+    def is_accept(self) -> bool:
         raise NotImplementedError
 
 
@@ -67,10 +71,16 @@ class ThinkerAction(Action, ABC):
         self.max_try = max_try
 
     async def run(self, *args, **kwargs):
-        try_times = 0
-        while try_times < self.max_try:
+        try_times = 1
+        while self.accept or try_times > self.max_try:
             await self.do.run(*args, **kwargs)
             await self.review.run(self.do.get_result(), *args, **kwargs)
-            if await self.accept.run(self.do.get_result(), self.review.get_result() * args, **kwargs):
-                break
+            await self.accept.run(self.do.get_result(), self.review.get_result() * args, **kwargs)
             try_times += 1
+
+    def get_result(self) -> Any:
+        return self.accept.get_result()
+
+    @abstractmethod
+    def is_success(self) -> bool:
+        return self.accept.is_accept()
