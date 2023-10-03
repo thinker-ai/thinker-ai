@@ -6,7 +6,7 @@ import copy
 import pickle
 from typing import Dict, List, Tuple
 
-from thinker_ai.skill.action_output import ActionOutput
+from thinker_ai.actions.action_output import ActionOutput
 from thinker_ai.llm.schema import Message
 
 

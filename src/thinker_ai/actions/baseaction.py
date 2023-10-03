@@ -4,7 +4,7 @@ from typing import Any, Dict
 from thinker_ai.context import Context
 
 
-class Skill(ABC):
+class BaseAction(ABC):
     def __init__(self,name:str):
         self.name = name
 
@@ -19,7 +19,7 @@ class Skill(ABC):
         raise NotImplementedError
 
 
-class ProposeSkill(Skill,ABC):
+class ProposeAction(BaseAction, ABC):
     def __init__(self):
         super().__init__("propose")
 
@@ -32,7 +32,7 @@ class ProposeSkill(Skill,ABC):
         raise NotImplementedError
 
 
-class ReviewSkill(Skill,ABC):
+class ReviewAction(BaseAction, ABC):
     def __init__(self):
         super().__init__("review")
 
@@ -45,7 +45,7 @@ class ReviewSkill(Skill,ABC):
         raise NotImplementedError
 
 
-class AcceptSkill(Skill,ABC):
+class AcceptAction(BaseAction, ABC):
     def __init__(self):
         super().__init__("accept")
     @abstractmethod
@@ -61,9 +61,9 @@ class AcceptSkill(Skill,ABC):
         raise NotImplementedError
 
 
-class ThinkSkill(Skill, ABC):
+class PRA_Action(BaseAction, ABC):
 
-    def __init__(self, propose: ProposeSkill, review: ReviewSkill, accept: AcceptSkill, name: str, max_try: int = 3):
+    def __init__(self, propose: ProposeAction, review: ReviewAction, accept: AcceptAction, name: str, max_try: int = 3):
         super().__init__("think")
         self.propose = propose
         self.review = review

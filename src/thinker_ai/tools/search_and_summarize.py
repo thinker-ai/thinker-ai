@@ -2,7 +2,7 @@ import json
 import re
 from typing import List
 
-from thinker_ai.skill.action import Skill
+from thinker_ai.actions.action import BaseAction
 from thinker_ai.tools.search_engine import SearchEngine
 from thinker_ai.utils.logs import logger
 
@@ -31,7 +31,7 @@ class SearchAndSummarize:
         queries = await cls._get_queries(question)
         results = await cls._batch_query(queries)
         PROMPT_FOR_ANSWER = SYSTEM_PROMPT_FOR_ANSWER.format(Question=question)
-        answer = await Skill._a_generate_stream(results, PROMPT_FOR_ANSWER)
+        answer = await BaseAction._a_generate_stream(results, PROMPT_FOR_ANSWER)
         logger.debug(answer)
         return answer
     @classmethod
@@ -44,7 +44,7 @@ class SearchAndSummarize:
         return json.dumps(results, indent=4, ensure_ascii=False)
     @classmethod
     async def _get_queries(cls,question) -> List:
-        statements = await Skill._a_generate_stream(question, SYSTEM_PROMPT_FOR_SEARCH)
+        statements = await BaseAction._a_generate_stream(question, SYSTEM_PROMPT_FOR_SEARCH)
         queries = cls._to_list(statements)
         return queries
     @classmethod

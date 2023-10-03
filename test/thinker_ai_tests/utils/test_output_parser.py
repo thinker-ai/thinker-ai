@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 
 import pytest
 
-from thinker_ai.skill.action_output import ActionOutput
+from thinker_ai.actions.action_output import ActionOutput
 from thinker_ai.utils.output_parser import OutputParser
 
 OUTPUT_MAPPING = {
