@@ -1,50 +1,44 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "title": "StateMachineDefinition",
-    "type": "object",
-    "properties": {
-        "business_id": {
-            "type": "string",
-            "description": "The unique identifier for the business logic associated with the state machine."
-        },
-        "states": {
-            "type": "object",
-            "additionalProperties": {
-                "type": "object",
-                "properties": {
-                    "type": {
-                        "type": "string",
-                        "description": "The type of the action."
-                    },
-                    "data": {
-                        "type": "object",
-                        "description": "The data needed to create the action."
-                    }
-                },
-                "required": ["type", "data"]
-            }
-        },
-        "transitions": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "from": {
-                        "type": "string",
-                        "description": "The source state of the transition."
-                    },
-                    "to": {
-                        "type": "string",
-                        "description": "The target state of the transition."
-                    },
-                    "event": {
-                        "type": "string",
-                        "description": "The name of the event triggering the transition."
-                    }
-                },
-                "required": ["from", "to", "event"]
-            }
-        }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "business_id": {
+      "type": "string"
     },
-    "required": ["business_id", "states", "transitions"]
+    "states": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": ["type"],
+          "additionalProperties": false
+        }
+      }
+    },
+    "transitions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "event": {
+            "type": "string"
+          }
+        },
+        "required": ["from", "to", "event"]
+      }
+    }
+  },
+  "required": ["business_id", "states", "transitions"]
 }
