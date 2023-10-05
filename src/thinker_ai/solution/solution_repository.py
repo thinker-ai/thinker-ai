@@ -1,8 +1,6 @@
 from abc import ABC, abstractmethod
 
-from thinker_ai.context import Context
 from thinker_ai.solution.solution import Solution
-from thinker_ai.task.task import Task
 
 
 class SolutionRepository(ABC):

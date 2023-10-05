@@ -32,3 +32,5 @@ dependencies:
     - asynctest
     - pyyaml
     - pytest-asyncio
+    - apache-airflow
+    - spade

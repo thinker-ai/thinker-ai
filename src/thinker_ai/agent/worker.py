@@ -1,11 +1,11 @@
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 from typing import Dict, List, Optional
 
 from pydantic import BaseModel
 
 from thinker_ai.actions.action import Criteria, BaseAction
 from thinker_ai.agent.agent import Agent
-from thinker_ai.task.task import Task
+from thinker_ai.solution.task import Task
 
 
 class Worker(Agent):

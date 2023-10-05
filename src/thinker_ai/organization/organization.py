@@ -1,10 +1,10 @@
 from typing import Dict
 
-from thinker_ai.agent.role import Role
+from thinker_ai.agent.worker import Worker
 
 
 class Organization:
-    roles: dict[str, Role] = {}
+    workers: dict[str, Worker] = {}
 
     def __init__(self,org_id:str, customer_id: str,  name: str, roles: dict[str, Role]):
         self.customer_id = customer_id
@@ -12,8 +12,8 @@ class Organization:
         self.name = name
         self.roles = roles
 
-    def add_role(self, role: Role):
-        self.roles[role.name] = role
+    def add_worker(self, worker: Worker):
+        self.roles[worker.name] = worker
 
 
 class CompositeOrganization(Organization):
