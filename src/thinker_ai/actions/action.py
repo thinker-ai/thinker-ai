@@ -72,7 +72,7 @@ class AcceptAction(BaseAction, ABC):
         raise NotImplementedError
 
 
-class PRA_Action(BaseAction, ABC):
+class ProposeReviewAcceptAction(BaseAction, ABC):
 
     def __init__(self, criteria: Criteria, max_try: int = 3):
         super().__init__("think")

@@ -22,7 +22,7 @@ install_reqs = parse_environment_yml()
 
 
 setup(
-    name='task-ai',
+    name='thinker-ai',
     version='0.1.0', # 这是一个初始版本
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
@@ -42,8 +42,8 @@ setup(
     ],
     keywords='ai task',
     author='wunglee', # 添加你的名字
-    author_email='wunglee@task-ai.net',
-    description='base package for ddd-gpt',
+    author_email='wunglee@thinker-ai.net',
+    description='base package for ai rpa',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/thinker-ai/thinker-ai.git',
