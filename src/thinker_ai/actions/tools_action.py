@@ -9,6 +9,7 @@ from thinker_ai.tools.tools_register import ToolsRegister
 
 
 class ToolsAction(BaseAction):
+
     tools_register = ToolsRegister()
 
     async def act(self,content: str, *args, **kwargs):

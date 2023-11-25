@@ -8,10 +8,7 @@ from thinker_ai.utils.logs import logger
 class Message:
     """list[<agent>: <content>]"""
     content: str
-    role: str = field(default='customer')  # system / customer / assistant
-
-    def to_dict(self) -> dict:
-        return {"agent": self.role, "content": self.content}
+    role: str = field(default='user')  # system / user / assistant / function
 
     def __str__(self):
         # prefix = '-'.join([self.agent, str(self.cause_by)])
@@ -22,7 +19,7 @@ class Message:
 
     def to_dict(self) -> dict:
         return {
-            "agent": self.role,
+            "role": self.role,
             "content": self.content
         }
 
@@ -34,7 +31,7 @@ class UserMessage(Message):
     """
 
     def __init__(self, content: str):
-        super().__init__(content, 'customer')
+        super().__init__(content, 'user')
 
 
 @dataclass

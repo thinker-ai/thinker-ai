@@ -5,8 +5,6 @@ from pydantic import BaseModel
 
 
 class BaseAction(ABC):
-    def __init__(self, name: str):
-        self.name = name
 
     def __str__(self):
         return self.__class__.__name__
@@ -15,7 +13,7 @@ class BaseAction(ABC):
         return self.__str__()
 
     @abstractmethod
-    async def execute(self, *args, **kwargs):
+    async def act(self, *args, **kwargs):
         raise NotImplementedError
 
 
@@ -32,7 +30,7 @@ class ProposeAction(BaseAction, ABC):
         self.criteria = criteria
 
     @abstractmethod
-    async def execute(self, msg: str, previous_review_results: Any = None) -> Any:
+    async def act(self, msg: str, previous_review_results: Any = None) -> Any:
         raise NotImplementedError
 
     @abstractmethod
@@ -46,7 +44,7 @@ class ReviewAction(BaseAction, ABC):
         self.criteria = criteria
 
     @abstractmethod
-    async def execute(self, propose_results: Any = None, *args, **kwargs):
+    async def act(self, propose_results: Any = None, *args, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -60,7 +58,7 @@ class AcceptAction(BaseAction, ABC):
         self.criteria = criteria
 
     @abstractmethod
-    async def execute(self, propose_results: Any, review_results: Any = None, *args, **kwargs):
+    async def act(self, propose_results: Any, review_results: Any = None, *args, **kwargs):
         raise NotImplementedError
 
     @abstractmethod
@@ -81,12 +79,12 @@ class ProposeReviewAcceptAction(BaseAction, ABC):
         self.accept = AcceptAction(criteria)
         self.max_try = max_try
 
-    async def execute(self, *args, **kwargs):
+    async def act(self, *args, **kwargs):
         try_times = 1
         while self.accept.is_accept() or try_times > self.max_try:
-            await self.propose.execute(*args, **kwargs)
-            await self.review.execute(self.propose.get_result(), *args, **kwargs)
-            await self.accept.execute(self.propose.get_result(), self.review.get_result() * args, **kwargs)
+            await self.propose.act(*args, **kwargs)
+            await self.review.act(self.propose.get_result(), *args, **kwargs)
+            await self.accept.act(self.propose.get_result(), self.review.get_result() * args, **kwargs)
             try_times += 1
 
     def get_result(self) -> Any:

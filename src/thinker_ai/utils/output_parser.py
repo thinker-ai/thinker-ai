@@ -1,8 +1,12 @@
 import ast
 import contextlib
 import re
-from typing import Tuple, get_origin, Dict
+from typing import Tuple, get_origin, Dict, Type
 import yaml
+from pydantic import root_validator, validator, create_model, BaseModel
+
+from thinker_ai.utils.logs import logger
+
 
 class OutputParser:
 
@@ -106,7 +110,28 @@ class OutputParser:
         return parsed_data
 
     @classmethod
-    def parse_data_with_mapping(cls, data, mapping):
+    def _create_model_class(cls, mapping: Dict)->Type[BaseModel]:
+        new_class = create_model("default", **mapping)
+
+        @validator('*', allow_reuse=True)
+        def check_name(v, field):
+            if field.name not in mapping.keys():
+                raise ValueError(f'Unrecognized block: {field.name}')
+            return v
+
+        @root_validator(pre=True, allow_reuse=True)
+        def check_missing_fields(values):
+            required_fields = set(mapping.keys())
+            missing_fields = required_fields - set(values.keys())
+            if missing_fields:
+                raise ValueError(f'Missing fields: {missing_fields}')
+            return values
+
+        new_class.__validator_check_name = classmethod(check_name)
+        new_class.__root_validator_check_missing_fields = classmethod(check_missing_fields)
+        return new_class
+    @classmethod
+    def parse_data_with_mapping(cls, data, mapping)->BaseModel:
         block_dict = cls.parse_blocks(data)
         parsed_data = {}
         for block, content in block_dict.items():
@@ -147,4 +172,11 @@ class OutputParser:
             #     except Exception:
             #         pass
             parsed_data[block] = content
-        return parsed_data
+        output_class = cls._create_model_class(mapping)
+        instruct_content = output_class(**parsed_data)
+        return instruct_content
+
+    @classmethod
+    def preprocess_json_str(cls,json_str: str) -> str:
+        # 替换字符串内的实际换行为 \n
+        return re.sub(r'(?<=")([^"]*?)(?=")', lambda m: m.group(0).replace("\n", ""), json_str)

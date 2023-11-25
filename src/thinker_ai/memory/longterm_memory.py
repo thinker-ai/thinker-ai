@@ -4,14 +4,13 @@ from pathlib import Path
 from typing import Iterable
 
 from thinker_ai.actions.action import BaseAction
-from thinker_ai.actions.action_output import ActionOutput
-from thinker_ai.llm.schema import Message
+from thinker_ai.agent.action_msg import ActionMsg
 from thinker_ai.memory.memory import Memory
-
+from thinker_ai.utils.output_parser import OutputParser
 
 ACTION_SUBCLASSES = {cls.__name__: cls for cls in BaseAction.__subclasses__()}
 
-def _serialize_message(msg: Message) -> dict:
+def _serialize_message(msg: ActionMsg) -> dict:
     class_name = msg.instruct_content.__class__.__name__
     msg_dict = {
         "content": msg.content,
@@ -24,12 +23,12 @@ def _serialize_message(msg: Message) -> dict:
     return msg_dict
 
 
-def _deserialize_message(msg_data: dict, data_mappings: dict) -> Message:
+def _deserialize_message(msg_data: dict, data_mappings: dict) -> ActionMsg:
     """Converts a dictionary representation back to a Message instance."""
     class_name = msg_data["instruct_content_class"]
-    return Message(
+    return ActionMsg(
         content=msg_data["content"],
-        instruct_content=ActionOutput.parse_data_with_class(msg_data["content"], class_name, data_mappings.get(class_name))
+        instruct_content=OutputParser.parse_data_with_mapping(msg_data["content"], data_mappings.get(class_name))
         if class_name and data_mappings.get(class_name) else None,
         role=msg_data["agent"],
         cause_by=ACTION_SUBCLASSES.get(msg_data["cause_by"]),
@@ -70,12 +69,12 @@ class LongTermMemory(Memory):
         except IOError:
             pass
 
-    def add(self, message: Message):
+    def add(self, message: ActionMsg):
         """Add a new message to storage, while updating the index"""
         super().add(message)
         self._save_data_to_file()
 
-    def add_batch(self, messages: Iterable[Message]):
+    def add_batch(self, messages: Iterable[ActionMsg]):
         for message in messages:
             super().add(message)
         self._save_data_to_file()

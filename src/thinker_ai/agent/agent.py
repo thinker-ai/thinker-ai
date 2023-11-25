@@ -6,14 +6,12 @@ from pydantic import BaseModel
 from thinker_ai.actions.action import Criteria, BaseAction
 from thinker_ai.llm.llm_factory import get_llm
 
-
 class DataModel(BaseModel):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.__dict__.update(kwargs)
+    class Config:
+        extra = "allow"  # 允许额外的字段
 
     def __iter__(self):
-        return iter(self.__dict__.values())
+        return iter(self.dict().values())
 
 
 class Agent:

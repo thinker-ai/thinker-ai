@@ -1,5 +1,5 @@
 import unittest
-from typing import Dict, Type
+from typing import Dict
 
 from thinker_ai.status_machine.state_machine import StateMachine, State, StateMachineDefinition, ActionFactory
 from thinker_ai.status_machine.status_machine_repository import StateMachineDefinitionRepository, \

@@ -3,7 +3,7 @@ from typing import List, Tuple, Dict
 
 import pytest
 
-from thinker_ai.actions.action_output import ActionOutput
+from thinker_ai.actions import ActionOutput
 from thinker_ai.utils.output_parser import OutputParser
 
 OUTPUT_MAPPING = {
@@ -249,7 +249,5 @@ flowchart TB
 There are no unclear points.
     """
 
-    output_class = ActionOutput.create_model_class("prd", OUTPUT_MAPPING)
-    parsed_data = OutputParser.parse_data_with_mapping(data, OUTPUT_MAPPING)
-    instruct_content = output_class(**parsed_data)
+    instruct_content = OutputParser.parse_data_with_mapping(data, OUTPUT_MAPPING)
     print(instruct_content)

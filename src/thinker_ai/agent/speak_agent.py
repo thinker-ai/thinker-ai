@@ -1,10 +1,5 @@
 import base64
-from typing import Dict
 
-from langchain import LLMChain, PromptTemplate, OpenAI
-from langchain.memory import ConversationBufferWindowMemory
-
-from thinker_ai.actions.action import BaseAction, Criteria
 from thinker_ai.agent.agent import Agent, DataModel
 from thinker_ai.utils.Speaker import Speaker
 
