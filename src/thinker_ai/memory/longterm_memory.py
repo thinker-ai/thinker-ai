@@ -1,85 +1,59 @@
 import json
 
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, Type, Dict, Any, Tuple
 
 from thinker_ai.actions.action import BaseAction
-from thinker_ai.agent.action_msg import ActionMsg
+from thinker_ai.agent.action_message import ActionMessage
 from thinker_ai.memory.memory import Memory
-from thinker_ai.utils.output_parser import OutputParser
 
 ACTION_SUBCLASSES = {cls.__name__: cls for cls in BaseAction.__subclasses__()}
 
-def _serialize_message(msg: ActionMsg) -> dict:
-    class_name = msg.instruct_content.__class__.__name__
-    msg_dict = {
-        "content": msg.content,
-        "instruct_content_class": class_name if class_name != "NoneType" else None,
-        "agent": msg.role,
-        "cause_by": msg.cause_by.__name__ if msg.cause_by else None,
-        "sent_from": msg.sent_from,
-        "send_to": msg.send_to
-    }
-    return msg_dict
-
-
-def _deserialize_message(msg_data: dict, data_mappings: dict) -> ActionMsg:
-    """Converts a dictionary representation back to a Message instance."""
-    class_name = msg_data["instruct_content_class"]
-    return ActionMsg(
-        content=msg_data["content"],
-        instruct_content=OutputParser.parse_data_with_mapping(msg_data["content"], data_mappings.get(class_name))
-        if class_name and data_mappings.get(class_name) else None,
-        role=msg_data["agent"],
-        cause_by=ACTION_SUBCLASSES.get(msg_data["cause_by"]),
-        sent_from=msg_data["sent_from"],
-        send_to=msg_data["send_to"]
-    )
-
 
 class LongTermMemory(Memory):
-    def __init__(self, file_path: str,data_mappings:dict):
+    def __init__(self, file_path: str, serialize_mapping: Dict[str, Tuple[Type[Any], Any]]):
         super().__init__()
         self._file_path = file_path
-        self._load_data_from_file(data_mappings)
+        self._load_data_from_file(serialize_mapping)
 
     def _save_data_to_file(self):
         data = {
             "index": {
-                key.__name__: [_serialize_message(msg) for msg in value]
+                key.__name__: [msg.serialize() for msg in value]
                 for key, value in self.index.items()
             },
-            "storage": [_serialize_message(msg) for msg in self.storage]
+            "storage": [msg.serialize() for msg in self.storage]
         }
         Path(self._file_path).parent.mkdir(parents=True, exist_ok=True)
         with open(self._file_path, 'w') as file:
             json.dump(obj=data, fp=file, ensure_ascii=False)
 
-    def _load_data_from_file(self,data_mappings:dict):
+    def _load_data_from_file(self, serialize_mapping: Dict[str, Tuple[Type[Any], Any]]):
         try:
             with open(self._file_path, 'r') as file:
                 data = json.load(file)
 
             self.index.update({
-                ACTION_SUBCLASSES[key]: [_deserialize_message(msg_data,data_mappings) for msg_data in value]
+                ACTION_SUBCLASSES[key]: [ActionMessage.deserialize(msg_data, serialize_mapping) for msg_data in value]
                 for key, value in data.get("index", {}).items()
             })
 
-            self.storage = [_deserialize_message(msg_data,data_mappings) for msg_data in data.get("storage", [])]
+            self.storage = [ActionMessage.deserialize(msg_data, serialize_mapping) for msg_data in
+                            data.get("storage", [])]
         except IOError:
             pass
 
-    def add(self, message: ActionMsg):
+    def add(self, message: ActionMessage):
         """Add a new message to storage, while updating the index"""
         super().add(message)
         self._save_data_to_file()
 
-    def add_batch(self, messages: Iterable[ActionMsg]):
+    def add_batch(self, messages: Iterable[ActionMessage]):
         for message in messages:
             super().add(message)
         self._save_data_to_file()
 
-    def delete(self, message: Message):
+    def delete(self, message: ActionMessage):
         """Delete the specified message from storage, while updating the index"""
         super().delete(message)
         self._save_data_to_file()

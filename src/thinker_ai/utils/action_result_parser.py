@@ -1,18 +1,19 @@
 import ast
 import contextlib
+import json
 import re
 from typing import Tuple, get_origin, Dict, Type
 import yaml
 from pydantic import root_validator, validator, create_model, BaseModel
 
-from thinker_ai.utils.logs import logger
 
 
-class OutputParser:
+class ActionResultParser:
 
     @classmethod
     def parse_blocks(cls, text: str):
         # 首先根据"##"将文本分割成不同的block
+        text = text.strip()
         blocks = re.split(r'(?<!#)##(?!#)', text)
 
         # 创建一个字典，用于存储每个block的标题和内容
@@ -25,12 +26,56 @@ class OutputParser:
                 # 将block的标题和内容分开，并分别去掉前后的空白字符
                 block_title, block_content = [item.strip() for item in block.split("\n", 1)]
                 # LLM可能出错，在这里做一下修正
-                if block_title[-1] == ":":
+                if len(block_title) > 0 and block_title[-1] == ":":
                     block_title = block_title[:-1]
                 block_dict[block_title.strip()] = block_content.strip()
 
         return block_dict
 
+    @classmethod
+    def parse_data_with_mapping(cls, data, mapping) -> BaseModel:
+        block_dict = cls.parse_blocks(data)
+        parsed_data = {}
+        for block, content in block_dict.items():
+            # 尝试去除code标记
+            try:
+                content = cls.parse_code(text=content)
+            except Exception as e:
+                print(f"Error: {e}")
+                pass
+            typing_define = mapping.get(block, None)
+            if isinstance(typing_define, tuple) or isinstance(typing_define, Tuple):
+                typing = typing_define[0]
+            else:
+                typing = typing_define
+            if get_origin(typing) is list:
+                # 尝试解析list
+                try:
+                    content = cls.parse_list(text=content)
+                except Exception as e:
+                    print(f"Error: {e}")
+                    pass
+            if get_origin(typing) is dict:
+                # 尝试解析list
+                try:
+                    if typing==Dict[str,str]:
+                        content=yaml.safe_load(content) #解决json解析器解决不了的字符换行问题，但目前只对Dict[str,str]有效
+                    else:
+                        content =json.loads(content) #使用json.load(),检查过于严苛，容易出现无法预期的错误
+                except Exception as e:
+                    print(f"Error: {e}")
+                    pass
+            # TODO: 多余的引号去除有风险，后期再解决
+            # elif typing == str:
+            #     # 尝试去除多余的引号
+            #     try:
+            #         content = cls.parse_str(text=content)
+            #     except Exception:
+            #         pass
+            parsed_data[block] = content
+        output_class = cls._create_model_class(mapping)
+        instruct_content = output_class(**parsed_data)
+        return instruct_content
 
     @classmethod
     def parse_code(cls, text: str, lang: str = "") -> str:
@@ -130,51 +175,6 @@ class OutputParser:
         new_class.__validator_check_name = classmethod(check_name)
         new_class.__root_validator_check_missing_fields = classmethod(check_missing_fields)
         return new_class
-    @classmethod
-    def parse_data_with_mapping(cls, data, mapping)->BaseModel:
-        block_dict = cls.parse_blocks(data)
-        parsed_data = {}
-        for block, content in block_dict.items():
-            # 尝试去除code标记
-            try:
-                content = cls.parse_code(text=content)
-            except Exception as e:
-                print(f"Error: {e}")
-                pass
-            typing_define = mapping.get(block, None)
-            if isinstance(typing_define, tuple) or isinstance(typing_define, Tuple):
-                typing = typing_define[0]
-            else:
-                typing = typing_define
-            if get_origin(typing) is list:
-                # 尝试解析list
-                try:
-                    content = cls.parse_list(text=content)
-                except Exception as e:
-                    print(f"Error: {e}")
-                    pass
-            if get_origin(typing) is dict:
-                # 尝试解析list
-                try:
-                    if typing==Dict[str,str]:
-                        content=yaml.safe_load(content) #解决json解析器解决不了的字符换行问题，但目前只对Dict[str,str]有效
-                    else:
-                        content =ast.literal_eval(content)
-                    #如果使用json.load(),检查过于严苛，容易出现无法预期的错误
-                except Exception as e:
-                    print(f"Error: {e}")
-                    pass
-            # TODO: 多余的引号去除有风险，后期再解决
-            # elif typing == str:
-            #     # 尝试去除多余的引号
-            #     try:
-            #         content = cls.parse_str(text=content)
-            #     except Exception:
-            #         pass
-            parsed_data[block] = content
-        output_class = cls._create_model_class(mapping)
-        instruct_content = output_class(**parsed_data)
-        return instruct_content
 
     @classmethod
     def preprocess_json_str(cls,json_str: str) -> str:
