@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 from playwright.async_api import async_playwright
-from thinker_ai.tools import web_browser_engine_type
+from thinker_ai.agent.tools import web_browser_engine_type
 from thinker_ai.utils.html_parser import WebPage
 from thinker_ai.utils.logs import logger
 

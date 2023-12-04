@@ -12,7 +12,7 @@ class Speaker:
         text = text.replace('\n', ' ').replace('\t', ' ').replace('\r', ' ')
         return text
 
-    async def take_speak_audio(self, text: str) -> io.BytesIO:
+    def take_speak_audio(self, text: str) -> io.BytesIO:
         text = self.clean_text(text)
         communicate = edge_tts.Communicate(text=text, voice="zh-CN-XiaoxiaoNeural")
         audio_stream = io.BytesIO()

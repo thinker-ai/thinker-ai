@@ -3,9 +3,9 @@ import json
 from pathlib import Path
 from typing import Iterable, Type, Dict, Any, Tuple
 
-from thinker_ai.actions.action import BaseAction
-from thinker_ai.agent.action_message import ActionMessage
-from thinker_ai.memory.memory import Memory
+from thinker_ai.actions import BaseAction
+from thinker_ai.work_flow.tasks import TaskMessage
+from thinker_ai.agent.memory.memory import Memory
 
 ACTION_SUBCLASSES = {cls.__name__: cls for cls in BaseAction.__subclasses__()}
 
@@ -34,26 +34,26 @@ class LongTermMemory(Memory):
                 data = json.load(file)
 
             self.index.update({
-                ACTION_SUBCLASSES[key]: [ActionMessage.deserialize(msg_data, serialize_mapping) for msg_data in value]
+                ACTION_SUBCLASSES[key]: [TaskMessage.deserialize(msg_data, serialize_mapping) for msg_data in value]
                 for key, value in data.get("index", {}).items()
             })
 
-            self.storage = [ActionMessage.deserialize(msg_data, serialize_mapping) for msg_data in
+            self.storage = [TaskMessage.deserialize(msg_data, serialize_mapping) for msg_data in
                             data.get("storage", [])]
         except IOError:
             pass
 
-    def add(self, message: ActionMessage):
+    def add(self, message: TaskMessage):
         """Add a new message to storage, while updating the index"""
         super().add(message)
         self._save_data_to_file()
 
-    def add_batch(self, messages: Iterable[ActionMessage]):
+    def add_batch(self, messages: Iterable[TaskMessage]):
         for message in messages:
             super().add(message)
         self._save_data_to_file()
 
-    def delete(self, message: ActionMessage):
+    def delete(self, message: TaskMessage):
         """Delete the specified message from storage, while updating the index"""
         super().delete(message)
         self._save_data_to_file()

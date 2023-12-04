@@ -3,7 +3,7 @@ from __future__ import annotations
 import importlib
 from typing import Callable, Coroutine, Literal, overload
 
-from thinker_ai.tools import SearchEngineType, search_engine_type
+from thinker_ai.agent.tools import SearchEngineType, search_engine_type
 
 class SearchEngine:
     """Class representing a search engine."""

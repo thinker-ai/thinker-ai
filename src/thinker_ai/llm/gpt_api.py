@@ -1,15 +1,13 @@
 import asyncio
 import json
-import sys
 import time
-from typing import NamedTuple, Optional, List, Dict
+from typing import NamedTuple, Optional, List, Dict, Union
 
-import openai
-from openai.error import APIConnectionError
+from openai import OpenAI, AsyncOpenAI, APIConnectionError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
-from thinker_ai.llm.llm_api import LLM_API, FunctionCall
+from thinker_ai.llm.function_call import FunctionCall
 from thinker_ai.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.logs import logger
 from thinker_ai.utils.singleton import Singleton
@@ -57,14 +55,16 @@ class Costs(NamedTuple):
 class CostManager(metaclass=Singleton):
     """计算使用接口的开销"""
 
-    def __init__(self, max_budget):
+    def __init__(self, max_budget, auto_max_tokens: bool = False, max_tokens_rsp: int = 2048):
         self.max_budget = max_budget
         self.total_prompt_tokens = 0
         self.total_completion_tokens = 0
         self.total_cost = 0
         self.total_budget = 0
+        self.auto_max_tokens = auto_max_tokens
+        self.max_tokens_rsp = max_tokens_rsp
 
-    def update_cost(self, prompt_tokens, completion_tokens, model):
+    def update_cost(self, model: str, prompt_tokens, completion_tokens):
         """
         Update the total cost, prompt tokens, and completion tokens.
 
@@ -114,6 +114,30 @@ class CostManager(metaclass=Singleton):
         """获得所有开销"""
         return Costs(self.total_prompt_tokens, self.total_completion_tokens, self.total_cost, self.total_budget)
 
+    def update_costs(self, model: str, usage: dict):
+        try:
+            prompt_tokens = int(usage['prompt_tokens'])
+            completion_tokens = int(usage['completion_tokens'])
+            self.update_cost(model, prompt_tokens, completion_tokens)
+        except Exception as e:
+            logger.error("updating costs failed!", e)
+
+    def get_max_tokens(self, model: str, messages: list[dict]):
+        if not self.auto_max_tokens:
+            return self.max_tokens_rsp
+        return get_max_completion_tokens(messages, model, self.max_tokens_rsp)
+
+    def calc_usage(self, model: str, messages: list[dict], rsp: str) -> dict:
+        usage = {}
+        try:
+            prompt_tokens = count_message_tokens(messages, model)
+            completion_tokens = count_string_tokens(rsp, model)
+            usage['prompt_tokens'] = prompt_tokens
+            usage['completion_tokens'] = completion_tokens
+            return usage
+        except Exception as e:
+            logger.error("usage calculation failed!", e)
+
 
 def log_and_reraise(retry_state):
     logger.error(f"Retry attempts exhausted. Last exception: {retry_state.outcome.exception()}")
@@ -124,59 +148,66 @@ class GPT_Config(BaseModel):
     type: str = None
     version: str = None
     api_key: str
-    model: str = "gpt-4-0613"
     temperature: int = 0
     max_budget: float = 3.0
+    auto_max_tokens: bool = False
     max_tokens_rsp: int = 2048
+    proxy: str = None
     api_base: str = "https://api.openai.com/v1"
     rpm: int = 10
 
 
-class GPT(LLM_API, metaclass=Singleton):
+class GPT:
     """
     Check https://platform.openai.com/examples for examples
     """
 
     def __init__(self, config: GPT_Config):
-        self.__init_openai(config)
-        self.llm = openai
-        self.model = config.model
-        self.auto_max_tokens = False
-        self._cost_manager = CostManager(config.max_budget)
-        self.max_tokens_rsp = config.max_tokens_rsp
+        self.llm = self.__init_n_openai(config)
+        self.a_llm = self.__init_a_openai(config)
+        self._cost_manager = CostManager(config.max_budget, config.auto_max_tokens, config.max_tokens_rsp)
         self.temperature = config.temperature
-        self.rateLimiter = RateLimiter(rpm=self.rpm)
+        self.rateLimiter = RateLimiter(rpm=config.rpm)
 
-    def __init_openai(self, config: GPT_Config):
-        openai.api_key = config.api_key
+    def __init_a_openai(self, config: GPT_Config) -> AsyncOpenAI:
+        openai = AsyncOpenAI(api_key=config.api_key)
+        return self.__init__openai(config, openai)
+
+    def __init_n_openai(self, config: GPT_Config) -> OpenAI:
+        openai = OpenAI(api_key=config.api_key)
+        return self.__init__openai(config, openai)
+
+    def __init__openai(self, config, openai: Union[OpenAI, AsyncOpenAI]):
         openai.api_base = config.api_base
+        openai.proxy = config.proxy
         if config.type:
             openai.api_type = config.type
             openai.api_version = config.version
-        self.rpm = config.rpm
+        return openai
 
-    default_system_msg = 'You are a helpful assistant.'
+    default_system_msg = 'You are a helpful agent.'
 
-    def generate(self, user_msg: str, system_msg: Optional[str] = None) -> str:
-        output = self._chat_completion(user_msg, system_msg)
+    def generate(self, model: str, user_msg: str, system_msg: Optional[str] = None) -> str:
+        output = self._chat_completion(model, user_msg, system_msg)
         return self._get_choice_text(output)
 
-    async def a_generate(self, user_msg: str, system_msg: Optional[str] = None, stream=False) -> str:
+    async def a_generate(self, model: str, user_msg: str, system_msg: Optional[str] = None, stream=False) -> str:
         """when streaming, print each token in place."""
         if stream:
-            return await self._a_chat_completion_stream(user_msg, system_msg)
-        rsp = await self._a_chat_completion(user_msg, system_msg)
+            return await self._a_chat_completion_stream(model, user_msg, system_msg)
+        rsp = await self._a_chat_completion(model, user_msg, system_msg)
         return self._get_choice_text(rsp)
 
     def _extract_assistant_rsp(self, context):
-        return "\n".join([i["content"] for i in context if i["agent"] == "assistant"])
+        return "\n".join([i["content"] for i in context if i["agent"] == "agent"])
 
     def _get_choice_text(self, rsp: dict) -> str:
         return rsp.get("choices")[0]["message"]["content"]
 
-    async def _a_chat_completion_stream(self, user_msg: str, system_msg: Optional[str] = None) -> str:
+    async def _a_chat_completion_stream(self, model: str, user_msg: str, system_msg: Optional[str] = None) -> str:
         prompt = PromptMessage(user_msg, system_msg)
-        response = await openai.ChatCompletion.acreate(**self._cons_kwargs(prompt.to_dicts()), stream=True)
+        response = await self.a_llm.chat.completions.create(model=model,
+                                                            **self._cons_kwargs(model, prompt.to_dicts()), stream=True)
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
@@ -190,15 +221,14 @@ class GPT(LLM_API, metaclass=Singleton):
         print()
 
         full_reply_content = "".join([m.get("content", "") for m in collected_messages])
-        usage = self._calc_usage(prompt.to_dicts(), full_reply_content)
-        self._update_costs(usage)
+        usage = self._cost_manager.calc_usage(model, prompt.to_dicts(), full_reply_content)
+        self._cost_manager.update_costs(model, usage)
         return full_reply_content
 
-    def _cons_kwargs(self, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
+    def _cons_kwargs(self, model: str, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
         kwargs = {
-            "model": self.model,
             "messages": messages,
-            "max_tokens": self.get_max_tokens(messages),
+            "max_tokens": self._cost_manager.get_max_tokens(model, messages),
             "n": 1,
             "stop": None,
             "temperature": self.temperature,
@@ -208,19 +238,22 @@ class GPT(LLM_API, metaclass=Singleton):
         kwargs["timeout"] = 3
         return kwargs
 
-    def _chat_completion(self, user_msg: str, system_msg: Optional[str] = None,
+    def _chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
                          candidate_functions: Optional[List[Dict]] = None) -> dict:
         prompt = PromptMessage(user_msg, system_msg)
-        rsp = self.llm.ChatCompletion.create(**self._cons_kwargs(prompt.to_dicts(), candidate_functions))
-        self._update_costs(rsp.get("usage"))
-        return rsp
+        rsp = self.llm.chat.completions.create(model=model,
+                                               **self._cons_kwargs(model, prompt.to_dicts(), candidate_functions))
+        self._cost_manager.update_costs(model, rsp.usage.dict())
+        return rsp.dict()
 
-    async def _a_chat_completion(self, user_msg: str, system_msg: Optional[str] = None,
+    async def _a_chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
                                  candidate_functions: Optional[List[Dict]] = None) -> dict:
         prompt = PromptMessage(user_msg, system_msg)
-        rsp = await self.llm.ChatCompletion.acreate(**self._cons_kwargs(prompt.to_dicts(), candidate_functions))
-        self._update_costs(rsp.get("usage"))
-        return rsp
+        rsp = await self.a_llm.chat.completions.create(model=model,
+                                                       **self._cons_kwargs(model, prompt.to_dicts(),
+                                                                           candidate_functions))
+        self._cost_manager.update_costs(model, rsp.usage.dict())
+        return rsp.dict()
 
     @retry(
         stop=stop_after_attempt(3),
@@ -229,30 +262,23 @@ class GPT(LLM_API, metaclass=Singleton):
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
-    def _calc_usage(self, messages: list[dict], rsp: str) -> dict:
-        usage = {}
-        try:
-            prompt_tokens = count_message_tokens(messages, self.model)
-            completion_tokens = count_string_tokens(rsp, self.model)
-            usage['prompt_tokens'] = prompt_tokens
-            usage['completion_tokens'] = completion_tokens
-            return usage
-        except Exception as e:
-            logger.error("usage calculation failed!", e)
-
-    async def a_generate_batch(self, user_msgs: dict[str,str],sys_msg:Optional[str] = None) -> dict[str,str]:
+    async def a_generate_batch(self, model: str, user_msgs: dict[str, str], sys_msg: Optional[str] = None) -> dict[
+        str, str]:
         """仅返回纯文本"""
-        messages: dict[str,dict] = await self._a_completion_batch(user_msgs, sys_msg)
-        results:dict[str,str]= {key:self._get_choice_text(message) for key,message in messages.items()}
+        messages: dict[str, dict] = await self._a_completion_batch(model, user_msgs, sys_msg)
+        results: dict[str, str] = {key: self._get_choice_text(message) for key, message in messages.items()}
         return results
 
-    async def _a_completion_batch(self, user_msgs: dict[str,str], sys_msg: Optional[str] = None) -> dict[str,dict]:
-        batch_prompt = {key:PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs.items()}
-        split_batches: list[dict[str,PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
+    async def _a_completion_batch(self, model: str, user_msgs: dict[str, str], sys_msg: Optional[str] = None) -> dict[
+        str, dict]:
+        batch_prompt = {key: PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs.items()}
+        split_batches: list[dict[str, PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
         all_results = {}
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
-            future_map = {key:self._a_chat_completion(prompt.user_message_content, prompt.system_message_content) for key,prompt in small_batch.items()}
+            future_map = {
+                key: self._a_chat_completion(model, prompt.user_message_content, prompt.system_message_content) for
+                key, prompt in small_batch.items()}
             # Gather the results of these futures
             results = await asyncio.gather(*future_map.values())
             # Map the results back to their respective keys
@@ -260,15 +286,15 @@ class GPT(LLM_API, metaclass=Singleton):
                 all_results[key] = result
         return all_results
 
-    def generate_function_call(self, user_msg, candidate_functions: List[Dict],
+    def generate_function_call(self, model: str, user_msg, candidate_functions: List[Dict],
                                system_msg: Optional[str] = None) -> FunctionCall:
 
-        output = self._chat_completion(user_msg, system_msg, candidate_functions)
+        output = self._chat_completion(model, user_msg, system_msg, candidate_functions)
         return self._parse_function_call(output)
 
-    async def a_generate_function_call(self, user_msg, candidate_functions: List[Dict],
+    async def a_generate_function_call(self, model: str, user_msg, candidate_functions: List[Dict],
                                        system_msg: Optional[str] = None) -> FunctionCall:
-        output = await self._a_chat_completion(user_msg, system_msg, candidate_functions)
+        output = await self._a_chat_completion(model, user_msg, system_msg, candidate_functions)
         return self._parse_function_call(output)
 
     def _parse_function_call(self, output: Dict) -> FunctionCall:
@@ -276,19 +302,3 @@ class GPT(LLM_API, metaclass=Singleton):
         if function_call:
             function_call["arguments"] = json.loads(function_call["arguments"])
             return FunctionCall(**function_call)
-
-    def _update_costs(self, usage: dict):
-        try:
-            prompt_tokens = int(usage['prompt_tokens'])
-            completion_tokens = int(usage['completion_tokens'])
-            self._cost_manager.update_cost(prompt_tokens, completion_tokens, self.model)
-        except Exception as e:
-            logger.error("updating costs failed!", e)
-
-    def get_costs(self) -> Costs:
-        return self._cost_manager.get_costs()
-
-    def get_max_tokens(self, messages: list[dict]):
-        if not self.auto_max_tokens:
-            return self.max_tokens_rsp
-        return get_max_completion_tokens(messages, self.model, self.max_tokens_rsp)

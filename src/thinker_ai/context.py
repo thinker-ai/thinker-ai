@@ -1,3 +1,4 @@
+
 import shutil
 from pathlib import Path
 from typing import Tuple
@@ -19,7 +20,7 @@ def get_project_root() -> Path:
 
 class Context:
 
-    def __init__(self, organization_id: str,solution_name: str):
+    def __init__(self, organization_id: str, solution_name: str):
         self.organization_id = organization_id
         self.solution_name = solution_name
 
@@ -41,13 +42,13 @@ class Context:
 
     def load_file_from_workspace(self, file_name: str) -> str:
         if file_name.startswith('/'):
-            file_name=file_name[1:]#否则会误判为根路径
+            file_name = file_name[1:]  # 否则会误判为根路径
         file_dir = self.get_workspace_path()
         return self.load_file(file_dir, file_name)
 
-    def load_all_files_from_workspace(self, dir_name: str)-> dict:
+    def load_all_files_from_workspace(self, dir_name: str) -> dict:
         workspace_path = self.get_workspace_path()
-        dir_path:Path = workspace_path / dir_name
+        dir_path: Path = workspace_path / dir_name
         if not dir_path.exists() or not dir_path.is_dir():
             raise ValueError(f"{dir_path} is not a valid directory")
         file_data = {}
@@ -59,7 +60,7 @@ class Context:
 
     def load_file_from_project(self, file_name: str) -> str:
         if file_name.startswith('/'):
-            file_name=file_name[1:]#否则会误判为根路径
+            file_name = file_name[1:]  # 否则会误判为根路径
         file_dir = get_project_root()
         return self.load_file(file_dir, file_name)
 

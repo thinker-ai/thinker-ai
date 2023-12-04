@@ -8,7 +8,7 @@ from concurrent import futures
 from copy import deepcopy
 from telnetlib import EC
 
-from thinker_ai.tools import web_browser_engine_type
+from thinker_ai.agent.tools import web_browser_engine_type
 from thinker_ai.utils.html_parser import WebPage
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC

@@ -8,7 +8,7 @@ from thinker_ai.utils.logs import logger
 class Message:
     """list[<agent>: <content>]"""
     content: str
-    role: str = field(default='user')  # system / user / assistant / function
+    role: str = field(default='user')  # system / user / agent / function
 
     def __str__(self):
         # prefix = '-'.join([self.agent, str(self.cause_by)])
@@ -51,7 +51,7 @@ class AIMessage(Message):
     """
 
     def __init__(self, content: str):
-        super().__init__(content, 'assistant')
+        super().__init__(content, 'agent')
 
 
 class PromptMessage:
@@ -60,7 +60,7 @@ class PromptMessage:
 
     def __init__(self, user_msg: str, sys_msg: str = None):
         self.user_message = UserMessage(user_msg)
-        self.system_message = SystemMessage(sys_msg or 'You are a helpful assistant.')
+        self.system_message = SystemMessage(sys_msg or 'You are a helpful agent.')
 
     @property
     def user_message_content(self) -> str:

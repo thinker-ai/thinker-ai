@@ -73,8 +73,8 @@ class ActionResultParser:
             #     except Exception:
             #         pass
             parsed_data[block] = content
-        output_class = cls._create_model_class(mapping)
-        instruct_content = output_class(**parsed_data)
+        dynamic_model = cls._create_model_class(mapping)
+        instruct_content = dynamic_model(**parsed_data)
         return instruct_content
 
     @classmethod

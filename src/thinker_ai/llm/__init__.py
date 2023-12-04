@@ -1,24 +1,14 @@
 import os
-from enum import Enum
+from thinker_ai.llm.claude2_api import Claude2, ClaudeConfig
+from thinker_ai.llm.gpt_api import GPT, GPT_Config
+config = GPT_Config(api_key=os.environ.get("OPENAI_API_KEY"),
+                    temperature=os.environ.get("temperature") or 0,
+                    max_budget=os.environ.get("max_budget") or 3.0,
+                    auto_max_tokens=False,
+                    max_tokens_rsp=os.environ.get("max_tokens_rsp") or 2048,
+                    proxy=os.environ.get("HTTP_PROXY") or None,
+                    rpm=os.environ.get("rpm") or 10,
+                    )
 
-import requests
-import openai
-
-openai.requestssession = requests.Session
-if os.environ.get("HTTP_PROXY"):
-   openai.proxy = os.environ.get("HTTP_PROXY")
-class LLM_TYPE(Enum):
-    OPEN_AI = 1
-    CLAUDE = 2
-
-    @classmethod
-    def type_of(cls, type_str: str) -> 'LLM_TYPE':
-        try:
-            return LLM_TYPE[type_str]
-        except KeyError:
-            raise ValueError(f"'{type_str}' is not a valid LLM_TYPE.")
-
-if os.environ.get("LLM_TYPE"):
-    llm_type = LLM_TYPE.type_of(os.environ.get("LLM_TYPE"))
-else:
-    raise Exception("System environment variable missing: LLM_TYPE")
+gpt = GPT(config)
+# claude2 = Claude2(ClaudeConfig(api_key=os.environ.get("ANTHROPIC_API_KEY")))
