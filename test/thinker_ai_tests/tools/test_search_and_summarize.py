@@ -3,9 +3,9 @@ import json
 import asynctest  # 导入asynctest
 from unittest.mock import patch, AsyncMock
 
-from thinker_ai.actions.action import BaseAction
-from thinker_ai.tools.search_and_summarize import SearchAndSummarize
-from thinker_ai.tools.search_engine import SearchEngine
+from thinker_ai.actions import BaseAction
+from thinker_ai.agent.tools.search_and_summarize import SearchAndSummarize
+from thinker_ai.agent.tools.search_engine import SearchEngine
 
 
 class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestCase

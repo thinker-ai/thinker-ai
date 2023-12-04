@@ -2,7 +2,7 @@ import unittest
 from typing import Dict
 
 from thinker_ai.status_machine.state_machine import StateMachine, State, StateMachineDefinition, ActionFactory
-from thinker_ai.status_machine.status_machine_repository import StateMachineDefinitionRepository, \
+from thinker_ai.status_machine import StateMachineDefinitionRepository, \
     StateMachineRepository, StateMachineDefinitionAbstractPersistence, StateMachineAbstractPersistence
 from thinker_ai_tests.status_machine.test_status_machine import TestAction
 
@@ -59,7 +59,7 @@ class TestPersistence(unittest.TestCase):
         self.instance_repo.save(sm)
 
         loaded_sm = self.instance_repo.load("test_business", "1")
-        self.assertEqual(loaded_sm.current_state.name, "start")
+        self.assertEqual(loaded_sm.current_state.agent_name, "start")
         self.assertEqual(loaded_sm.instance_id, "1")
 
     def test_missing_definition(self):

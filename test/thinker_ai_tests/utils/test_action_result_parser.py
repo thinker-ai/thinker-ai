@@ -1,9 +1,7 @@
-import ast
 from typing import List, Tuple, Dict
 
 import pytest
 
-from thinker_ai.actions import ActionResult
 from thinker_ai.utils.action_result_parser import ActionResultParser
 
 
@@ -85,7 +83,7 @@ def test_parse_dict():
     "Create User Information": {
         "Success Path": [
             "1. Actor inputs personal information (name, age, email)",
-            "2. System validates the input and creates a new customer record, returns a success message"
+            "2. System validates the input and creates a new user record, returns a success message"
         ],
         "Failure Path": [
             "2a. System validates input error, prompts 'Invalid input'",
@@ -99,7 +97,7 @@ def test_parse_dict():
     "Read User Information": {
         "Success Path": [
             "1. Actor requests to read personal information",
-            "2. System retrieves and returns the customer's personal information"
+            "2. System retrieves and returns the user's personal information"
         ],
         "Failure Path": [],
         "I/O and Validation Rules": {
@@ -113,7 +111,7 @@ def test_parse_dict():
         "Create User Information": {
             "Success Path": [
                 "1. Actor inputs personal information (name, age, email)",
-                "2. System validates the input and creates a new customer record, returns a success message"
+                "2. System validates the input and creates a new user record, returns a success message"
             ],
             "Failure Path": [
                 "2a. System validates input error, prompts 'Invalid input'",
@@ -127,7 +125,7 @@ def test_parse_dict():
         "Read User Information": {
             "Success Path": [
                 "1. Actor requests to read personal information",
-                "2. System retrieves and returns the customer's personal information"
+                "2. System retrieves and returns the user's personal information"
             ],
             "Failure Path": [],
             "I/O and Validation Rules": {
@@ -145,14 +143,14 @@ def test_parse_dict():
 def test_all():
     data = """
 ## Original Idea
-The original idea is to develop a system that can effectively manage the customer requirements in a structured manner. The system should be able to identify customer needs and provide a structured representation of customer requirements. The system should be customer-friendly and efficient in managing the requirements.
+The original idea is to develop a system that can effectively manage the user requirements in a structured manner. The system should be able to identify user needs and provide a structured representation of user requirements. The system should be user-friendly and efficient in managing the requirements.
 
 ## Business Analysis
 To achieve the business objectives, the system should have the following features:
-1. Requirement Identification: The system should be able to identify the customer needs effectively.
-2. Structured Representation: The system should provide a structured representation of customer requirements.
-3. User-friendly Interface: The system should have a customer-friendly interface for easy navigation and usage.
-4. Efficient Management: The system should be efficient in managing the customer requirements.
+1. Requirement Identification: The system should be able to identify the user needs effectively.
+2. Structured Representation: The system should provide a structured representation of user requirements.
+3. User-friendly Interface: The system should have a user-friendly interface for easy navigation and usage.
+4. Efficient Management: The system should be efficient in managing the user requirements.
 
 ## Business Entity
 ```mermaid
@@ -176,7 +174,7 @@ flowchart TB
     ("Identify Requirement","User identifies the requirement","P0"),
     ("Structured Representation","System provides a structured representation of the requirement","P1"),
     ("Manage Requirement","User manages the requirement","P0"),
-    ("Provide Feedback","System provides feedback to the customer","P2")
+    ("Provide Feedback","System provides feedback to the user","P2")
 ]
 ```
 

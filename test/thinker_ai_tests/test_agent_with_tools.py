@@ -1,8 +1,6 @@
-import unittest
-
 import asynctest
 
-from thinker_ai.actions.tools_action import ToolsAction
+from thinker_ai.actions import ToolsAction
 
 
 class AgentWithToolsTestCase(asynctest.TestCase):
