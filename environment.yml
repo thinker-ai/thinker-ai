@@ -1,8 +1,9 @@
-name: tasks-ai
+name: thinker-ai
 channels:
   - defaults
   - conda-forge
 dependencies:
+  - python=3.10
   - fastapi
   - SpeechRecognition
   - pydub
@@ -11,6 +12,7 @@ dependencies:
   - pip
   - pip:
     - aim
+    - anthropic
     - edge-tts
     - promptlayer
     - edge_tts
@@ -18,7 +20,6 @@ dependencies:
     - google-cloud-speech
     - openai
     - tiktoken
-    - anthropic
     - loguru
     - bs4
     - libcst
@@ -26,6 +27,7 @@ dependencies:
     - scipy
     - llama-cpp-python
     - httplib2
+    - pydantic
     - playwright
     - selenium
     - asynctest

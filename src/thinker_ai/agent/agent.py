@@ -4,12 +4,12 @@ from typing import List, Optional, Any, Dict
 
 from openai import OpenAI
 from openai.pagination import SyncCursorPage
-from openai.types.beta.assistant import Tool, Assistant
-from openai.types.beta.threads import ThreadMessage
+from openai.types.beta import AssistantToolParam, Thread
+from openai.types.beta.assistant import Assistant
+from openai.types.beta.threads import Message
 from pydantic import BaseModel
 
 from thinker_ai.llm import gpt
-from thinker_ai.session.session_manager import SessionManager
 
 
 class DataModel(BaseModel):
@@ -22,13 +22,18 @@ class DataModel(BaseModel):
 
 class Agent:
     user_id: str
+    threads:Dict[str,Thread]={}
     assistant: Assistant
-    session_manager = SessionManager()
     client: OpenAI = gpt.llm
 
     def __init__(self, user_id: str, assistant: Assistant):
         self.user_id = user_id
         self.assistant = assistant
+
+    def create_thread(self,topic:str)->Thread:
+         thread=self.client.beta.threads.create()
+         self.threads[topic]=thread
+         return thread
 
     @property
     def name(self):
@@ -47,26 +52,29 @@ class Agent:
     def remove_file(self, file_id: str):
         self.assistant.file_ids.remove(file_id)
 
-    def add_tools(self, tools: List[Tool]):
+    def add_tools(self, tools: List[AssistantToolParam]):
         self.assistant.tools.extend(tools)
 
-    def add_tool(self, tool: Tool):
+    def add_tool(self, tool: AssistantToolParam):
         self.assistant.tools.append(tool)
 
-    def remove_tool(self, tool: Tool):
+    def remove_tool(self, tool: AssistantToolParam):
         self.assistant.tools.remove(tool)
 
-    def _create_message(self, content, file_ids: List[str] = None) -> ThreadMessage:
+    def _create_message(self,topic:str, content, file_ids: List[str] = None) -> Message:
+        thread=self.threads.get(topic)
+        if thread is None:
+            thread=self.create_thread(topic)
         message = self.client.beta.threads.messages.create(
-            thread_id=self.session_manager.get_or_create_session(self.user_id).id,
+            thread_id=thread.id,
             role="user",
             content=content,
             file_ids=file_ids if file_ids is not None else []
         )
         return message
 
-    def _ask_for_messages(self, content: str, file_ids: List[str] = None) -> SyncCursorPage[ThreadMessage]:
-        message: ThreadMessage = self._create_message(content, file_ids)
+    def _ask_for_messages(self, topic:str,content: str, file_ids: List[str] = None) -> SyncCursorPage[Message]:
+        message: Message = self._create_message(topic,content, file_ids)
         run = self.client.beta.threads.runs.create(
             thread_id=message.thread_id,  # 指定运行的会话
             assistant_id=self.id  # 指定运行的实例
@@ -83,9 +91,9 @@ class Agent:
                 time.sleep(5)
         return messages
 
-    def ask(self, content: str, file_ids: List[str] = None) -> Dict[str, Any]:
+    def ask(self,topic:str, content: str, file_ids: List[str] = None) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
-        messages = self._ask_for_messages(content, file_ids)
+        messages = self._ask_for_messages(topic,content, file_ids)
         for message in messages:
             if message.role == "user":
                 continue

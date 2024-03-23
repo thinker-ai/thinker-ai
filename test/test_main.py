@@ -13,7 +13,7 @@ def setup_customer_support_agent() -> str:
     instructions = "你是一个客户支持聊天机器人。使用您的知识库，以最佳方式回复客户询问。"
     tools = [{"type": "retrieval"}]
     file_ids = []
-    agent_id = create_agent("gpt-4-1106-preview", user_id, agent_name, instructions, tools, file_ids)
+    agent_id = create_agent("gpt-4-0125-preview", user_id, agent_name, instructions, tools, file_ids)
     return agent_id
 
 
@@ -22,7 +22,7 @@ def setup_math_teacher_agent() -> str:
     instructions = "你是一名私人数学辅导员。当被问到数学问题时，编写并运行代码来回答问题。"
     tools = [{"type": "code_interpreter"}]
     file_ids = []
-    agent_id = create_agent("gpt-4-1106-preview", user_id, agent_name, instructions, tools, file_ids)
+    agent_id = create_agent("gpt-4-0125-preview", user_id, agent_name, instructions, tools, file_ids)
     return agent_id
 
 
@@ -51,7 +51,7 @@ class MainTest(unittest.TestCase):
     def test_ask_for_customer_support(self):
         agent_id = setup_customer_support_agent()
         try:
-            results: Dict[str, Any] = ask(user_id=user_id, agent_name="客户支持",
+            results: Dict[str, Any] = ask(user_id=user_id, agent_name="客户支持",topic="养生",
                                           content="吃人参和灵芝有什么不同？")
             self.do_with_results(results)
         finally:
@@ -60,7 +60,7 @@ class MainTest(unittest.TestCase):
     def test_ask_math_teacher(self):
         agent_id = setup_math_teacher_agent()
         try:
-            results: Dict[str, Any] = ask(user_id=user_id, agent_name="数学辅导员",
+            results: Dict[str, Any] = ask(user_id=user_id, agent_name="数学辅导员",topic="初二数学",
                                           content="请用一个坐标图表示一个一元二次方程")
             self.do_with_results(results)
         finally:

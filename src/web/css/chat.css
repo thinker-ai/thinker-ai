@@ -1,0 +1,279 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    outline: none;
+    resize:none;
+}
+
+body {
+    display: block;
+    width: 100vw;
+    height: auto;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+}
+
+
+.title {
+    font-size: 2em;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+#container {
+    display: flex;
+    margin: 0 auto;
+    width: 80%;
+    max-width: 1200px;
+}
+
+/* 新增的浮动面板样式 */
+#floating-panel {
+    z-index: 1;
+    position: fixed;
+    right: 0;
+    top: 100px;
+    height: 620px;
+    background: white;
+    overflow-y: auto;
+    transition: all 0.3s ease-in-out;
+}
+
+#chat-container{
+    display: flex;
+    height: 100%;
+    width: 100%;
+    background-color: #ffffff;
+    flex-direction:row;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    border-right: 2px solid #000;
+}
+
+#toggle-button {
+    position: absolute;
+    width: 28px;
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    font-size: 30px;
+}
+
+#sidebar {
+    display: flex;  /* 默认显示 */
+    height: 100%;
+    width: 30px;  /* 设置一个固定的宽度 */
+    background-color: #ccc;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
+    font-size: 16px;
+}
+
+.vertical-text-wrapper {
+    display: flex;
+    align-items: center;  /* 垂直居中 */
+    height: 100%;
+}
+
+.vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+}
+
+
+#panel-content {
+    display: none;  /* 默认是不显示的 */
+    width: 100%;
+}
+
+#chat, #input-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;  // 使其在水平方向上居中
+}
+
+#input-container{
+    height: 20%;
+    display: flex;
+}
+
+#chat {
+    height: 75%;
+    width: 100%;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin: 10px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+
+#input {
+    flex: 3;
+    height: 100%;
+}
+
+#button-container {
+    flex: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    align-items: center;
+}
+
+#send, #mute, #dictation-container {
+    width: 80%;
+}
+
+#dictation-container {
+    height: 25%;
+    width: 80%;
+    display: flex;
+    align-items: center;
+}
+
+#dictate {
+    cursor: pointer;
+    position: relative;
+    flex-grow: 1;
+}
+
+.tooltiptext {
+    visibility: hidden;
+    width: 120px;
+    background-color: black;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px 0;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    margin-left: -60px;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+#dictate:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+#dictate.active .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+#continuous-dictation-checkbox {
+    margin-left: 5px;
+}
+
+@keyframes blinking {
+    0%   { opacity: 1; }
+    50%  { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.blinking {
+    animation: blinking 1s infinite;
+}
+
+.message-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.human-container {
+    justify-content: flex-end;
+}
+
+.ai-container {
+    justify-content: flex-start;
+    align-self: flex-start;
+}
+
+.human_avatar, .ai_avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+.human_message, .ai_message {
+    white-space: pre-wrap;       /* CSS3 */
+    white-space: -moz-pre-wrap;  /* Firefox */
+    white-space: -o-pre-wrap;    /* Opera 7 */
+    word-wrap: break-word;       /* IE */
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    color: black;
+    font-size: 12px;
+}
+
+.human_message {
+    background-color: #90ee90;
+}
+
+.ai_message {
+    background-color: #ddd;
+}
+
+pre {
+    max-width: 100%; /* 设置最大宽度 */
+    overflow: auto;  /* 添加滚动条 */
+    /* 其他样式 */
+}
+
+#mermaid-graphics, #mermaid-editor, #update-graphics {
+    width: auto;  /* 从 100% 改为 auto */
+    max-width: 100%;
+    margin: 0 10px;  /* 左右各 10px 的间距，使其在水平方向上居中 */
+}
+#mermaid-panel {
+    width: 100%;
+    height: 700px;
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+}
+
+#mermaid-editor {
+    flex: 1;
+    height: 100%;
+    margin: 10px;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+#mermaid-graphics {
+    flex: 3;
+    height: 100%;
+    margin: 5px;
+    overflow: auto;
+    border: 1px solid #ccc;
+    padding: 10px;
+}
+
+#update-graphics {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 250px;  /* 修改这里以调整高度 */
+    width: 40px;
+    margin: auto;  /* 修改这里以实现水平居中 */
+    font-size: 20px;
+}
+
+#update-graphics i {
+    writing-mode: vertical-rl;
+}
+

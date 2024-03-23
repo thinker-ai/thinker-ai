@@ -2,7 +2,7 @@ import asynctest
 
 from thinker_ai.llm import gpt
 
-model = "gpt-4-1106-preview"
+model = "gpt-4-0125-preview"
 
 
 class TestTestGPT(asynctest.TestCase):

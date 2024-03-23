@@ -15,7 +15,7 @@ class ToolsAction(BaseAction):
     async def act(self,model:str,content: str, *args, **kwargs):
         function_call = gpt.generate_function_call(model,content, candidate_functions=self.tools_register.tools_schema)
         execute_result = self._call_tool(function_call.name, function_call.arguments)
-        rsp_str = await self._generate_answer_from_result(content, execute_result)
+        rsp_str = await self._generate_answer_from_result(model,content, execute_result)
         return rsp_str
 
     def register_tools(self, tool: BaseTool):

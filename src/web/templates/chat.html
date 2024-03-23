@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Chat</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism-okaidia.css"/>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css"
+          integrity="sha384-DyZ88mC6Up2uqS4h/KRgHuoeGwBcD4Ng9SiP4dIRy0EXTlnuz47vAwmeGwVChigm" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="/css/chat.css">
+</head>
+<body>
+    <h1 class="title">Thinker AI</h1>
+    <div id="container">
+        <div id="mermaid-panel">
+            <textarea id="mermaid-editor"></textarea>
+            <button id="update-graphics" onclick="updateGraphics()">
+                <i class="fas fa-sync-alt">  更 新 图 形</i>
+            </button>
+            <div id="mermaid-graphics"></div>
+        </div>
+        <div id="floating-panel">
+            <div id="chat-container">
+                <button id="toggle-button" onclick="toggleFloatingPanel()">+</button>
+                <div id="sidebar" onclick="toggleFloatingPanel()">
+                    <div class="vertical-text-wrapper">
+                        <span class="vertical-text">聊天窗口</span>
+                    </div>
+                </div>
+                <div id="panel-content"> <!-- 新增容器 -->
+                    <div id="chat"></div>
+                    <div id="input-container">
+                        <textarea id="input"></textarea>
+                        <div id="button-container">
+                            <button id="send" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane">发送</i>
+                            </button>
+                            <div id="dictation-container">
+                                <button id="dictate" onmousedown="dictation.start()" onmouseup="dictation.stop()">
+                                    <i class="fas fa-microphone">口述输入</i>
+                                    <span id="dictate-tooltip" class="tooltiptext">按住录音</span>
+                                </button>
+                                <input type="checkbox" id="continuous-dictation-checkbox" title="持续录音" onchange="continuous_dictation.toggleContinuous()">
+                            </div>
+                            <button id="mute" onclick="toggleMute()">
+                                <i id="mute-icon" class="fas fa-volume-mute">语音播报</i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
+    <script type="text/javascript" src="/script/chat.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
+    <script type="text/javascript" src="/script/dist/mermaid.js"></script>
+</body>
+</html>

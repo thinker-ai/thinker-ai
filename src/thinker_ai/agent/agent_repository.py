@@ -1,5 +1,5 @@
 from openai import OpenAI
-from openai.types.beta.assistant_create_params import Tool
+from openai.types.beta.assistant_create_params import AssistantToolParam
 
 from thinker_ai.agent.agent import Agent
 
@@ -31,7 +31,7 @@ class AgentRepository:
 
     @classmethod
     def add_agent(cls, model: str, user_id: str, name: str, description: str = None, instructions: str = None,
-                  tools: List[Tool] = None, file_ids: List[str] = None) -> str:
+                  tools: List[AssistantToolParam] = None, file_ids: List[str] = None) -> str:
         with cls.get_lock(user_id):
             my_agents: Dict[str, Agent] = cls.repository.get(user_id)
             if my_agents is None:
