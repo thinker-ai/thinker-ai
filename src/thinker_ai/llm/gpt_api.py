@@ -7,16 +7,11 @@ from openai import OpenAI, AsyncOpenAI, APIConnectionError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
+from thinker_ai.llm.cost_manager import CostManager
 from thinker_ai.llm.function_call import FunctionCall
 from thinker_ai.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.logs import logger
-from thinker_ai.utils.singleton import Singleton
-from thinker_ai.utils.token_counter import (
-    TOKEN_COSTS,
-    count_message_tokens,
-    count_string_tokens,
-    get_max_completion_tokens,
-)
+
 
 
 class RateLimiter:
@@ -44,99 +39,6 @@ class RateLimiter:
 
         self.last_call_time = time.time()
 
-
-class Costs(NamedTuple):
-    total_prompt_tokens: int
-    total_completion_tokens: int
-    total_cost: float
-    total_budget: float
-
-
-class CostManager(metaclass=Singleton):
-    """计算使用接口的开销"""
-
-    def __init__(self, max_budget, auto_max_tokens: bool = False, max_tokens_rsp: int = 2048):
-        self.max_budget = max_budget
-        self.total_prompt_tokens = 0
-        self.total_completion_tokens = 0
-        self.total_cost = 0
-        self.total_budget = 0
-        self.auto_max_tokens = auto_max_tokens
-        self.max_tokens_rsp = max_tokens_rsp
-
-    def update_cost(self, model: str, prompt_tokens, completion_tokens):
-        """
-        Update the total cost, prompt tokens, and completion tokens.
-
-        Args:
-        prompt_tokens (int): The number of tokens used in the prompt.
-        completion_tokens (int): The number of tokens used in the completion.
-        model (str): The model used for the API call.
-        """
-        self.total_prompt_tokens += prompt_tokens
-        self.total_completion_tokens += completion_tokens
-        cost = (prompt_tokens * TOKEN_COSTS[model]["prompt"] + completion_tokens * TOKEN_COSTS[model][
-            "completion"]) / 1000
-        self.total_cost += cost
-        logger.info(
-            f"Total running cost: ${self.total_cost:.3f} | Max budget: ${self.max_budget:.3f} | "
-            f"Current cost: ${cost:.3f}, prompt_tokens: {prompt_tokens}, completion_tokens: {completion_tokens}"
-        )
-
-    def get_total_prompt_tokens(self):
-        """
-        Get the total number of prompt tokens.
-
-        Returns:
-        int: The total number of prompt tokens.
-        """
-        return self.total_prompt_tokens
-
-    def get_total_completion_tokens(self):
-        """
-        Get the total number of completion tokens.
-
-        Returns:
-        int: The total number of completion tokens.
-        """
-        return self.total_completion_tokens
-
-    def get_total_cost(self):
-        """
-        Get the total cost of API calls.
-
-        Returns:
-        float: The total cost of API calls.
-        """
-        return self.total_cost
-
-    def get_costs(self) -> Costs:
-        """获得所有开销"""
-        return Costs(self.total_prompt_tokens, self.total_completion_tokens, self.total_cost, self.total_budget)
-
-    def update_costs(self, model: str, usage: dict):
-        try:
-            prompt_tokens = int(usage['prompt_tokens'])
-            completion_tokens = int(usage['completion_tokens'])
-            self.update_cost(model, prompt_tokens, completion_tokens)
-        except Exception as e:
-            logger.error("updating costs failed!", e)
-
-    def get_max_tokens(self, model: str, messages: list[dict]):
-        if not self.auto_max_tokens:
-            return self.max_tokens_rsp
-        return get_max_completion_tokens(messages, model, self.max_tokens_rsp)
-
-    def calc_usage(self, model: str, messages: list[dict], rsp: str) -> dict:
-        usage = {}
-        try:
-            prompt_tokens = count_message_tokens(messages, model)
-            completion_tokens = count_string_tokens(rsp, model)
-            usage['prompt_tokens'] = prompt_tokens
-            usage['completion_tokens'] = completion_tokens
-            return usage
-        except Exception as e:
-            logger.error("usage calculation failed!", e)
 
 
 def log_and_reraise(retry_state):
@@ -214,13 +116,13 @@ class GPT:
         # iterate through the stream of events
         async for chunk in response:
             collected_chunks.append(chunk)  # save the event response
-            chunk_message = chunk["choices"][0]["delta"]  # extract the message
-            collected_messages.append(chunk_message)  # save the message
-            if "content" in chunk_message:
-                print(chunk_message["content"], end="")
+            content = chunk.choices[0].delta.content  # extract the message
+            if content is not None:
+                print(content, end="")
+                collected_messages.append(content)  # save the message
         print()
 
-        full_reply_content = "".join([m.get("content", "") for m in collected_messages])
+        full_reply_content = "".join([m for m in collected_messages])
         usage = self._cost_manager.calc_usage(model, prompt.to_dicts(), full_reply_content)
         self._cost_manager.update_costs(model, usage)
         return full_reply_content

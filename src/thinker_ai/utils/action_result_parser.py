@@ -4,8 +4,7 @@ import json
 import re
 from typing import Tuple, get_origin, Dict, Type
 import yaml
-from pydantic import root_validator, validator, create_model, BaseModel
-
+from pydantic import root_validator, validator, create_model, BaseModel, field_validator, model_validator
 
 
 class ActionResultParser:
@@ -158,13 +157,13 @@ class ActionResultParser:
     def _create_model_class(cls, mapping: Dict)->Type[BaseModel]:
         new_class = create_model("default", **mapping)
 
-        @validator('*', allow_reuse=True)
+        @field_validator('*')
         def check_name(v, field):
             if field.name not in mapping.keys():
                 raise ValueError(f'Unrecognized block: {field.name}')
             return v
 
-        @root_validator(pre=True, allow_reuse=True)
+        @model_validator(mode='before')
         def check_missing_fields(values):
             required_fields = set(mapping.keys())
             missing_fields = required_fields - set(values.keys())

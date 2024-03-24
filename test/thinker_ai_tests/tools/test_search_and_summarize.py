@@ -3,7 +3,7 @@ import json
 import asynctest  # 导入asynctest
 from unittest.mock import patch, AsyncMock
 
-from thinker_ai.actions import BaseAction
+from thinker_ai.actions.action import BaseAction
 from thinker_ai.agent.tools.search_and_summarize import SearchAndSummarize
 from thinker_ai.agent.tools.search_engine import SearchEngine
 

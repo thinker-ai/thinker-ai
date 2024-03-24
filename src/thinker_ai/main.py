@@ -38,9 +38,9 @@ def delete_file(file_id: str) -> bool:
     return deleted.deleted
 
 
-def ask(user_id: str, agent_name: str,topic:str, content: str, file_ids: List[str] = None) -> Dict[str, Any]:
+def ask(user_id: str, agent_name: str,topic:str, content: str) -> Dict[str, Any]:
     agent: Agent = AgentRepository.get_agent_by_name(user_id, agent_name)
     result: Dict[str, Any] = {}
     if agent:
-        result = agent.ask(topic=topic,content=content, file_ids=file_ids)
+        result = agent.ask(topic=topic,content=content)
     return result

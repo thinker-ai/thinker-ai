@@ -61,7 +61,7 @@ class Agent:
     def remove_tool(self, tool: AssistantToolParam):
         self.assistant.tools.remove(tool)
 
-    def _create_message(self,topic:str, content, file_ids: List[str] = None) -> Message:
+    def _create_message(self,topic:str, content) -> Message:
         thread=self.threads.get(topic)
         if thread is None:
             thread=self.create_thread(topic)
@@ -69,12 +69,12 @@ class Agent:
             thread_id=thread.id,
             role="user",
             content=content,
-            file_ids=file_ids if file_ids is not None else []
+            file_ids=self.assistant.file_ids
         )
         return message
 
-    def _ask_for_messages(self, topic:str,content: str, file_ids: List[str] = None) -> SyncCursorPage[Message]:
-        message: Message = self._create_message(topic,content, file_ids)
+    def _ask_for_messages(self, topic:str,content: str) -> SyncCursorPage[Message]:
+        message: Message = self._create_message(topic,content)
         run = self.client.beta.threads.runs.create(
             thread_id=message.thread_id,  # 指定运行的会话
             assistant_id=self.id  # 指定运行的实例
@@ -91,9 +91,9 @@ class Agent:
                 time.sleep(5)
         return messages
 
-    def ask(self,topic:str, content: str, file_ids: List[str] = None) -> Dict[str, Any]:
+    def ask(self,topic:str, content: str) -> Dict[str, Any]:
         result: Dict[str, Any] = {}
-        messages = self._ask_for_messages(topic,content, file_ids)
+        messages = self._ask_for_messages(topic,content)
         for message in messages:
             if message.role == "user":
                 continue

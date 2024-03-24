@@ -1,5 +1,6 @@
 import unittest
 from pathlib import Path
+from typing import Dict, List
 
 from thinker_ai.actions import ActionResult
 
@@ -29,17 +30,17 @@ class TestActionResult(unittest.TestCase):
 
     def test_list_parsing(self):
         # 测试列表的解析
-        text = self.load_test_file("system_requirement.md")
-        mapping = {"List": (list, ...)}
+        text = self.load_test_file("test_list.md")
+        mapping = {"test_list": (List[str], ...)}
         action_result = ActionResult.loads(text, mapping)
-        self.assertEqual(action_result.instruct_content.List, ['item1', 'item2'])
+        self.assertEqual(action_result.instruct_content.test_list, ['item1', 'item2'])
 
     def test_dict_parsing(self):
         # 测试字典的解析
-        text = "## Dictionary\nkey1: value1\nkey2: value2"
-        mapping = {"Dictionary": (dict, ...)}
+        text = self.load_test_file("test_dict.md")
+        mapping = {"dictionary": (Dict[str,str], ...)}
         action_result = ActionResult.loads(text, mapping)
-        self.assertEqual(action_result.instruct_content.Dictionary, {'key1': 'value1', 'key2': 'value2'})
+        self.assertEqual(action_result.instruct_content.dictionary, {'key1': 'value1', 'key2': 'value2'})
 
     def load_test_file(self, file_name: str) -> str:
         if file_name.startswith('/'):

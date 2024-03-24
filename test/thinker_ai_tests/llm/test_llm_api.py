@@ -5,7 +5,7 @@ from thinker_ai.llm import gpt
 model = "gpt-4-0125-preview"
 
 
-class TestTestGPT(asynctest.TestCase):
+class TestGPT(asynctest.TestCase):
 
     async def test_a_generate_stream(self):
         await gpt.a_generate(model,

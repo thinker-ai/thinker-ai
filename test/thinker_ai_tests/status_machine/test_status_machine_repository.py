@@ -2,8 +2,8 @@ import unittest
 from typing import Dict
 
 from thinker_ai.status_machine.state_machine import StateMachine, State, StateMachineDefinition, ActionFactory
-from thinker_ai.status_machine import StateMachineDefinitionRepository, \
-    StateMachineRepository, StateMachineDefinitionAbstractPersistence, StateMachineAbstractPersistence
+from thinker_ai.status_machine.status_machine_repository import StateMachineDefinitionAbstractPersistence, \
+    StateMachineAbstractPersistence, StateMachineDefinitionRepository, StateMachineRepository
 from thinker_ai_tests.status_machine.test_status_machine import TestAction
 
 
