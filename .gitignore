@@ -3,3 +3,6 @@
 /dist/
 /src/thinker_ai.egg-info/
 /.idea
+/test/my-image.png
+/test/test.md
+/test/Thumbs.db
