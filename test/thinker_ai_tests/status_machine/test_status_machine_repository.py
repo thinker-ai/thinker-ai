@@ -59,7 +59,7 @@ class TestPersistence(unittest.TestCase):
         self.instance_repo.save(sm)
 
         loaded_sm = self.instance_repo.load("test_business", "1")
-        self.assertEqual(loaded_sm.current_state.agent_name, "start")
+        self.assertEqual(loaded_sm.current_state.name, "start")
         self.assertEqual(loaded_sm.instance_id, "1")
 
     def test_missing_definition(self):
