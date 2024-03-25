@@ -2,8 +2,9 @@ import json
 import re
 from typing import List
 
-from thinker_ai.actions import BaseAction
+from thinker_ai.actions.action import BaseAction
 from thinker_ai.agent.tools.search_engine import SearchEngine
+from thinker_ai.llm import gpt
 from thinker_ai.utils.logs import logger
 
 SYSTEM_PROMPT_FOR_SEARCH = """
@@ -26,12 +27,12 @@ class SearchAndSummarize:
     search_engine = SearchEngine()
 
     @classmethod
-    async def run(cls,question:str)->str:
+    async def run(cls,model:str,question:str)->str:
         logger.debug(question)
         queries = await cls._get_queries(question)
         results = await cls._batch_query(queries)
         PROMPT_FOR_ANSWER = SYSTEM_PROMPT_FOR_ANSWER.format(Question=question)
-        answer = await BaseAction._a_generate_stream(results, PROMPT_FOR_ANSWER)
+        answer = await gpt.a_generate(model=model,user_msg=results, system_msg=PROMPT_FOR_ANSWER,stream=True)
         logger.debug(answer)
         return answer
     @classmethod
@@ -43,8 +44,8 @@ class SearchAndSummarize:
                 results[query] = query_result
         return json.dumps(results, indent=4, ensure_ascii=False)
     @classmethod
-    async def _get_queries(cls,question) -> List:
-        statements = await BaseAction._a_generate_stream(question, SYSTEM_PROMPT_FOR_SEARCH)
+    async def _get_queries(cls,model:str,question) -> List:
+        statements = await gpt.a_generate(model=model,user_msg=question, system_msg=SYSTEM_PROMPT_FOR_SEARCH,stream=True)
         queries = cls._to_list(statements)
         return queries
     @classmethod

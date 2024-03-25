@@ -10,7 +10,7 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httplib2
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, field_validator
 from thinker_ai.utils.logs import logger
 
 try:
@@ -32,7 +32,7 @@ class GoogleAPIWrapper(BaseModel):
     class Config:
         arbitrary_types_allowed = True
 
-    @validator("google_api_key", always=True)
+    @field_validator("google_api_key")
     @classmethod
     def check_google_api_key(cls, val: str):
         val = val or os.environ.get("GOOGLE_API_KEY")
@@ -44,7 +44,7 @@ class GoogleAPIWrapper(BaseModel):
             )
         return val
 
-    @validator("google_cse_id", always=True)
+    @field_validator("google_cse_id")
     @classmethod
     def check_google_cse_id(cls, val: str):
         val = val or os.environ.get("GOOGLE_CSE_ID")

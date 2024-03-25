@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, validator
 
 
 class SerpAPIWrapper(BaseModel):
-    search_engine: Any  #: :meta private:
     params: dict = Field(
         default={
             "engine": "google",

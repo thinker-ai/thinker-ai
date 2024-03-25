@@ -11,13 +11,13 @@ class SearchEngine:
                  run_func: Callable[[str, int, bool], Coroutine[None, None, str | list[str]]] = None
                  ):
         if search_engine_type == SearchEngineType.SERPAPI_GOOGLE:
-            module = "thinker_ai.tools.search_engine_serpapi"
+            module = "thinker_ai.agent.tools.search_engine_serpapi"
             self.run_func = importlib.import_module(module).SerpAPIWrapper().run
         elif search_engine_type == SearchEngineType.SERPER_GOOGLE:
-            module = "thinker_ai.tools.search_engine_serper"
+            module = "thinker_ai.agent.tools.search_engine_serper"
             self.run_func = importlib.import_module(module).SerperWrapper().run
         elif search_engine_type == SearchEngineType.DIRECT_GOOGLE:
-            module = "thinker_ai.tools.search_engine_googleapi"
+            module = "thinker_ai.agent.tools.search_engine_googleapi"
             self.run_func = importlib.import_module(module).GoogleAPIWrapper().run
         elif search_engine_type == SearchEngineType.CUSTOM:
             self.run_func = run_func

@@ -8,7 +8,6 @@ from pydantic import BaseModel, Field, validator
 
 
 class SerperWrapper(BaseModel):
-    search_engine: Any  #: :meta private:
     payload: dict = Field(default={"page": 1, "num": 10})
     serper_api_key: Optional[str] = None
     aiosession: Optional[aiohttp.ClientSession] = None
