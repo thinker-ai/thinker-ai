@@ -1,5 +1,6 @@
 llm_type: "OPEN_AI"
 temperature: "0"
+timeout: "20.0"
 search_engine: "serper"
 web_browser_engine: "playwright"
 PUPPETEER_CONFIG: "./puppeteer-config.json"

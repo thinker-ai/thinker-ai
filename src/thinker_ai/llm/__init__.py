@@ -8,6 +8,8 @@ config = GPT_Config(api_key=os.environ.get("OPENAI_API_KEY"),
                     max_tokens_rsp=os.environ.get("max_tokens_rsp") or 2048,
                     proxy=os.environ.get("HTTP_PROXY") or None,
                     rpm=os.environ.get("rpm") or 10,
+                    timeout=os.environ.get("timeout") or 3.0,
+                    max_retries=os.environ.get("max_retries") or 3,
                     )
 
 gpt = GPT(config)

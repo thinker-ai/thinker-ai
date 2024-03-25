@@ -9,19 +9,19 @@ from pydantic import BaseModel
 class ToolsRegister:
 
     def __init__(self):
-        self.tool_descriptions: Dict[str, BaseTool] = {}
+        self.tools_dict: Dict[str, BaseTool] = {}
 
     @property
     def tools_schema(self) -> List[Dict]:
         return [format_tool_to_openai_function(tool_description)
-                for tool_description in self.tool_descriptions.values()]
+                for tool_description in self.tools_dict.values()]
 
     @property
     def tools(self) -> List[BaseTool]:
-        return list(self.tool_descriptions.values())
+        return list(self.tools_dict.values())
 
     def register(self, tool: BaseTool):
-        self.tool_descriptions[tool.name] = tool
+        self.tools_dict[tool.name] = tool
 
     def register_langchain_tools(self, tools_name: list[str]):
         tools = load_tools(tools_name, OpenAI(temperature=0))
@@ -33,10 +33,10 @@ class ToolsRegister:
         self.register(base_tool)
 
     def get_tool(self, name: str) -> BaseTool:
-        return self.tool_descriptions[name]
+        return self.tools_dict[name]
 
     def clear(self):
-        self.tool_descriptions.clear()
+        self.tools_dict.clear()
 
 
 

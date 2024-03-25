@@ -57,6 +57,8 @@ class GPT_Config(BaseModel):
     proxy: str = None
     api_base: str = "https://api.openai.com/v1"
     rpm: int = 10
+    timeout: float = 3.0
+    max_retries: int = 3
 
 
 class GPT:
@@ -79,9 +81,11 @@ class GPT:
         openai = OpenAI(api_key=config.api_key)
         return self.__init__openai(config, openai)
 
-    def __init__openai(self, config, openai: Union[OpenAI, AsyncOpenAI]):
+    def __init__openai(self, config, openai: Union[OpenAI, AsyncOpenAI]) -> Union[OpenAI, AsyncOpenAI]:
         openai.api_base = config.api_base
         openai.proxy = config.proxy
+        openai.timeout = config.timeout
+        openai.max_retries = config.max_retries
         if config.type:
             openai.api_type = config.type
             openai.api_version = config.version
@@ -108,8 +112,8 @@ class GPT:
 
     async def _a_chat_completion_stream(self, model: str, user_msg: str, system_msg: Optional[str] = None) -> str:
         prompt = PromptMessage(user_msg, system_msg)
-        response = await self.a_llm.chat.completions.create(model=model,
-                                                            **self._cons_kwargs(model, prompt.to_dicts()), stream=True)
+        kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout)
+        response = await self.a_llm.chat.completions.create(model=model, **kwargs, stream=True)
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
@@ -127,7 +131,8 @@ class GPT:
         self._cost_manager.update_costs(model, usage)
         return full_reply_content
 
-    def _cons_kwargs(self, model: str, messages: list[dict], candidate_functions: Optional[List[Dict]] = None) -> dict:
+    def _cons_kwargs(self, model: str, messages: list[dict], timeout: float,
+                     candidate_functions: Optional[List[Dict]] = None) -> dict:
         kwargs = {
             "messages": messages,
             "max_tokens": self._cost_manager.get_max_tokens(model, messages),
@@ -137,23 +142,22 @@ class GPT:
         }
         if candidate_functions:
             kwargs["functions"] = candidate_functions
-        kwargs["timeout"] = 3
+        kwargs["timeout"] = timeout
         return kwargs
 
     def _chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
                          candidate_functions: Optional[List[Dict]] = None) -> dict:
         prompt = PromptMessage(user_msg, system_msg)
-        rsp = self.llm.chat.completions.create(model=model,
-                                               **self._cons_kwargs(model, prompt.to_dicts(), candidate_functions))
+        kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout,candidate_functions)
+        rsp = self.llm.chat.completions.create(model=model, **kwargs)
         self._cost_manager.update_costs(model, rsp.usage.dict())
         return rsp.dict()
 
     async def _a_chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
                                  candidate_functions: Optional[List[Dict]] = None) -> dict:
         prompt = PromptMessage(user_msg, system_msg)
-        rsp = await self.a_llm.chat.completions.create(model=model,
-                                                       **self._cons_kwargs(model, prompt.to_dicts(),
-                                                                           candidate_functions))
+        kwargs = self._cons_kwargs(model, prompt.to_dicts(),self.a_llm.timeout, candidate_functions)
+        rsp = await self.a_llm.chat.completions.create(model=model,**kwargs)
         self._cost_manager.update_costs(model, rsp.usage.dict())
         return rsp.dict()
 
