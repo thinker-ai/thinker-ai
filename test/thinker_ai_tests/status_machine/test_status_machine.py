@@ -34,7 +34,8 @@ class TestStateMachine(unittest.TestCase):
 
         sm = StateMachine(definition=sm_definition, instance_id="1", current_state=start_state, history=[])
         event = sm.handle(Command(name="test_command"))
-        self.assertEqual(event.agent_name, "test_event")
+        self.assertIsNotNone(event)
+        self.assertEqual(event.name, "test_event")
 
     def test_no_action_for_command(self):
         state = State(name="start", actions={})
@@ -57,7 +58,7 @@ class TestStateMachine(unittest.TestCase):
 
         sm.handle(Command(name="test_command"))
 
-        self.assertEqual(sm.current_state.agent_name, "end")
+        self.assertEqual(sm.current_state.name, "end")
         self.assertEqual(sm.last_state().name, "start")
 
     def test_no_transition_for_event(self):

@@ -1,22 +1,21 @@
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any
 
-from pydantic import BaseModel
 
 
-class Event(BaseModel):
-    name: str
-    event_id: Optional[str]
-    publisher_id: Optional[str]
-    payload: Optional[Any]
+class Event:
+    def __init__(self, name: str, event_id: Optional[str] = None, publisher_id: Optional[str] = None, payload: Optional[Any] = None):
+        self.name = name
+        self.event_id = event_id
+        self.publisher_id = publisher_id
+        self.payload = payload
 
 
-class Command(BaseModel):
-    name: str
-    command_id: Optional[str]
-    command_id: Optional[str]
-    payload: Optional[Any]
-
+class Command:
+    def __init__(self, name: str, command_id: Optional[str] = None, payload: Optional[Any] = None):
+        self.name = name
+        self.command_id = command_id
+        self.payload = payload
 
 class Action(ABC):
     @abstractmethod
@@ -68,7 +67,7 @@ class StateMachineDefinition:
 
 
 class StateMachine:
-    def __init__(self, definition: StateMachineDefinition, instance_id, current_state, history):
+    def __init__(self, definition: StateMachineDefinition, instance_id:str, current_state:State, history: List[State]):
         self.definition = definition
         self.history: List[State] = history
         self.instance_id = instance_id
