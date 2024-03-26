@@ -1,14 +1,15 @@
 import asynctest
 from langchain_core.tools import StructuredTool
 
-from thinker_ai.agent.tools.tools_register import ToolsRegister
 from thinker_ai.agent.llm import gpt
 from langchain.pydantic_v1 import BaseModel
+
+from thinker_ai.agent.functions.functions_register import FunctionsRegister
 
 model = "gpt-4-0125-preview"
 
 class TestGPT(asynctest.TestCase):
-    tools_register=ToolsRegister()
+    functions_register=FunctionsRegister()
     def test_generate_stream(self):
         gpt.generate(model,"我用session.request()向你发送消息，你才能记住我们之前交流的上下文是吗，能记住多少条上下文？")
         gpt.generate(model,"如果我不用session.request()向你发送消息，而是每次都新建一个request，你就不能获取我们之前交流的上下文，是吗？")
@@ -35,12 +36,12 @@ class TestGPT(asynctest.TestCase):
             name: str
 
         StructuredTool.from_function(func=hello_world, args_schema=HelloWorldArgs)
-        self.tools_register.register_function(hello_world, HelloWorldArgs)
+        self.functions_register.register_function(hello_world, HelloWorldArgs)
         function_call = gpt.generate_function_call(model, "请使用方法，传入'王立'作为参数",
-                                                   candidate_functions=self.tools_register.tools_schema)
+                                                   candidate_functions=self.functions_register.functions_schema)
         if function_call:
             # 假设从某处获得参数，这里直接用字典演示
-            function = self.tools_register.get_tool(function_call.name)
+            function = self.functions_register.get_function(function_call.name)
             # 调用函数
             result = function.invoke(function_call.arguments)
             self.assertEqual(result, "Hello, 王立!")

@@ -7,10 +7,10 @@ from openai import OpenAI, AsyncOpenAI, APIConnectionError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
-from thinker_ai.agent.actions.result_parser import ResultParser
 from thinker_ai.agent.llm.cost_manager import CostManager
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.agent.llm.gpt_schema import PromptMessage
+from thinker_ai.utils.text_parser import TextParser
 from thinker_ai.utils.logs import logger
 
 
@@ -212,5 +212,5 @@ class GPT:
 
 
     async def parse_text_to_cls(content: str,output_data_mapping: dict,) -> Any:
-        instruct_content = ResultParser.parse_data_with_mapping(content, output_data_mapping)
+        instruct_content = TextParser.parse_data_with_mapping(content, output_data_mapping)
         return instruct_content

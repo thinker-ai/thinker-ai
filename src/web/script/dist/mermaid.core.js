@@ -334,7 +334,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -1193,7 +1193,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -2090,7 +2090,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -2994,7 +2994,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -3737,7 +3737,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -4398,7 +4398,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -5045,7 +5045,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -5797,7 +5797,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -6682,7 +6682,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -7515,7 +7515,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:
@@ -8282,7 +8282,7 @@ parse: function parse(input) {
             });
         }
         if (action[0] instanceof Array && action.length > 1) {
-            throw new Error('Parse Error: multiple actions possible at state: ' + state + ', token: ' + symbol);
+            throw new Error('Parse Error: multiple tasks possible at state: ' + state + ', token: ' + symbol);
         }
         switch (action[0]) {
         case 1:

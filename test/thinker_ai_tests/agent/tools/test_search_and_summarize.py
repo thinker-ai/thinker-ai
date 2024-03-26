@@ -3,8 +3,8 @@ import json
 import asynctest  # 导入asynctest
 from unittest.mock import patch, AsyncMock
 
-from thinker_ai.agent.tools.search_and_summarize import SearchAndSummarize
-from thinker_ai.agent.tools.search_engine import SearchEngine
+from thinker_ai.agent.functions.search_and_summarize import SearchAndSummarize
+from thinker_ai.agent.functions.search_engine import SearchEngine
 from thinker_ai.agent.llm import GPT
 
 
