@@ -1,15 +1,15 @@
 import asyncio
 import json
 import time
-from typing import NamedTuple, Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union
 
 from openai import OpenAI, AsyncOpenAI, APIConnectionError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
-from thinker_ai.llm.cost_manager import CostManager
-from thinker_ai.llm.function_call import FunctionCall
-from thinker_ai.llm.gpt_schema import PromptMessage
+from thinker_ai.agent.llm.cost_manager import CostManager
+from thinker_ai.agent.llm.function_call import FunctionCall
+from thinker_ai.agent.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.logs import logger
 
 

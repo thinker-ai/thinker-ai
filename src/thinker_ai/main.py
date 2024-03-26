@@ -4,7 +4,7 @@ from openai.types.beta.assistant_create_params import AssistantToolParam
 
 from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.agent_repository import AgentRepository
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 
 
 def create_agent(model: str, user_id: str, name: str, instructions: str = None,

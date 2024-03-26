@@ -2,9 +2,8 @@ import json
 import re
 from typing import List
 
-from thinker_ai.actions.action import BaseAction
 from thinker_ai.agent.tools.search_engine import SearchEngine
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 from thinker_ai.utils.logs import logger
 
 SYSTEM_PROMPT_FOR_SEARCH = """

@@ -4,7 +4,7 @@ from typing import NamedTuple
 
 from thinker_ai.utils.logs import logger
 
-from thinker_ai.llm.token_counter import (
+from thinker_ai.agent.llm.token_counter import (
     TOKEN_COSTS,
     FIREWORKS_GRADE_TOKEN_COSTS,
     count_message_tokens,

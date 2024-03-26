@@ -3,7 +3,7 @@ from typing import Dict
 
 from pydantic import BaseModel
 
-from thinker_ai.actions.action import Criteria
+from thinker_ai.agent.actions import Criteria
 from thinker_ai.context import Context
 
 

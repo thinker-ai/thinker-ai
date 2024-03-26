@@ -2,7 +2,7 @@ import asynctest
 from langchain_core.tools import StructuredTool
 
 from thinker_ai.agent.tools.tools_register import ToolsRegister
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 from langchain.pydantic_v1 import BaseModel
 
 model = "gpt-4-0125-preview"

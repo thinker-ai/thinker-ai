@@ -6,7 +6,7 @@ from thinker_ai.agent.agent import Agent
 import threading
 from typing import Dict, Optional, List
 
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 
 
 class AgentRepository:

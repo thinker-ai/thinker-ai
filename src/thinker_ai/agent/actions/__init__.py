@@ -1,7 +1,7 @@
 from typing import Optional, Any
 
-from thinker_ai.llm import gpt
-from thinker_ai.actions.result_parser import ResultParser
+from thinker_ai.agent.llm import gpt
+from thinker_ai.agent.actions.result_parser import ResultParser
 
 
 # @retry(stop=stop_after_attempt(2), wait=wait_fixed(1))

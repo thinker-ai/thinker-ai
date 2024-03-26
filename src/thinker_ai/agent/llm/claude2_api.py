@@ -4,7 +4,7 @@ import anthropic
 from anthropic import Anthropic
 from pydantic import BaseModel
 
-from thinker_ai.llm.function_call import FunctionCall
+from thinker_ai.agent.llm.function_call import FunctionCall
 
 
 class ClaudeConfig(BaseModel):

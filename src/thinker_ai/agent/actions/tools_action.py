@@ -3,9 +3,9 @@ from typing import Callable, Optional, Type, Union, Dict
 from langchain.tools import BaseTool
 from pydantic import BaseModel
 
-from thinker_ai.actions.action import BaseAction
+from thinker_ai.agent.actions.action import BaseAction
 from thinker_ai.agent.tools.tools_register import ToolsRegister
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 
 
 class ToolsAction(BaseAction):

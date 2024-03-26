@@ -1,6 +1,6 @@
 import time
 from pprint import pprint
-from typing import List, Optional, Any, Dict
+from typing import List, Any, Dict
 
 from openai import OpenAI
 from openai.pagination import SyncCursorPage
@@ -9,7 +9,7 @@ from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message
 from pydantic import BaseModel
 
-from thinker_ai.llm import gpt
+from thinker_ai.agent.llm import gpt
 
 
 class DataModel(BaseModel):
