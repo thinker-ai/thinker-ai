@@ -40,7 +40,7 @@ setup(
         'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 3.10',
     ],
-    keywords='ai tasks',
+    keywords='ai works',
     author='wunglee', # 添加你的名字
     author_email='wunglee@thinker-ai.net',
     description='base package for ai rpa',

@@ -21,12 +21,14 @@ class DataModel(BaseModel):
 
 
 class Agent:
+    id:str
     user_id: str
     threads:Dict[str,Thread]={}
     assistant: Assistant
     client: OpenAI = gpt.llm
 
-    def __init__(self, user_id: str, assistant: Assistant):
+    def __init__(self,id:str,user_id: str, assistant: Assistant):
+        self.id = id
         self.user_id = user_id
         self.assistant = assistant
 
@@ -38,10 +40,6 @@ class Agent:
     @property
     def name(self):
         return self.assistant.name
-
-    @property
-    def id(self):
-        return self.assistant.id
 
     def add_files(self, file_ids: List[str]):
         self.assistant.file_ids.extend(file_ids)

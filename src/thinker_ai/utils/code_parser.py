@@ -55,12 +55,12 @@ class CodeParser:
 
     @classmethod
     def parse_file_list(cls, block: str, text: str, lang: str = "") -> list[str]:
-        # Regular expression pattern to find the tasks list.
+        # Regular expression pattern to find the works list.
         code = cls.parse_code(block, text, lang)
         # print(code)
         pattern = r'\s*(.*=.*)?(\[.*\])'
 
-        # Extract tasks list string using regex.
+        # Extract works list string using regex.
         match = re.search(pattern, code, re.DOTALL)
         if match:
             tasks_list_str = match.group(2)

@@ -1,80 +1,45 @@
-from collections import defaultdict
-from typing import Iterable, Type
-
-from thinker_ai.actions.action import BaseAction
-from thinker_ai.work_flow.tasks import TaskMessage
+from typing import Iterable, Dict, List
 
 
 class Memory:
-    """The most basic memory: super-memory"""
 
-    def __init__(self):
-        """Initialize an empty storage list and an empty index dictionary"""
-        self.storage: list[TaskMessage] = []
-        self.index: dict[Type[BaseAction], list[TaskMessage]] = defaultdict(list)
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        # 将storage定义为一个字典，键为主题（topic），值为属于该主题的消息列表
+        self.storage: Dict[str, List[str]] = {}
 
-    def add(self, message: TaskMessage):
-        """Add a new message to storage, while updating the index"""
-        if message in self.storage:
-            return
-        self.storage.append(message)
-        if message.cause_by:
-            self.index[message.cause_by].append(message)
+    def add(self, topic: str, message: str):
+        # 如果主题在storage中不存在，则初始化一个空列表
+        if topic not in self.storage:
+            self.storage[topic] = []
+        # 将消息添加到对应主题的列表中
+        self.storage[topic].append(message)
 
-    def add_batch(self, messages: Iterable[TaskMessage]):
+    def add_batch(self, topic: str, messages: Iterable[str]):
+        # 对批量消息进行迭代，逐一添加
         for message in messages:
-            self.add(message)
+            self.add(topic, message)
 
-    def get_by_role(self, role: str) -> list[TaskMessage]:
-        """Return all messages of a specified agent"""
-        return [message for message in self.storage if message.role == role]
+    def get_by_keyword(self, topic: str, keyword: str) -> List[str]:
+        # 仅在指定主题中搜索包含关键字的消息
+        if topic in self.storage:
+            return [message for message in self.storage[topic] if keyword in message]
+        else:
+            return []
 
-    def get_by_content(self, content: str) -> list[TaskMessage]:
-        """Return all messages containing a specified content"""
-        return [message for message in self.storage if content in message.content]
+    def delete(self, topic: str, message: str):
+        # 如果消息存在于指定主题中，则删除该消息
+        if topic in self.storage and message in self.storage[topic]:
+            self.storage[topic].remove(message)
+            # 如果删除消息后主题下没有任何消息，可以选择删除该主题键
+            if not self.storage[topic]:
+                self.del_topic(topic)
 
-    def delete(self, message: TaskMessage):
-        """Delete the specified message from storage, while updating the index"""
-        self.storage.remove(message)
-        if message.cause_by and message in self.index[message.cause_by]:
-            self.index[message.cause_by].remove(message)
+    def del_topic(self, topic: str):
+        # 清空主题存储
+        if topic in self.storage:
+            del self.storage[topic]
 
     def clear(self):
-        """Clear storage and index"""
-        self.storage = []
-        self.index = defaultdict(list)
-
-    def count(self) -> int:
-        """Return the number of messages in storage"""
-        return len(self.storage)
-
-    def try_remember(self, keyword: str) -> list[TaskMessage]:
-        """Try to recall all messages containing a specified keyword"""
-        return [message for message in self.storage if keyword in message.content]
-
-    def get(self, k=0) -> list[TaskMessage]:
-        """Return the most recent k memories, return all when k=0"""
-        return self.storage[-k:]
-
-    def filter_new_observes(self, observed: list[TaskMessage], k=0) -> list[TaskMessage]:
-        """remember the most recent k memories from observed Messages, return all when k=0"""
-        already_observed = self.get(k)
-        news: list[TaskMessage] = []
-        for i in observed:
-            if i in already_observed:
-                continue
-            news.append(i)
-        return news
-
-    def get_by_action(self, action: Type[BaseAction]) -> list[TaskMessage]:
-        """Return all messages triggered by a specified Action"""
-        return self.index[action]
-
-    def get_by_actions(self, actions: Iterable[Type[BaseAction]]) -> list[TaskMessage]:
-        """Return all messages triggered by specified Actions"""
-        rsp = []
-        for action in actions:
-            if action not in self.index:
-                continue
-            rsp += self.index[action]
-        return rsp
+        # 清空所有存储
+        self.storage = {}

@@ -35,3 +35,4 @@ dependencies:
     - apache-airflow
     - injector
     - spade
+    - email-validator

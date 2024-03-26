@@ -18879,7 +18879,7 @@ var draw = function draw(text, id) {
     w = conf.useWidth;
   }
 
-  var taskArray = _parser_gantt__WEBPACK_IMPORTED_MODULE_2__.parser.yy.getTasks(); // Set height based on number of tasks
+  var taskArray = _parser_gantt__WEBPACK_IMPORTED_MODULE_2__.parser.yy.getTasks(); // Set height based on number of works
 
   var h = taskArray.length * (conf.barHeight + conf.barGap) + 2 * conf.topPadding; // Set viewBox
 
@@ -18918,7 +18918,7 @@ var draw = function draw(text, id) {
 
     return result;
   } // Sort the task array using the above taskCompare() so that
-  // tasks are created based on their order of startTime
+  // works are created based on their order of startTime
 
 
   taskArray.sort(taskCompare);
@@ -18970,11 +18970,11 @@ var draw = function draw(text, id) {
       }
 
       return 'section section0';
-    }); // Draw the rects representing the tasks
+    }); // Draw the rects representing the works
 
     var rectangles = svg.append('g').selectAll('rect').data(theArray).enter();
-    var links = _ganttDb__WEBPACK_IMPORTED_MODULE_3__["default"].getLinks(); // Render the tasks with links
-    // Render the other tasks
+    var links = _ganttDb__WEBPACK_IMPORTED_MODULE_3__["default"].getLinks(); // Render the works with links
+    // Render the other works
 
     rectangles.append('rect').attr('id', function (d) {
       return d.id;
@@ -19138,7 +19138,7 @@ var draw = function draw(text, id) {
         return classStr + ' taskText taskText' + secNum + ' ' + taskType + ' width-' + textWidth;
       }
     });
-    var securityLevel = (0,_config__WEBPACK_IMPORTED_MODULE_4__.getConfig)().securityLevel; // Wrap the tasks in an a tag for working links without javascript
+    var securityLevel = (0,_config__WEBPACK_IMPORTED_MODULE_4__.getConfig)().securityLevel; // Wrap the works in an a tag for working links without javascript
 
     if (securityLevel === 'sandbox') {
       var _sandboxElement;
@@ -25345,7 +25345,7 @@ var drawTasks = function drawTasks(diagram, tasks, verticalPos) {
   var sectionNumber = 0;
   var fill = '#CCC';
   var colour = 'black';
-  var num = 0; // Draw the tasks
+  var num = 0; // Draw the works
 
   for (var i = 0; i < tasks.length; i++) {
     var task = tasks[i];
