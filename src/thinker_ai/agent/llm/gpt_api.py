@@ -1,12 +1,13 @@
 import asyncio
 import json
 import time
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any
 
 from openai import OpenAI, AsyncOpenAI, APIConnectionError
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
+from thinker_ai.agent.actions.result_parser import ResultParser
 from thinker_ai.agent.llm.cost_manager import CostManager
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.agent.llm.gpt_schema import PromptMessage
@@ -208,3 +209,8 @@ class GPT:
         if function_call:
             function_call["arguments"] = json.loads(function_call["arguments"])
             return FunctionCall(**function_call)
+
+
+    async def parse_text_to_cls(content: str,output_data_mapping: dict,) -> Any:
+        instruct_content = ResultParser.parse_data_with_mapping(content, output_data_mapping)
+        return instruct_content
