@@ -1,6 +1,6 @@
 from typing import Generator, Sequence
 
-from thinker_ai.agent.llm import TOKEN_MAX, count_string_tokens
+from thinker_ai.agent.llm.token_counter import TOKEN_MAX, count_string_tokens
 
 
 def reduce_message_length(msgs: Generator[str, None, None], model_name: str, system_text: str, reserved: int = 0,) -> str:

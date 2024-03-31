@@ -5,6 +5,8 @@ ref3: https://github.com/Significant-Gravitas/Auto-GPT/blob/master/autogpt/llm/t
 ref4: https://github.com/hwchase17/langchain/blob/master/langchain/chat_models/openai.py
 ref5: https://ai.google.dev/models/gemini
 """
+from typing import List
+
 import tiktoken
 
 TOKEN_COSTS = {
@@ -261,7 +263,7 @@ def count_string_tokens(string: str, model_name: str) -> int:
     return len(encoding.encode(string))
 
 
-def get_max_completion_tokens(messages: list[dict], model: str, default: int) -> int:
+def get_max_completion_tokens(messages: List[dict], model: str, default: int) -> int:
     """Calculate the maximum number of completion tokens for a given model and list of messages.
 
     Args:

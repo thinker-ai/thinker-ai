@@ -2,7 +2,7 @@ import ast
 import contextlib
 import json
 import re
-from typing import Tuple, get_origin, Dict, Type, Any
+from typing import Tuple, get_origin, Dict, Type, Any, List
 import yaml
 from pydantic import create_model, BaseModel, field_validator, model_validator
 from pydantic.v1 import root_validator, validator
@@ -104,7 +104,7 @@ class TextParser:
         return text
 
     @classmethod
-    def parse_list(cls, text: str) -> list[str]:
+    def parse_list(cls, text: str) -> List[str]:
         # Regular expression pattern to find the  list.
         pattern = r'\s*(.*=.*)?(\[.*\])'
 

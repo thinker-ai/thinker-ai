@@ -1,6 +1,6 @@
 import unittest
 
-from thinker_ai.task_flow.work_event import WorkEvent
+from thinker_ai.task_flow.task_event import WorkEvent
 
 
 class TestWorkEvent(unittest.TestCase):

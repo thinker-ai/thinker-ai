@@ -1,6 +1,6 @@
 
 import re
-from typing import NamedTuple
+from typing import NamedTuple, List, Dict
 
 from thinker_ai.utils.logs import logger
 
@@ -96,12 +96,12 @@ class CostManager:
         except Exception as e:
             logger.error("updating costs failed!", e)
 
-    def get_max_tokens(self, model: str, messages: list[dict]):
+    def get_max_tokens(self, model: str, messages: List[dict]):
         if not self.auto_max_tokens:
             return self.max_tokens_rsp
         return get_max_completion_tokens(messages, model, self.max_tokens_rsp)
 
-    def calc_usage(self, model: str, messages: list[dict], rsp: str) -> dict:
+    def calc_usage(self, model: str, messages: List[dict], rsp: str) -> dict:
         usage = {}
         try:
             prompt_tokens = count_message_tokens(messages, model)
@@ -131,7 +131,7 @@ class TokenCostManager(CostManager):
 
 
 class FireworksCostManager(CostManager):
-    def model_grade_token_costs(self, model: str) -> dict[str, float]:
+    def model_grade_token_costs(self, model: str) -> Dict[str, float]:
         def _get_model_size(model: str) -> float:
             size = re.findall(".*-([0-9.]+)b", model)
             size = float(size[0]) if len(size) > 0 else -1

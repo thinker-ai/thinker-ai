@@ -1,6 +1,9 @@
 import inspect
 import os
 import re
+import json
+
+from IPython.core.display_functions import display
 
 
 def check_cmd_exists(command) -> int:
@@ -45,3 +48,7 @@ def parse_recipient(text):
     pattern = r"## Send To:\s*([A-Za-z]+)\s*?"  # hard code for now
     recipient = re.search(pattern, text)
     return recipient.group(1) if recipient else ""
+
+
+def show_json(obj):
+    display(json.loads(obj.model_dump_json()))

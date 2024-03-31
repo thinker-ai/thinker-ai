@@ -2,7 +2,7 @@ import json
 import re
 from typing import List
 
-from thinker_ai.agent.tools.search_engine import SearchEngine
+from thinker_ai.agent.functions.search_engine import SearchEngine
 from thinker_ai.agent.llm import gpt
 from thinker_ai.utils.logs import logger
 

@@ -43,7 +43,7 @@ class MainTest(unittest.TestCase):
         self.assertIsNone(agent)
 
     def test_del_file(self):
-        file_dir = "./test.md"
+        file_dir = "../test.md"
         file_id = upload_file(file_dir)
         deleted = delete_file(file_id)
         self.assertTrue(deleted)
@@ -72,7 +72,7 @@ class MainTest(unittest.TestCase):
             if key == "text":
                 pprint(results[key])
             if key == "image_file":
-                with open(f"./my-image.png", "wb") as file:
+                with open(f"../my-image.png", "wb") as file:
                     file.write(results[key])
 
 

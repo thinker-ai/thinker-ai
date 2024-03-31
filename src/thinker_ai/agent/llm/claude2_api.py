@@ -19,29 +19,29 @@ class Claude2:
         self.max_tokens = config.max_tokens
         self.anthropic = Anthropic(api_key=config.api_key)
 
-    def generate(self, model: str, prompt, system_prompt: Optional[list[str]] = None) -> str:
+    def generate(self, model: str, prompt, system_prompt: Optional[List[str]] = None) -> str:
         return self.anthropic.completions.create(
             model=model,
             prompt=f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}",
             max_tokens_to_sample=self.max_tokens,
         ).completion
 
-    async def a_generate(self, model: str, prompt, system_prompt: Optional[list[str]] = None) -> str:
+    async def a_generate(self, model: str, prompt, system_prompt: Optional[List[str]] = None) -> str:
         return self.anthropic.completions.create(
             model=model,
             prompt=f"{anthropic.HUMAN_PROMPT} {prompt} {anthropic.AI_PROMPT}",
             max_tokens_to_sample=self.max_tokens,
         ).completion
 
-    async def a_generate_stream(self, model: str, prompt, system_prompt: Optional[list[str]] = None) -> str:
+    async def a_generate_stream(self, model: str, prompt, system_prompt: Optional[List[str]] = None) -> str:
         raise NotImplementedError()
 
     def generate_function_call(self, model: str, prompt, candidate_functions: List[Dict],
-                               system_prompt: Optional[list[str]] = None) -> FunctionCall:
+                               system_prompt: Optional[List[str]] = None) -> FunctionCall:
         raise NotImplementedError()
 
     async def a_generate_function_call(self, model: str, prompt, candidate_functions: List[Dict],
-                                       system_prompt: Optional[list[str]] = None) -> FunctionCall:
+                                       system_prompt: Optional[List[str]] = None) -> FunctionCall:
         raise NotImplementedError()
 
     def generate_batch(self, model: str, msgs) -> str:

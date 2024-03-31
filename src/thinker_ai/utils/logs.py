@@ -14,5 +14,4 @@ def define_log_level(log_dir:str,print_level="INFO", logfile_level="DEBUG"):
     _logger.add(f'{log_dir}/log.txt', level=logfile_level)
     return _logger
 
-
 logger = define_log_level(str(get_project_root()))

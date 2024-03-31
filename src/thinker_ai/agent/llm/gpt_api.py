@@ -1,18 +1,22 @@
+from __future__ import annotations
+
 import asyncio
 import json
 import time
-from typing import Optional, List, Dict, Union, Any
+from typing import Optional, List, Dict, Union, Any, Callable, Type
 
-from openai import OpenAI, AsyncOpenAI, APIConnectionError
+from langchain_core.tools import BaseTool
+from openai import OpenAI, AsyncOpenAI, APIConnectionError, AsyncStream, Stream
+from openai.types.chat import ChatCompletion, ChatCompletionChunk
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
+from thinker_ai.agent.functions.functions_register import FunctionsRegister
 from thinker_ai.agent.llm.cost_manager import CostManager
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.agent.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.text_parser import TextParser
 from thinker_ai.utils.logs import logger
-
 
 
 class RateLimiter:
@@ -39,7 +43,6 @@ class RateLimiter:
             await asyncio.sleep(remaining_time)
 
         self.last_call_time = time.time()
-
 
 
 def log_and_reraise(retry_state):
@@ -73,6 +76,7 @@ class GPT:
         self._cost_manager = CostManager(config.max_budget, config.auto_max_tokens, config.max_tokens_rsp)
         self.temperature = config.temperature
         self.rateLimiter = RateLimiter(rpm=config.rpm)
+        self.functions_register = FunctionsRegister()
 
     def __init_a_openai(self, config: GPT_Config) -> AsyncOpenAI:
         openai = AsyncOpenAI(api_key=config.api_key)
@@ -95,14 +99,14 @@ class GPT:
     default_system_msg = 'You are a helpful agent.'
 
     def generate(self, model: str, user_msg: str, system_msg: Optional[str] = None) -> str:
-        output = self._chat_completion(model, user_msg, system_msg)
+        output = self._chat_completion(model, PromptMessage(user_msg, system_msg))
         return self._get_choice_text(output)
 
     async def a_generate(self, model: str, user_msg: str, system_msg: Optional[str] = None, stream=False) -> str:
         """when streaming, print each token in place."""
         if stream:
-            return await self._a_chat_completion_stream(model, user_msg, system_msg)
-        rsp = await self._a_chat_completion(model, user_msg, system_msg)
+            return await self._a_chat_completion_stream(model, PromptMessage(user_msg, system_msg))
+        rsp = await self._a_chat_completion(model, PromptMessage(user_msg, system_msg))
         return self._get_choice_text(rsp)
 
     def _extract_assistant_rsp(self, context):
@@ -111,10 +115,46 @@ class GPT:
     def _get_choice_text(self, rsp: dict) -> str:
         return rsp.get("choices")[0]["message"]["content"]
 
-    async def _a_chat_completion_stream(self, model: str, user_msg: str, system_msg: Optional[str] = None) -> str:
-        prompt = PromptMessage(user_msg, system_msg)
+    def _cons_kwargs(self, model: str, messages: list[dict], timeout: float,
+                     candidate_functions: Optional[List[Dict]] = None) -> dict:
+        kwargs = {
+            "messages": messages,
+            "max_tokens": self._cost_manager.get_max_tokens(model, messages),
+            "n": 1,
+            "stop": None,
+            "temperature": self.temperature,
+        }
+        if candidate_functions:
+            kwargs["functions"] = candidate_functions
+        kwargs["timeout"] = timeout
+        return kwargs
+
+    def _chat_completion(self, model: str, prompt: PromptMessage, ) -> dict:
+        kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout,
+                                   self.functions_register.functions_schema)
+        rsp = self.llm.chat.completions.create(model=model, **kwargs)
+        function_rsp = self._do_with_function_call(model, prompt, rsp)
+        if function_rsp:
+            rsp = function_rsp
+        self._cost_manager.update_costs(model, rsp.usage.dict())
+        return rsp.dict()
+
+    async def _a_chat_completion(self, model: str, prompt: PromptMessage, ) -> dict:
+        kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout,
+                                   self.functions_register.functions_schema)
+        rsp = await self.a_llm.chat.completions.create(model=model, **kwargs)
+        function_rsp = self._do_with_function_call(model, prompt, rsp)
+        if function_rsp:
+            rsp = function_rsp
+        self._cost_manager.update_costs(model, rsp.usage.dict())
+        return rsp.dict()
+
+    async def _a_chat_completion_stream(self, model: str, prompt: PromptMessage) -> str:
         kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout)
         response = await self.a_llm.chat.completions.create(model=model, **kwargs, stream=True)
+        function_rsp = self._do_with_function_call(model, prompt, response, stream=True)
+        if function_rsp:
+            response = function_rsp
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
@@ -131,36 +171,6 @@ class GPT:
         usage = self._cost_manager.calc_usage(model, prompt.to_dicts(), full_reply_content)
         self._cost_manager.update_costs(model, usage)
         return full_reply_content
-
-    def _cons_kwargs(self, model: str, messages: list[dict], timeout: float,
-                     candidate_functions: Optional[List[Dict]] = None) -> dict:
-        kwargs = {
-            "messages": messages,
-            "max_tokens": self._cost_manager.get_max_tokens(model, messages),
-            "n": 1,
-            "stop": None,
-            "temperature": self.temperature,
-        }
-        if candidate_functions:
-            kwargs["functions"] = candidate_functions
-        kwargs["timeout"] = timeout
-        return kwargs
-
-    def _chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
-                         candidate_functions: Optional[List[Dict]] = None) -> dict:
-        prompt = PromptMessage(user_msg, system_msg)
-        kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout,candidate_functions)
-        rsp = self.llm.chat.completions.create(model=model, **kwargs)
-        self._cost_manager.update_costs(model, rsp.usage.dict())
-        return rsp.dict()
-
-    async def _a_chat_completion(self, model: str, user_msg: str, system_msg: Optional[str] = None,
-                                 candidate_functions: Optional[List[Dict]] = None) -> dict:
-        prompt = PromptMessage(user_msg, system_msg)
-        kwargs = self._cons_kwargs(model, prompt.to_dicts(),self.a_llm.timeout, candidate_functions)
-        rsp = await self.a_llm.chat.completions.create(model=model,**kwargs)
-        self._cost_manager.update_costs(model, rsp.usage.dict())
-        return rsp.dict()
 
     @retry(
         stop=stop_after_attempt(3),
@@ -184,7 +194,7 @@ class GPT:
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
             future_map = {
-                key: self._a_chat_completion(model, prompt.user_message_content, prompt.system_message_content) for
+                key: self._a_chat_completion(model, prompt) for
                 key, prompt in small_batch.items()}
             # Gather the results of these futures
             results = await asyncio.gather(*future_map.values())
@@ -193,24 +203,55 @@ class GPT:
                 all_results[key] = result
         return all_results
 
-    def generate_function_call(self, model: str, user_msg, candidate_functions: List[Dict],
-                               system_msg: Optional[str] = None) -> FunctionCall:
-
-        output = self._chat_completion(model, user_msg, system_msg, candidate_functions)
-        return self._parse_function_call(output)
-
-    async def a_generate_function_call(self, model: str, user_msg, candidate_functions: List[Dict],
-                                       system_msg: Optional[str] = None) -> FunctionCall:
-        output = await self._a_chat_completion(model, user_msg, system_msg, candidate_functions)
-        return self._parse_function_call(output)
-
-    def _parse_function_call(self, output: Dict) -> FunctionCall:
-        function_call = output.get("choices")[0]["message"]["function_call"]
-        if function_call:
-            function_call["arguments"] = json.loads(function_call["arguments"])
-            return FunctionCall(**function_call)
-
-
-    async def parse_text_to_cls(content: str,output_data_mapping: dict,) -> Any:
+    async def parse_text_to_cls(content: str, output_data_mapping: dict, ) -> Any:
         instruct_content = TextParser.parse_data_with_mapping(content, output_data_mapping)
         return instruct_content
+
+    def _do_with_function_call(self, model: str, prompt: PromptMessage,
+                               rsp_with_function_call: ChatCompletion | AsyncStream[ChatCompletionChunk],
+                               stream: bool = False) -> ChatCompletion | Stream[ChatCompletionChunk]:
+        function_call = self._parse_function_call(rsp_with_function_call)
+        if function_call:
+            result = self._call_function(function_call)
+            return self._generate_answer_from_function_result(model, prompt, result, stream)
+
+    @staticmethod
+    def _parse_function_call(rsp_with_function_call: ChatCompletion | AsyncStream[ChatCompletionChunk]) -> FunctionCall:
+        if Type[rsp_with_function_call] == AsyncStream[ChatCompletionChunk]:
+          for chunk in rsp_with_function_call:
+                function_call = chunk.choices[0].message.function_call
+                if function_call is not None:
+                    return FunctionCall(function_call.name, json.loads(function_call.arguments))
+                else:
+                    continue
+        else:
+            function_call = rsp_with_function_call.choices[0].message.function_call
+            if function_call is not None:
+                return FunctionCall(function_call.name, json.loads(function_call.arguments))
+
+    def _call_function(self, function_call: FunctionCall) -> Any:
+        function = self.functions_register.get_function(function_call.name)
+        # 调用函数
+        return function.invoke(function_call.arguments)
+
+    def _generate_answer_from_function_result(self, model: str, prompt: PromptMessage, function_result: str,
+                                              stream: bool = False) -> ChatCompletion | Stream[ChatCompletionChunk]:
+        result_prompt_template = """
+           用户提出的原始问题是“{user_message}”,原始的系统提示是{system_message},现在已经有了数据:“{function_result}”，请用这个数据提供自然语言的回复
+        """
+        prompt = result_prompt_template.format(user_message=prompt.user_message.content,
+                                               system_message=prompt.system_message.content,
+                                               function_result=function_result)
+        messages = PromptMessage(prompt)
+        kwargs = self._cons_kwargs(model, messages.to_dicts(), self.a_llm.timeout)
+        rsp = self.llm.chat.completions.create(model=model, **kwargs, stream=stream)
+        return rsp
+
+    def register_langchain_function(self, tool: BaseTool):
+        self.functions_register.register_langchain_tool(tool)
+
+    def register_function(self, func: Callable, args_schema: Optional[Type[BaseModel]]):
+        self.functions_register.register_function(func, args_schema)
+
+    def register_langchain_functions(self, tool_names: list[str]):
+        self.functions_register.register_langchain_tool_names(tool_names)
