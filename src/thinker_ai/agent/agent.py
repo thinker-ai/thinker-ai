@@ -87,7 +87,7 @@ class Agent:
 
     def _ask_for_messages(self, topic: str, content: str) -> SyncCursorPage[Message]:
         thread, run = self._create_thread_and_run(topic, content)
-        self._do_with_function(run, thread.id)
+        self._execute_function(run, thread.id)
         messages = self._get_response(thread)
         show_json(messages)
         return messages
@@ -110,7 +110,7 @@ class Agent:
         self._print_step_details(run, thread_id)
         return run
 
-    def _do_with_function(self, run, thread_id):
+    def _execute_function(self, run, thread_id):
         if run.status == "requires_action":
             tool_calls:List=run.required_action.submit_tool_outputs.tool_calls
             tool_outputs:List[Dict]=[]
@@ -196,15 +196,15 @@ class Agent:
 
     def register_langchain_tool(self, tool: BaseTool):
         self.functions_register.register_langchain_tool(tool)
-        self._update_function()
+        self._update_functions()
 
     def register_function(self, func: Callable, args_schema: Optional[Type[BaseModel]]):
         self.functions_register.register_function(func, args_schema)
-        self._update_function()
+        self._update_functions()
 
     def register_langchain_tool_name(self, tool_name: str):
         self.functions_register.register_langchain_tool_names([tool_name])
-        self._update_function()
+        self._update_functions()
 
     def _register_native_tool(self, native_tool: Union[CodeInterpreterTool, RetrievalTool]):
         tools = self.assistant.tools
@@ -231,28 +231,20 @@ class Agent:
     def remove_retrieval_tool(self):
         self._remove_native_tool("retrieval")
 
-    def _update_function(self):
+    def _update_functions(self):
         tools = self.assistant.tools
-        exists = False  # 用于跟踪是否已经有一个function类型的工具
-
-        # 更新已有的function工具
-        for tool in tools:
-            if tool.type == "function":
-                tool.function = self.functions_register.functions_schema[0]
-                exists = True  # 发现已有的function工具，更新标记
-
-        # 如果没有发现function类型的工具，添加一个新的
-        if not exists:
+        tools = [tool for tool in tools if tool.type != "function"]
+        new_functions = self.functions_register.functions_schema
+        for new_function in new_functions:
             new_tool = {
                 "type": "function",
-                "function": self.functions_register.functions_schema[0]
+                "function": new_function
             }
             tools.append(new_tool)  # 添加到工具列表中
-
         # 使用更新后的工具列表更新助手
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
-    def remove_function(self):
+    def remove_functions(self):
         tools = self.assistant.tools
         tools = [tool for tool in tools if tool.type != "function"]
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
