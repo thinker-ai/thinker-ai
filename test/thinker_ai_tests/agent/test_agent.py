@@ -87,7 +87,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             self.assertIsNotNone(generated_result)
             print(generated_result)
         finally:
-            self.agent.remove_function()
+            self.agent.remove_functions()
             print(self.agent.tools)
 
     def test_chat_with_retrieval(self):
