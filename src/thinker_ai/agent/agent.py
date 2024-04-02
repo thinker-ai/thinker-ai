@@ -67,20 +67,23 @@ class Agent:
                 file_ids.remove(exist_file_id)
                 self.assistant = self.client.beta.assistants.update(self.assistant.id, file_ids=file_ids)
 
-    def ask(self, topic: str, content: str) -> Dict[str, Any]:
+    def ask(self, topic: str, content: str) -> List[Dict[str, Any]]:
         messages: SyncCursorPage[Message] = self._ask_for_messages(topic, content)
         return self._do_with_result(messages)
 
-    def _do_with_result(self, messages: SyncCursorPage[Message]) -> Dict[str, Any]:
-        result: Dict[str, Any] = {}
+    def _do_with_result(self, messages: SyncCursorPage[Message]) -> List[Dict[str, Any]]:
+        results: List[Dict[str, Any]] = []
         for message in messages.data:
             if message.role == "user":
                 continue
-            if message.content[0].type == "text":
-                result["text"] = self._do_with_text_result(message.content[0].text)
-            if message.content[0].type == "image_file":
-                result["image_file"] = self._do_with_image_result(message.content[0].image_file)
-        return result
+            for content in message.content:
+                result:Dict={}
+                if content.type == "text":
+                    result["text"] = self._do_with_text_result(message.content[0].text)
+                if content.type == "image_file":
+                    result["image_file"] = self._do_with_image_result(message.content[0].image_file)
+                results.append(result)
+        return results
 
     def _ask_for_messages(self, topic: str, content: str) -> SyncCursorPage[Message]:
         thread, run = self._create_thread_and_run(topic, content)
