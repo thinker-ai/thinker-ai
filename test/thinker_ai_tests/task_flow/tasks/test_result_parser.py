@@ -2,21 +2,9 @@ import unittest
 from pathlib import Path
 from typing import Dict, List
 
+from thinker_ai.context import get_project_root
+from thinker_ai.utils.common import load_file
 from thinker_ai.utils.text_parser import TextParser
-
-
-def get_project_root() -> Path:
-    """逐级向上寻找项目根目录"""
-    current_path = Path.cwd()
-    while True:
-        if (current_path / '.git').exists() or \
-                (current_path / '.project_root').exists() or \
-                (current_path / '.gitignore').exists():
-            return current_path
-        parent_path = current_path.parent
-        if parent_path == current_path:
-            raise Exception("Project root not found.")
-        current_path = parent_path
 
 
 class TestActionResult(unittest.TestCase):
@@ -46,13 +34,7 @@ class TestActionResult(unittest.TestCase):
         if file_name.startswith('/'):
             file_name = file_name[1:]  # 否则会误判为根路径
         file_dir = get_project_root() / "test/thinker_ai_tests/task_flow/tasks"
-        return self.load_file(file_dir, file_name)
-
-    def load_file(self, file_dir, file_name):
-        file = Path(file_dir) / file_name
-        with open(file, 'r') as file:
-            content = file.read()
-        return content
+        return load_file(file_dir, file_name)
 
 
 # 运行测试

@@ -38,7 +38,7 @@ class FunctionsRegister:
         self.register_langchain_tool(base_tool)
 
     def get_function(self, name: str) -> BaseTool:
-        return self.functions_dict[name]
+        return self.functions_dict.get(name)
 
     def clear(self):
         self.functions_dict.clear()

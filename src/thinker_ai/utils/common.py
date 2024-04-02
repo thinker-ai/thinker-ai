@@ -2,6 +2,7 @@ import inspect
 import os
 import re
 import json
+from pathlib import Path
 
 from IPython.core.display_functions import display
 
@@ -52,3 +53,10 @@ def parse_recipient(text):
 
 def show_json(obj):
     display(json.loads(obj.model_dump_json()))
+
+
+def load_file(file_dir, file_name):
+    file = Path(file_dir) / file_name
+    with open(file, 'r') as file:
+        content = file.read()
+    return content

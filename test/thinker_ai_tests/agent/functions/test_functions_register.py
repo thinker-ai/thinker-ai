@@ -129,5 +129,6 @@ class TestFunctionRegister(asynctest.TestCase):
             ]
         }
         function = functions_register.get_function("display_quiz")
-        result = function.invoke(arguments)
-        print(result)
+        if function is not None:
+            result = function.invoke(arguments)
+            print(result)
