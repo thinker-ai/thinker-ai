@@ -42,3 +42,6 @@ class FunctionsRegister:
 
     def clear(self):
         self.functions_dict.clear()
+
+    def remove_function(self, name):
+        self.functions_dict.pop(name)

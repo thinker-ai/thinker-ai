@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Optional
+
 from thinker_ai.utils.logs import logger
 
 
@@ -58,7 +60,7 @@ class PromptMessage:
     user_message: UserMessage
     system_message: SystemMessage
 
-    def __init__(self, user_msg: str, sys_msg: str = None):
+    def __init__(self, user_msg: str, sys_msg: Optional[str] = None):
         self.user_message = UserMessage(user_msg)
         self.system_message = SystemMessage(sys_msg or 'You are a helpful agent.')
 
