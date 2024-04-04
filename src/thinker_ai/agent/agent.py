@@ -52,6 +52,9 @@ class Agent:
     def file_ids(self) -> List[str]:
         return self.assistant.file_ids
 
+    def set_instructions(self, instructions:str):
+        self.client.beta.assistants.update(self.assistant.id, instructions=instructions)
+
     def register_file_id(self, file_id: str):
         file_ids=self.assistant.file_ids
         for exist_file_id in file_ids:
@@ -219,16 +222,16 @@ class Agent:
         tools = [tool for tool in tools if tool.type != tool_type]
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
-    def register_code_interpreter_tool(self):
-        self._register_native_tool(CodeInterpreterTool(type="code_interpreter_tool"))
+    def register_code_interpreter(self):
+        self._register_native_tool(CodeInterpreterTool(type="code_interpreter"))
 
-    def remove_code_interpreter_tool(self):
+    def remove_code_interpreter(self):
         self._remove_native_tool("code_interpreter")
 
-    def register_retrieval_tool(self):
+    def register_retrieval(self):
         self._register_native_tool(RetrievalTool(type="retrieval"))
 
-    def remove_retrieval_tool(self):
+    def remove_retrieval(self):
         self._remove_native_tool("retrieval")
 
     def _update_functions(self):

@@ -90,6 +90,18 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             self.agent.remove_functions()
             print(self.agent.tools)
 
+    def test_chat_with_code_interpreter(self):
+        try:
+            self.agent.set_instructions("You are a personal math tutor. Answer questions briefly, in a sentence or less.")
+            self.agent.register_code_interpreter()
+            generated_result = self.agent.ask(topic="math_tutor",
+                                              content="Generate the first 20 fibbonaci numbers with code.")
+            self.assertIsNotNone(generated_result)
+            print(generated_result)
+        finally:
+            self.agent.remove_functions()
+            print(self.agent.tools)
+
     def test_chat_with_retrieval(self):
         file = gpt.llm.files.create(
             file=open(
@@ -99,7 +111,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             purpose="assistants",
         )
         try:
-            self.agent.register_retrieval_tool()
+            self.agent.register_retrieval()
             self.agent.register_file_id(file.id)
 
 
@@ -109,7 +121,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             print(generated_result)
         finally:
             self.agent.remove_file_id(file.id)
-            self.agent.remove_retrieval_tool()
+            self.agent.remove_retrieval()
             gpt.llm.files.delete(file.id)
 
 
