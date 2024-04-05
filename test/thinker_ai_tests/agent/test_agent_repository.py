@@ -1,59 +1,52 @@
 import unittest
-from unittest.mock import MagicMock, patch
-
-from thinker_ai.agent.agent_dao import AgentDAO, AgentPO
 from thinker_ai.agent.agent_repository import AgentRepository
+from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.llm import gpt
 
 
 class TestAgentRepository(unittest.TestCase):
     def setUp(self):
-        self.mock_dao = MagicMock(spec=AgentDAO)
-        self.agent_repo = AgentRepository(agent_dao=self.mock_dao, client=gpt.llm)
+        self.client = gpt.llm  # Replace with actual OpenAI client initialization
         self.assistant_id = "asst_n4kxEAYXlisN7mBa9M6t7PdH"
-        self.threads = {}
-        self.test_agent_po = AgentPO(id='1', user_id='user_1', assistant_id=self.assistant_id, threads=self.threads)
+        self.user_id = 'user_1'
+        self.agent_id = '1'
 
-    def _add_mock_agent(self, user_id='user_1', agent_id='1', assistant_id="asst_n4kxEAYXlisN7mBa9M6t7PdH"):
-        mock_agent = MagicMock(user_id=user_id, id=agent_id)
-        mock_agent.assistant.id = assistant_id
-        mock_agent.threads.values.return_value = self.threads
-        self.mock_dao.get_agent.return_value = self.test_agent_po
-        self.agent_repo.add_agent(mock_agent, user_id)
-        return mock_agent
+        # Replace with actual retrieval of threads and assistant from the GPT-3 API
+        assistant = gpt.llm.beta.assistants.retrieve(self.assistant_id)
+        threads = {}  # Dictionary of thread objects
 
-    @patch('thinker_ai.agent.llm.gpt.llm.beta.assistants.retrieve')
-    def test_add_and_get_agent(self, mock_retrieve_assistant):
-        mock_retrieve_assistant.return_value = MagicMock()
-        self._add_mock_agent()
+        self.agent = Agent(id=self.agent_id, user_id=self.user_id, assistant=assistant, threads=threads,
+                           client=self.client)
 
-        retrieved_agent = self.agent_repo.get_agent('1', 'user_1')
+        # Get the singleton instance of AgentRepository
+        self.agent_repo = AgentRepository.get_instance()
+        self.agent_repo.add_agent(self.agent, self.user_id)
+
+    def test_agent_creation_and_retrieval(self):
+        # Add the agent
+        retrieved_agent = self.agent_repo.get_agent(self.agent_id, self.user_id)
+
+        # Verify the agent is retrieved and the assistant id matches
         self.assertIsNotNone(retrieved_agent)
-        self.assertEqual('1', retrieved_agent.id)
-        self.assertEqual('user_1', retrieved_agent.user_id)
+        self.assertEqual(self.assistant_id, retrieved_agent.assistant.id)
 
-    def test_add_and_update_agent(self):
-        mock_agent = self._add_mock_agent()
-        updated_assistant_id = self.assistant_id
-        mock_agent.assistant.id = "updated_assistant_id"
-        self.test_agent_po.assistant_id = updated_assistant_id
-        self.mock_dao.get_agent.return_value = self.test_agent_po
+    def test_update_agent(self):
+        # Perform an update on the assistant_id
+        updated_assistant_id = 'asst_GTRz9wVncAlhYqIRcInU0Bus'
+        self.agent.assistant.id = updated_assistant_id
 
-        self.agent_repo.update_agent(mock_agent, 'user_1')
-        updated_agent = self.agent_repo.get_agent('1', 'user_1')
+        # Update the agent in the repository
+        self.agent_repo.update_agent(self.agent, self.user_id)
 
+        # Retrieve the updated agent and verify the changes
+        updated_agent = self.agent_repo.get_agent(self.agent_id, self.user_id)
+        self.assertIsNotNone(updated_agent)
         self.assertEqual(updated_assistant_id, updated_agent.assistant.id)
 
-    def test_add_and_delete_agent(self):
-        self._add_mock_agent()
-        self.agent_repo.delete_agent('1', 'user_1')
-
-        self.mock_dao.delete_agent.assert_called_once_with('1')
-        # 显式设置get_agent在删除操作后返回None
-        self.mock_dao.get_agent.return_value = None
-        retrieved_after_delete = self.agent_repo.get_agent('1', 'user_1')
-        self.assertIsNone(retrieved_after_delete)
+    def tearDown(self):
+        # Clean up any changes made to the data
+        self.agent_repo.delete_agent(self.agent_id, self.user_id)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

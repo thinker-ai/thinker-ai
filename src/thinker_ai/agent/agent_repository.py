@@ -1,19 +1,32 @@
 from threading import Lock
-from typing import Optional
+from typing import Optional, List
 
 from openai import OpenAI
 
 from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.agent_dao import AgentDAO, ThreadPO, AgentPO
 from thinker_ai.agent.llm import gpt
+from thinker_ai.context import get_project_root
 from thinker_ai.utils.singleton_meta import SingletonMeta
 
 
 class AgentRepository(metaclass=SingletonMeta):
-    def __init__(self, agent_dao: AgentDAO, client: OpenAI):
-        self.agent_dao = agent_dao
-        self.client = client
-        self._lock = Lock()
+    _instance = None
+
+    @classmethod
+    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.json') -> "AgentRepository":
+        if not cls._instance:
+            cls._instance = cls(filepath)
+        return cls._instance
+
+    def __init__(self, filepath: str):
+        if not AgentRepository._instance:
+            self.agent_dao = AgentDAO.get_instance(filepath)
+            self.client = gpt.llm
+            self._lock = Lock()
+            AgentRepository._instance = self
+        else:
+            raise Exception("Attempting to instantiate a singleton class.")
 
     def _agent_to_po(self, agent: Agent) -> AgentPO:
         threads_po = [ThreadPO(name=thread.name, thread_id=thread.id) for thread in agent.threads.values()]
@@ -38,6 +51,10 @@ class AgentRepository(metaclass=SingletonMeta):
                 return self._po_to_agent(agent_po)
             return None
 
+    def get_my_agent_ids(self, user_id) -> List[str]:
+        with self._lock:
+            return self.agent_dao.get_my_agent_ids(user_id)
+
     def update_agent(self, agent: Agent, user_id: str):
         if agent.user_id != user_id:
             raise PermissionError("Cannot update an agent for another user.")
@@ -50,3 +67,7 @@ class AgentRepository(metaclass=SingletonMeta):
             raise PermissionError("Cannot delete an agent for another user.")
         with self._lock:
             self.agent_dao.delete_agent(agent_id)
+
+    @classmethod
+    def reset_instance(cls):
+        cls._instance = None

@@ -2,17 +2,18 @@ from __future__ import annotations
 
 import json
 import time
-from typing import List, Any, Dict, Callable, Optional, Type, Union, Iterable, Literal
+from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
 
 from langchain_core.tools import BaseTool
 from openai import OpenAI
 from openai.pagination import SyncCursorPage
 from openai.types.beta import Thread, CodeInterpreterTool, RetrievalTool
 from openai.types.beta.assistant import Assistant
-from openai.types.beta.threads import Message, Text, TextDelta, Run
+from openai.types.beta.threads import Message, Text, Run
 from pydantic import BaseModel
 
 from thinker_ai.agent.functions.functions_register import FunctionsRegister
+from thinker_ai.agent.llm.embeddings import get_most_similar_strings
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.utils.common import show_json
 
@@ -33,7 +34,6 @@ class Agent:
     functions_register = FunctionsRegister()
 
     def __init__(self, id: str, user_id: str, assistant: Assistant, threads: Dict[str, Thread], client: OpenAI):
-
         self.id = id
         self.client = client
         self.user_id = user_id
@@ -52,11 +52,11 @@ class Agent:
     def file_ids(self) -> List[str]:
         return self.assistant.file_ids
 
-    def set_instructions(self, instructions:str):
+    def set_instructions(self, instructions: str):
         self.client.beta.assistants.update(self.assistant.id, instructions=instructions)
 
     def register_file_id(self, file_id: str):
-        file_ids=self.assistant.file_ids
+        file_ids = self.assistant.file_ids
         for exist_file_id in file_ids:
             if exist_file_id == file_id:
                 return
@@ -64,7 +64,7 @@ class Agent:
         self.assistant = self.client.beta.assistants.update(self.assistant.id, file_ids=file_ids)
 
     def remove_file_id(self, file_id: str):
-        file_ids=self.assistant.file_ids
+        file_ids = self.assistant.file_ids
         for exist_file_id in file_ids:
             if exist_file_id == file_id:
                 file_ids.remove(exist_file_id)
@@ -95,7 +95,7 @@ class Agent:
         show_json(messages)
         return messages
 
-    def _print_step_details(self, run, thread_id:str):
+    def _print_step_details(self, run, thread_id: str):
         run_steps = self.client.beta.threads.runs.steps.list(
             thread_id=thread_id, run_id=run.id, order="asc"
         )
@@ -115,8 +115,8 @@ class Agent:
 
     def _execute_function(self, run, thread_id):
         if run.status == "requires_action":
-            tool_calls:List=run.required_action.submit_tool_outputs.tool_calls
-            tool_outputs:List[Dict]=[]
+            tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
+            tool_outputs: List[Dict] = []
             for tool_call in tool_calls:
                 function_call = FunctionCall(name=tool_call.function.name,
                                              arguments=json.loads(tool_call.function.arguments))
@@ -127,9 +127,9 @@ class Agent:
                     raise Exception(f"function {function_call.name} not found")
                 result = function.invoke(function_call.arguments)
                 tool_outputs.append({
-                        "tool_call_id": tool_call.id,
-                        "output": json.dumps(result),
-                    })
+                    "tool_call_id": tool_call.id,
+                    "output": json.dumps(result),
+                })
             run = self.client.beta.threads.runs.submit_tool_outputs(
                 thread_id=thread_id,
                 run_id=run.id,
@@ -217,7 +217,7 @@ class Agent:
         tools.append(native_tool)
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
-    def _remove_native_tool(self, tool_type: Literal["code_interpreter","retrieval"]):
+    def _remove_native_tool(self, tool_type: Literal["code_interpreter", "retrieval"]):
         tools = self.assistant.tools
         tools = [tool for tool in tools if tool.type != tool_type]
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
@@ -251,3 +251,11 @@ class Agent:
         tools = self.assistant.tools
         tools = [tool for tool in tools if tool.type != "function"]
         self.assistant = self.client.beta.assistants.update(self.assistant.id, tools=tools)
+
+    def get_most_similar_strings(self,
+                                 source_strings: List[str],
+                                 compare_string: str,
+                                 k: int = 1,
+                                 embedding_model="text-embedding-3-small",
+                                 ) -> List[str]:
+        return get_most_similar_strings(source_strings, compare_string, k, embedding_model)

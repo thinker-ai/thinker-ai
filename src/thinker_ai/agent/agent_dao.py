@@ -2,6 +2,7 @@ import json
 from threading import Lock
 from typing import List, Optional
 
+from thinker_ai.context import get_project_root
 from thinker_ai.utils.serializable import Serializable
 from thinker_ai.utils.singleton_meta import SingletonMeta
 
@@ -19,10 +20,23 @@ class AgentPO(Serializable):
 
 
 class AgentDAO(metaclass=SingletonMeta):
-    def __init__(self, filepath: str = 'agents.json'):
-        self.filepath = filepath
-        self._lock = Lock()
-        self._load_agents()
+    _instance = None
+
+    def __init__(self, filepath: str):
+        # This ensures that initialization happens only once
+        if not AgentDAO._instance:
+            self.filepath = filepath or get_project_root() / 'data/agents.json'
+            self._lock = Lock()
+            self._load_agents()
+
+    @classmethod
+    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.json') -> "AgentDAO":
+        """
+        The factory method for getting the singleton instance.
+        """
+        if not cls._instance:
+            cls._instance = cls(filepath)
+        return cls._instance
 
     def _load_agents(self):
         try:
@@ -60,3 +74,11 @@ class AgentDAO(metaclass=SingletonMeta):
         with self._lock:
             self.agents = [agent for agent in self.agents if agent['id'] != agent_id]
             self._save()
+
+    def get_my_agent_ids(self, user_id) -> List[str]:
+        with self._lock:
+            result: List[str] = []
+            for agent_dict in self.agents:
+                if agent_dict['user_id'] == user_id:
+                    result.append(agent_dict['id'])
+            return result

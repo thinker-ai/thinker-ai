@@ -6,3 +6,4 @@
 /test/my-image.png
 /test/test.md
 /test/Thumbs.db
+/data/embeddings_cache.pkl

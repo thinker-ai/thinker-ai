@@ -109,7 +109,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
     def test_chat_with_retrieval(self):
         file = gpt.llm.files.create(
             file=open(
-                get_project_root() / "test/thinker_ai_tests/data/diy_llm.pdf",
+                "data/diy_llm.pdf",
                 "rb",
             ),
             purpose="assistants",

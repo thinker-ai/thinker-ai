@@ -43,7 +43,7 @@ class MainTest(unittest.TestCase):
         self.assertIsNone(agent)
 
     def test_del_file(self):
-        file_dir = "../test.md"
+        file_dir = "data/test.md"
         file_id = upload_file(file_dir)
         deleted = delete_file(file_id)
         self.assertTrue(deleted)

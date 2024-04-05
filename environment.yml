@@ -38,3 +38,8 @@ dependencies:
     - email-validator
     - ipython
     - deepdiff
+    - scikit-learn
+    - matplotlib
+    - plotly
+    - pandas
+    - kaleido
