@@ -85,6 +85,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             generated_result = self.agent.ask(topic="quiz",
                                               content="Make a quiz with 2 questions: One open ended, one multiple choice. Then, give me feedback for the responses.")
             self.assertIsNotNone(generated_result)
+            self.assertIsNotNone(generated_result[0].get("text"))
             print(generated_result)
         finally:
             self.agent.remove_functions()
@@ -95,8 +96,11 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             self.agent.set_instructions("You are a personal math tutor. Answer questions briefly, in a sentence or less.")
             self.agent.register_code_interpreter()
             generated_result = self.agent.ask(topic="math_tutor",
-                                              content="Generate the first 20 fibbonaci numbers with code.")
+                                              content="请解释线性代数中基本概念，结合图形输出进行讲解")
             self.assertIsNotNone(generated_result)
+            self.assertIsNotNone(generated_result[0].get("text"))
+            self.assertIsNotNone(generated_result[1].get("image_file"))
+            self.assertIsNotNone(generated_result[2].get("text"))
             print(generated_result)
         finally:
             self.agent.remove_functions()
@@ -118,6 +122,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             generated_result = self.agent.ask(topic="file",
                                               content="解释知识库中的内容包含了什么")
             self.assertIsNotNone(generated_result)
+            self.assertIsNotNone(generated_result[0].get("text"))
             print(generated_result)
         finally:
             self.agent.remove_file_id(file.id)

@@ -80,11 +80,11 @@ class Agent:
             if message.role == "user":
                 continue
             for content in message.content:
-                result:Dict={}
+                result: Dict = {}
                 if content.type == "text":
-                    result["text"] = self._do_with_text_result(message.content[0].text)
+                    result["text"] = self._do_with_text_result(content.text)
                 if content.type == "image_file":
-                    result["image_file"] = self._do_with_image_result(message.content[0].image_file)
+                    result["image_file"] = self._do_with_image_result(content.image_file)
                 results.append(result)
         return results
 
