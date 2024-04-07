@@ -1,16 +1,19 @@
 import pickle
 import textwrap as tr
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 import matplotlib.pyplot as plt
 import plotly.express as px
 from scipy import spatial
 from sklearn.decomposition import PCA
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.exceptions import NotFittedError
 from sklearn.manifold import TSNE
-from sklearn.metrics import average_precision_score, precision_recall_curve
+from sklearn.metrics import average_precision_score, precision_recall_curve, accuracy_score, f1_score
 
 import numpy as np
 import pandas as pd
+from sklearn.model_selection import train_test_split
 
 from thinker_ai.agent.llm import gpt
 from thinker_ai.context import get_project_root
@@ -18,7 +21,7 @@ from thinker_ai.context import get_project_root
 client = gpt.llm
 
 
-def get_embedding(text: str, model="text-embedding-3-small", **kwargs) -> List[float]:
+def get_embedding_without_cache(text: str, model="text-embedding-3-small", **kwargs) -> List[float]:
     # replace newlines, which can negatively affect performance.
     text = text.replace("\n", " ")
 
@@ -64,8 +67,36 @@ async def aget_embeddings(
     return [d.embedding for d in data]
 
 
-def cosine_similarity(a, b):
+def cosine_similarity(a: List[float], b: List[float]):
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
+
+
+def cosine_similarity_np(compare_embedding_np, embeddings_np):
+    dot_products = np.dot(embeddings_np, compare_embedding_np)
+    norms = np.linalg.norm(embeddings_np, axis=1) * np.linalg.norm(compare_embedding_np)
+    similarities = dot_products / norms
+    return similarities
+
+
+def sorted_by_similar_np(compare_embedding: List[float], embeddings: List[List[float]], desc: bool = True) -> List[
+    Tuple[List[float], float]]:
+    compare_embedding_np = np.array(compare_embedding)
+    embeddings_np = np.array(embeddings)
+
+    # 向量化计算余弦相似度
+    similarities = cosine_similarity_np(compare_embedding_np, embeddings_np)
+
+    # 获取排序后的索引
+    sorted_indices = np.argsort(similarities)[::-1] if desc else np.argsort(similarities)
+
+    # 根据索引排序嵌入向量和相似度
+    sorted_embeddings = embeddings_np[sorted_indices]
+    sorted_similarities = similarities[sorted_indices]
+
+    # 将排序后的嵌入向量和相应的余弦相似度打包成元组列表返回
+    sorted_results = list(zip(sorted_embeddings.tolist(), sorted_similarities))
+
+    return sorted_results
 
 
 def plot_multiclass_precision_recall(
@@ -159,7 +190,6 @@ def distances_from_embeddings(
 def indices_of_nearest_neighbors_from_distances(distances) -> np.ndarray:
     """Return a list of indices of nearest neighbors from a list of distances."""
     return np.argsort(distances)
-
 
 def pca_components_from_embeddings(
         embeddings: List[List[float]], n_components=2
@@ -262,12 +292,12 @@ except FileNotFoundError:
 
 
 # define a function to retrieve embeddings from the cache if present, and otherwise request via the API
-def embedding_from_string(string: str,
-                          embedding_model="text-embedding-3-small",
-                          ) -> list:
+def get_embedding_with_cache(string: str,
+                             embedding_model="text-embedding-3-small",
+                             ) -> list:
     """Return embedding of given string, using a cache to avoid recomputing."""
     if (string, embedding_model) not in embedding_cache.keys():
-        embedding_cache[(string, embedding_model)] = get_embedding(string, embedding_model)
+        embedding_cache[(string, embedding_model)] = get_embedding_without_cache(string, embedding_model)
         with open(embedding_cache_path, "wb") as embedding_cache_file:
             pickle.dump(embedding_cache, embedding_cache_file)
     return embedding_cache[(string, embedding_model)]
@@ -277,7 +307,7 @@ def get_most_similar_strings_by_index(source_strings: List[str],
                                       compare_string_index: int,
                                       k: int = 1,
                                       embedding_model="text-embedding-3-small",
-                                      ) -> List[str]:
+                                      ) -> List[Tuple[str, float]]:
     return get_most_similar_strings(source_strings, source_strings[compare_string_index], k, embedding_model)
 
 
@@ -285,40 +315,163 @@ def get_most_similar_strings(source_strings: List[str],
                              compare_string: str,
                              k: int = 1,
                              embedding_model="text-embedding-3-small",
-                             ) -> List[str]:
-    """Print out the k nearest neighbors of a given string."""
-    # get the embedding of the query embedding
-    compare_embedding = embedding_from_string(compare_string, embedding_model=embedding_model)
+                             ) -> List[Tuple[str, float]]:
+    """Return the k nearest neighbors of a given string, along with their cosine similarities."""
+    # Get the embedding of the compare string
+    compare_embedding = get_embedding_with_cache(compare_string, embedding_model=embedding_model)
 
-    # get embeddings for all strings
-    source_embeddings = [embedding_from_string(source_string, embedding_model=embedding_model) for source_string in
+    # Get embeddings for all source strings
+    source_embeddings = [get_embedding_with_cache(source_string, embedding_model=embedding_model) for source_string in
                          source_strings]
 
-    # get distances between the query embedding and other embeddings
-    distances = distances_from_embeddings(compare_embedding, source_embeddings, distance_metric="cosine")
+    # Use sorted_by_similar_np to get sorted embeddings and their similarities
+    sorted_results = sorted_by_similar_np(compare_embedding, source_embeddings, desc=True)
 
-    # get indices of nearest neighbors
-    indices_of_nearest_neighbors = indices_of_nearest_neighbors_from_distances(distances)
+    # Print and collect the k most similar strings and their similarities
+    similar_strings_with_similarity: List[Tuple[str, float]] = []
+    k_counter = 0  # Initialize a counter for tracking how many similar strings have been processed
 
-    print(f"Source string: {compare_string}")
-    # print out its k similar strings
-    k_counter = 0
-    similar_strings: List[str] = []
-    for i in indices_of_nearest_neighbors:
-        # skip any strings that are identical matches to the starting string
-        if compare_string == source_strings[i]:
+    for i, (sorted_embedding, similarity) in enumerate(sorted_results):
+        # Find the original string corresponding to the sorted embedding
+        original_index = source_embeddings.index(sorted_embedding)
+        original_string = source_strings[original_index]
+
+        # Skip the compare string itself
+        if original_string == compare_string:
             continue
-        # stop after printing out k articles
+
+        # Limit to the top k similar strings
         if k_counter >= k:
             break
-        k_counter += 1
-        similar_strings.append(source_strings[i])
-        # print out the similar strings and their distances
-        print(
-            f"""
-        --- Recommendation #{k_counter} (nearest neighbor {k_counter} of {k}) ---
-        String: {source_strings[i]}
-        Distance: {distances[i]:0.3f}"""
-        )
 
-    return similar_strings
+        # Print out the similar strings and their similarities
+        print(f"""
+        --- Recommendation #{k_counter + 1} (nearest neighbor {k_counter + 1} of {k}) ---
+        String: {original_string}
+        Similarity: {similarity:.3f}
+        """)
+
+        similar_strings_with_similarity.append((original_string, similarity))
+        k_counter += 1
+
+    return similar_strings_with_similarity
+
+
+def predict_with_zero_shot(
+        to_predict_texts: List[str],
+        labels_for: List[str],
+        embedding_model: str = "text-embedding-3-small",
+        confidence_threshold: float = 0.0,
+) -> pd.DataFrame:
+    """
+    使用零样本学习对文本进行分类。
+
+    参数:
+    - to_classify_texts: 待分类的文本列表。
+    - classify_labels: 分类标签列表。
+    - embedding_model: 使用的嵌入模型名称。
+    - quality_threshold: 置信度阈值。
+
+    返回:
+    - 一个DataFrame，包含每个文本的预测标签和置信度。
+    """
+
+    # 获取标签的嵌入向量
+    label_embeddings = [get_embedding_with_cache(label, embedding_model) for label in labels_for]
+
+    predictions = []
+    confidences = []
+
+    for text in to_predict_texts:
+        # 获取待分类文本的嵌入向量
+        text_embedding = get_embedding_with_cache(text, embedding_model)
+
+        # 计算文本嵌入向量与每个标签嵌入向量的相似度
+        similarities = [
+            np.dot(text_embedding, label_embedding) / (np.linalg.norm(text_embedding) * np.linalg.norm(label_embedding))
+            for label_embedding in label_embeddings]
+
+        # 选择相似度最高的标签作为预测结果
+        max_similarity_index = np.argmax(similarities)
+        prediction = labels_for[max_similarity_index]
+        confidence = similarities[max_similarity_index]
+
+        # 只有在置信度超过阈值时才接受预测
+        if confidence >= confidence_threshold:
+            predictions.append(prediction)
+            confidences.append(confidence)
+        else:
+            predictions.append("uncertain")
+            confidences.append(confidence)
+
+    # 创建包含预测结果的DataFrame
+    results_df = pd.DataFrame({
+        'text': to_predict_texts,
+        'predicted_label': predictions,
+        'confidence': confidences
+    })
+
+    return results_df
+
+
+def predict_with_sample(
+        samples_df: pd.DataFrame,
+        samples_target_col: str,
+        to_predict_texts: List[str],
+        embedding_model_name: str = "text-embedding-3-small",
+        quality_threshold: float = 0.5,
+)->pd.DataFrame:
+    """
+    带有预测质量检查的通用预测方法
+
+    参数:
+    - samples_df: DataFrame，包含特征和目标列。
+    - samples_target_col: 目标列的名称。
+    - to_predict_texts: 待预测的文本列表。
+    - embedding_model_name: 使用的嵌入模型名称。
+    - prediction_model: 用于预测的模型实例。
+    - quality_threshold: 预测质量的阈值。
+
+    返回:
+    - 包含预测结果的DataFrame，包含每个预测数据的置信度信息。
+
+    抛出:
+    - ValueError: 如果模型的预测质量未达到预设阈值。
+    """
+
+    # 生成训练和测试数据嵌入向量
+    samples_df['embedding'] = samples_df['text_column'].apply(
+        lambda x: get_embedding_with_cache(x, embedding_model_name))
+    X = np.array(samples_df['embedding'].tolist())
+    y = samples_df[samples_target_col].values
+
+    # 分割训练集和测试集
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # 初始化并训练模型
+    prediction_model = RandomForestClassifier(random_state=42)
+    prediction_model.fit(X_train, y_train)
+
+    # 验证模型质量
+    preds_test = prediction_model.predict(X_test)
+    quality = f1_score(y_test, preds_test, average='macro')
+    if quality < quality_threshold:
+        raise ValueError(f"Model quality below threshold: {quality} < {quality_threshold}")
+
+    # 对待预测文本生成嵌入向量并预测
+    to_predict_embeddings = np.array(
+        [get_embedding_with_cache(text, embedding_model_name) for text in to_predict_texts])
+    probas = prediction_model.predict_proba(to_predict_embeddings)
+
+    # 最可能的类别和相应的置信度
+    preds = np.argmax(probas, axis=1)
+    confidences = np.max(probas, axis=1)
+
+    # 创建包含预测结果和置信度的DataFrame
+    results_df = pd.DataFrame({
+        'text': to_predict_texts,
+        'predicted': [prediction_model.classes_[i] for i in preds],  # 将索引转换为类别标签
+        'confidence': confidences
+    })
+
+    return results_df

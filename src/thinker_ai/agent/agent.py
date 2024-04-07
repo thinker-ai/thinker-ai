@@ -13,6 +13,7 @@ from openai.types.beta.threads import Message, Text, Run
 from pydantic import BaseModel
 
 from thinker_ai.agent.functions.functions_register import FunctionsRegister
+from thinker_ai.agent.llm import gpt
 from thinker_ai.agent.llm.embeddings import get_most_similar_strings
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.utils.common import show_json
@@ -258,4 +259,13 @@ class Agent:
                                  k: int = 1,
                                  embedding_model="text-embedding-3-small",
                                  ) -> List[str]:
+        return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
+
+    def get_most_similar_from_file(self,
+                                 file_id:str,
+                                 compare_string: str,
+                                 k: int = 1,
+                                 embedding_model="text-embedding-3-small",
+                                 ) -> List[str]:
+        source_strings = gpt.llm.files.retrieve(file_id)
         return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
