@@ -43,3 +43,4 @@ dependencies:
     - plotly
     - pandas
     - kaleido
+    - mlxtend

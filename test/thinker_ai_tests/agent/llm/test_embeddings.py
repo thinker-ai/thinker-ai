@@ -1,6 +1,7 @@
 from typing import Optional
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,7 @@ from sklearn.metrics import f1_score
 
 from thinker_ai.agent.llm.embeddings import get_most_similar_strings_by_index, get_embedding_with_cache, \
     tsne_components_from_embeddings, chart_from_components, plot_multiclass_precision_recall, \
-    predict_with_zero_shot, predict_with_sample
+    predict_with_zero_shot, predict_with_sample,extract_cluster_relationships_from_raw_data
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
@@ -136,7 +137,7 @@ class TestEmbeddingFunctions(unittest.TestCase):
         """
         # 模拟数据
         samples_data = {
-            'text_column':semantic_text,
+            'text_column': semantic_text,
             'Semantic': semantic_values
         }
         samples_df = pd.DataFrame(samples_data)
@@ -201,6 +202,7 @@ class TestEmbeddingFunctions(unittest.TestCase):
         f1 = f1_score(expected_labels, results_df['predicted'].tolist(), average='macro')
         # 检查F1分数是否达到预期水平
         self.assertGreater(f1, 0.9, "F1分数未达到预期水平")
+
 
 
 if __name__ == "__main__":

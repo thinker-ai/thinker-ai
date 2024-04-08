@@ -1,15 +1,17 @@
 import pickle
 import textwrap as tr
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any
 
 import matplotlib.pyplot as plt
 import plotly.express as px
 from scipy import spatial
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.exceptions import NotFittedError
+from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.manifold import TSNE
-from sklearn.metrics import average_precision_score, precision_recall_curve, accuracy_score, f1_score
+from sklearn.metrics import average_precision_score, precision_recall_curve, accuracy_score, f1_score, silhouette_score
 
 import numpy as np
 import pandas as pd
@@ -17,6 +19,10 @@ from sklearn.model_selection import train_test_split
 
 from thinker_ai.agent.llm import gpt
 from thinker_ai.context import get_project_root
+from typing import List
+import pandas as pd
+from mlxtend.frequent_patterns import apriori, association_rules
+from mlxtend.preprocessing import TransactionEncoder
 
 client = gpt.llm
 
@@ -294,7 +300,7 @@ except FileNotFoundError:
 # define a function to retrieve embeddings from the cache if present, and otherwise request via the API
 def get_embedding_with_cache(string: str,
                              embedding_model="text-embedding-3-small",
-                             ) -> list:
+                             ) -> List[float]:
     """Return embedding of given string, using a cache to avoid recomputing."""
     if (string, embedding_model) not in embedding_cache.keys():
         embedding_cache[(string, embedding_model)] = get_embedding_without_cache(string, embedding_model)
