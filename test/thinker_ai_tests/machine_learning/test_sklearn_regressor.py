@@ -26,8 +26,6 @@ class TestSklearnRegressor(unittest.TestCase):
         score_noise = regress(self.days, self.y_linear_noise, LinearRegression())
         self.assertGreaterEqual(score_noise, 0.8, "Linear regression should fit well to linear data with noise")
 
-
-
     def test_ridge_regression(self):
         # 岭回归 - 不带噪声
         score = regress(self.days, self.y_poly, Ridge(alpha=0.5))

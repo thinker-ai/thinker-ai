@@ -26,12 +26,7 @@ class Predictor:
     def fit(self, X, y):
         # Check if the model requires 'epochs' and 'verbose'
         if 'model' in self.pipeline.named_steps and hasattr(self.pipeline.named_steps['model'], 'fit'):
-            model_step = self.pipeline.named_steps['model']
-            if 'epochs' in inspect.signature(model_step.fit).parameters:
-                X_scaled = self.pipeline.named_steps['scaler'].fit_transform(X)
-                model_step.fit(X_scaled, y, epochs=200, verbose=0)
-            else:
-                self.pipeline.fit(X, y)
+            self.pipeline.fit(X, y)
         else:
             self.pipeline.fit(X, y)
 
