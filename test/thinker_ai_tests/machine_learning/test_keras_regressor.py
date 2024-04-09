@@ -15,12 +15,12 @@ class TestKerasRegressor(unittest.TestCase):
         # 数据带噪声
         self.y_noise = self.y + np.random.normal(0, 20, size=self.X.shape[0])
 
-    def test_regression(self):
+    def test_regress(self):
         score = regress(self.X, self.y, build_keras_model, epochs=200)
         print(f"Keras Model, R^2 Score: {score:.3f}")
         self.assertGreaterEqual(score, 0.8, "Keras model should fit the data well")
 
-    def test_regression_with_noise(self):
+    def test_regress_with_noise(self):
         score_noise = regress(self.X, self.y_noise, build_keras_model, epochs=200)
         print(f"Keras Model, R^2 Score: {score_noise:.3f}")
         self.assertGreaterEqual(score_noise, 0.8, "Keras model should fit the data well")
