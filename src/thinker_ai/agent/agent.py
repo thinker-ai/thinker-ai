@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
+from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal, Tuple
 
 from langchain_core.tools import BaseTool
 from openai import OpenAI
@@ -258,7 +258,7 @@ class Agent:
                                  compare_string: str,
                                  k: int = 1,
                                  embedding_model="text-embedding-3-small",
-                                 ) -> List[str]:
+                                 ) -> list[tuple[str, float]]:
         return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
 
     def get_most_similar_from_file(self,
@@ -266,6 +266,6 @@ class Agent:
                                  compare_string: str,
                                  k: int = 1,
                                  embedding_model="text-embedding-3-small",
-                                 ) -> List[str]:
+                                 ) -> list[tuple[str, float]]:
         source_strings = gpt.llm.files.retrieve(file_id)
         return get_most_similar_strings(source_strings, compare_string, k, embedding_model)

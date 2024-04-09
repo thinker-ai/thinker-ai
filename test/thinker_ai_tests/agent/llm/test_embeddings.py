@@ -1,17 +1,19 @@
 from typing import Optional
 
 import unittest
-from unittest.mock import patch
+import seaborn as sns
 
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
 from plotly.graph_objs import Figure
 from sklearn.metrics import f1_score
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import r2_score
 
 from thinker_ai.agent.llm.embeddings import get_most_similar_strings_by_index, get_embedding_with_cache, \
     tsne_components_from_embeddings, chart_from_components, plot_multiclass_precision_recall, \
-    predict_with_zero_shot, predict_with_sample,extract_cluster_relationships_from_raw_data
+    predict_with_zero_shot, predict_with_sample, calculate_percentile_cosine_similarity
 
 EMBEDDING_MODEL = "text-embedding-3-small"
 
@@ -29,6 +31,17 @@ semantic_values = [
     'negative', 'positive', 'negative', 'positive',
     'negative', 'positive', 'negative', 'negative'
 ]
+
+
+# 定义一个函数来进行线性回归分析
+def perform_linear_regression(data, predictor, response):
+    model = LinearRegression()
+    X = data[predictor].values.reshape(-1, 1)  # Predictor
+    y = data[response].values  # Response
+    model.fit(X, y)
+    prediction = model.predict(X)
+    r_squared = r2_score(y, prediction)
+    return model.coef_[0], model.intercept_, r_squared
 
 
 class TestEmbeddingFunctions(unittest.TestCase):
@@ -203,6 +216,34 @@ class TestEmbeddingFunctions(unittest.TestCase):
         # 检查F1分数是否达到预期水平
         self.assertGreater(f1, 0.9, "F1分数未达到预期水平")
 
+    def test_calculate_percentile_cosine_similarity(self):
+        data = pd.DataFrame({
+            'ProductFeature': ['Advanced GPS', 'Longer battery life', 'High resolution camera', 'Waterproof'],
+            'ProductFault': ['Screen issues', 'Overheating', 'Camera malfunction', 'Battery drain'],
+            'CustomerSatisfaction': ['Very satisfied', 'Somewhat satisfied', 'Dissatisfied', 'Neutral'],
+            'EnvironmentalIndex': ['High CO2 emissions', 'Renewable energy usage', 'Low waste production',
+                                   'High pollution levels']
+        })
+
+        # Define the categories to calculate similarity on
+        categories = ['ProductFeature', 'ProductFault', 'CustomerSatisfaction', 'EnvironmentalIndex']
+
+        # Calculate the cosine similarity percentile rank
+        similarity_df = calculate_percentile_cosine_similarity(data, categories)
+        similarity_df_sorted = similarity_df.sort_values('Percentile_Rank', ascending=False)
+        # Plotting the cosine similarity percentile rank
+        plt.figure(figsize=(14, 7))
+        sns.barplot(
+            x='Percentile_Rank',
+            y='Category_Pair',
+            data=similarity_df_sorted,
+            orient='h'
+        )
+        plt.title('Percentile Cosine Similarity Between Categories')
+        plt.xlabel('Percentile Rank of Cosine Similarity')
+        plt.ylabel('Category Pairs')
+        plt.tight_layout()
+        plt.show()
 
 
 if __name__ == "__main__":

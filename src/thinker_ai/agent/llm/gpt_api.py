@@ -3,11 +3,15 @@ from __future__ import annotations
 import asyncio
 import json
 import time
-from typing import Optional, List, Dict, Union, Any, Callable, Type
+from typing import Optional, List, Dict, Union, Any, Callable, Type, Literal
 
 from langchain_core.tools import BaseTool
-from openai import OpenAI, AsyncOpenAI, APIConnectionError, AsyncStream, Stream
+from openai import OpenAI, AsyncOpenAI, APIConnectionError, AsyncStream, Stream, NOT_GIVEN, NotGiven
+from openai.pagination import SyncCursorPage
+from openai.types import FileObject, ModelDeleted
 from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from openai.types.fine_tuning import FineTuningJob, FineTuningJobEvent
+from openai.types.fine_tuning.fine_tuning_job import Hyperparameters
 from pydantic import BaseModel
 from tenacity import retry, stop_after_attempt, after_log, wait_fixed, retry_if_exception_type
 
@@ -153,21 +157,22 @@ class GPT:
         response = await self.a_llm.chat.completions.create(model=model, **kwargs)
         self._cost_manager.update_costs(model, response.usage.dict())
         if kwargs.get("functions") is not None:
-            raise FunctionException("The combination of non-streaming processing and asynchronous calls does not apply to functiion_call")
+            raise FunctionException(
+                "The combination of non-streaming processing and asynchronous calls does not apply to functiion_call")
         else:
             return response
 
     def _chat_completion_stream(self, model: str, prompt: PromptMessage) -> str:
         functions_schema = self.functions_register.functions_schema
-        if functions_schema is None or len(self.functions_register.functions_schema)==0:
+        if functions_schema is None or len(self.functions_register.functions_schema) == 0:
             return self._do_with_normal_stream(model=model, prompt=prompt)
         else:
-            raise FunctionException("The combination of streaming processing and synchronous calls does not apply to functiion_call")
-
+            raise FunctionException(
+                "The combination of streaming processing and synchronous calls does not apply to functiion_call")
 
     async def _a_chat_completion_stream(self, model: str, prompt: PromptMessage) -> str:
         functions_schema = self.functions_register.functions_schema
-        if functions_schema is None or len(self.functions_register.functions_schema)==0:
+        if functions_schema is None or len(self.functions_register.functions_schema) == 0:
             return await self._a_do_with_normal_stream(model, prompt)
         else:
             return await self._a_do_with_function_call_stream(model=model, prompt=prompt)
@@ -180,7 +185,7 @@ class GPT:
         self._cost_manager.update_costs(model, usage)
         return full_reply_content
 
-    async def _a_do_with_normal_stream(self, model, prompt)->str:
+    async def _a_do_with_normal_stream(self, model, prompt) -> str:
         kwargs = self._cons_kwargs(model, prompt.to_dicts(), self.a_llm.timeout)
         response = await self.a_llm.chat.completions.create(model=model, **kwargs, stream=True)
         full_reply_content = await self._a_extract_from_stream_rsp(response)
@@ -188,9 +193,7 @@ class GPT:
         self._cost_manager.update_costs(model, usage)
         return full_reply_content
 
-
-
-    def _extract_from_stream_rsp(self, response:Stream[ChatCompletionChunk])->str:
+    def _extract_from_stream_rsp(self, response: Stream[ChatCompletionChunk]) -> str:
         # create variables to collect the stream of chunks
         collected_chunks = []
         collected_messages = []
@@ -205,8 +208,7 @@ class GPT:
         full_reply_content = "".join([m for m in collected_messages])
         return full_reply_content
 
-
-    async def _a_extract_from_stream_rsp(self, response:AsyncStream[ChatCompletionChunk])->str:
+    async def _a_extract_from_stream_rsp(self, response: AsyncStream[ChatCompletionChunk]) -> str:
         # create variables to collect the stream of chunks
         collected_messages = []
         # iterate through the stream of events
@@ -226,7 +228,6 @@ class GPT:
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
-
     async def _parse_text_to_cls(self, content: str, output_data_mapping: dict, ) -> Any:
         instruct_content = TextParser.parse_data_with_mapping(content, output_data_mapping)
         return instruct_content
@@ -248,7 +249,8 @@ class GPT:
             result = self._call_function(function_call)
             usg_msg = self._build_user_message_for_function_result(model, prompt, result)
             kwargs = self._cons_kwargs(model, PromptMessage(usg_msg).to_dicts(), self.a_llm.timeout)
-            response:AsyncStream[ChatCompletionChunk] = await self.a_llm.chat.completions.create(model=model, **kwargs, stream=True)
+            response: AsyncStream[ChatCompletionChunk] = await self.a_llm.chat.completions.create(model=model, **kwargs,
+                                                                                                  stream=True)
             return await self._a_extract_from_stream_rsp(response)
 
     def _do_with_function_call(self, model: str, prompt: PromptMessage,
@@ -257,7 +259,7 @@ class GPT:
         if function_call:
             result = self._call_function(function_call)
             usg_msg = self._build_user_message_for_function_result(model, prompt, result)
-            kwargs = self._cons_kwargs(model,PromptMessage(usg_msg).to_dicts(), self.a_llm.timeout)
+            kwargs = self._cons_kwargs(model, PromptMessage(usg_msg).to_dicts(), self.a_llm.timeout)
             return self.llm.chat.completions.create(model=model, **kwargs)
 
     async def _a_do_with_function_call(self, model: str, prompt: PromptMessage,
@@ -266,11 +268,11 @@ class GPT:
         if function_call:
             result = self._call_function(function_call)
             usg_msg = self._build_user_message_for_function_result(model, prompt, result)
-            kwargs = self._cons_kwargs(model,PromptMessage(usg_msg).to_dicts(), self.a_llm.timeout)
+            kwargs = self._cons_kwargs(model, PromptMessage(usg_msg).to_dicts(), self.a_llm.timeout)
             return await self.a_llm.chat.completions.create(model=model, **kwargs)
 
-
-    async def _a_parse_function_call_from_steam(self, rsp_with_function_call: AsyncStream[ChatCompletionChunk]) -> FunctionCall:
+    async def _a_parse_function_call_from_steam(self, rsp_with_function_call: AsyncStream[
+        ChatCompletionChunk]) -> FunctionCall:
         name = None
         collected_arguments = []
         # iterate through the stream of events
@@ -281,7 +283,7 @@ class GPT:
                     name = function_call.name
                 collected_arguments.append(function_call.arguments)  # save the message
         print()
-        arguments:str = "".join([m for m in collected_arguments])
+        arguments: str = "".join([m for m in collected_arguments])
         return FunctionCall(name=name, arguments=json.loads(arguments))
 
     def _call_function(self, function_call: FunctionCall) -> Any:
@@ -306,7 +308,7 @@ class GPT:
     def register_langchain_functions(self, tool_names: list[str]):
         self.functions_register.register_langchain_tool_names(tool_names)
 
-    def remove_function(self, name:str):
+    def remove_function(self, name: str):
         self.functions_register.remove_function(name)
 
     async def a_generate_batch(self, model: str, user_msgs: dict[str, str], sys_msg: Optional[str] = None) -> dict[
@@ -320,7 +322,7 @@ class GPT:
         str, ChatCompletion]:
         batch_prompt = {key: PromptMessage(user_msg, sys_msg) for key, user_msg in user_msgs.items()}
         split_batches: list[dict[str, PromptMessage]] = self.rateLimiter.split_batches(batch_prompt)
-        all_results:dict[str, ChatCompletion] = {}
+        all_results: dict[str, ChatCompletion] = {}
         for small_batch in split_batches:
             await self.rateLimiter.wait_if_needed(len(small_batch))
             future_map = {
@@ -332,3 +334,45 @@ class GPT:
             for key, result in zip(future_map.keys(), results):
                 all_results[key] = result
         return all_results
+
+    def upload_file(self, file_dir: str, purpose: Literal["fine-tune", "assistants"]) -> FileObject:
+        file = self.llm.files.create(
+            file=open(file_dir, "rb"),
+            purpose=purpose
+        )
+        return file
+
+    def delete_file(self, file_id: str) -> bool:
+        deleted = self.llm.files.delete(file_id)
+        return deleted.deleted
+
+    def create_fine_tuning(self, model: str, training_file_id: str,hyperparameters:Hyperparameters | NotGiven = NOT_GIVEN) -> FineTuningJob:
+        kwargs = {
+            "training_file": training_file_id,
+            "model": model,
+        }
+        # 如果hyperparameters被明确设置，添加到kwargs字典中
+        if hyperparameters is not NOT_GIVEN:
+            kwargs["hyperparameters"] = hyperparameters
+        # 使用动态参数字典调用方法
+        job = self.llm.fine_tuning.jobs.create(**kwargs)
+        return job
+    def List_fine_tuning_jobs(self, limit=10) -> SyncCursorPage[FineTuningJob]:
+        return self.llm.fine_tuning.jobs.list(limit=limit)
+
+    def retrieve_tuning_job(self, training_file_id: str) -> FineTuningJob:
+        # Retrieve the state of a fine-tune
+        return self.llm.fine_tuning.jobs.retrieve(training_file_id)
+
+    def cancel_tuning_job(self, training_file_id: str) -> FineTuningJob:
+        # Cancel a job
+        return self.llm.fine_tuning.jobs.cancel(training_file_id)
+
+    def list_events_from_fine_tuning_job(self, training_file_id: str, limit=10) -> SyncCursorPage[FineTuningJobEvent]:
+        # list_events_from_fine_tuning_job
+        return self.llm.fine_tuning.jobs.list_events(fine_tuning_job_id=training_file_id, limit=limit)
+
+    def delete_tuning_job(self, fine_tuned_model_id: str) -> bool:
+        # Delete a fine-tuned model (must be an owner of the org the model was created in)
+        modelDeleted: ModelDeleted = self.llm.models.delete(fine_tuned_model_id)
+        return modelDeleted.deleted

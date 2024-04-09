@@ -44,12 +44,6 @@ class MainTest(unittest.TestCase):
         agent = AgentRepository.get_agent(user_id, agent_id)
         self.assertIsNone(agent)
 
-    def test_del_file(self):
-        file_dir = "data/test.md"
-        file_id = upload_file(file_dir)
-        deleted = delete_file(file_id)
-        self.assertTrue(deleted)
-
     def test_ask_for_customer_support(self):
         agent_id = setup_customer_support_agent()
         try:

@@ -21,8 +21,6 @@ from thinker_ai.agent.llm import gpt
 from thinker_ai.context import get_project_root
 from typing import List
 import pandas as pd
-from mlxtend.frequent_patterns import apriori, association_rules
-from mlxtend.preprocessing import TransactionEncoder
 
 client = gpt.llm
 
@@ -73,11 +71,11 @@ async def aget_embeddings(
     return [d.embedding for d in data]
 
 
-def cosine_similarity(a: List[float], b: List[float]):
+def cosine_similarity(a: List[float], b: List[float]) -> float:
     return np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))
 
 
-def cosine_similarity_np(compare_embedding_np, embeddings_np):
+def cosine_similarity_np(compare_embedding_np, embeddings_np) -> float:
     dot_products = np.dot(embeddings_np, compare_embedding_np)
     norms = np.linalg.norm(embeddings_np, axis=1) * np.linalg.norm(compare_embedding_np)
     similarities = dot_products / norms
@@ -196,6 +194,7 @@ def distances_from_embeddings(
 def indices_of_nearest_neighbors_from_distances(distances) -> np.ndarray:
     """Return a list of indices of nearest neighbors from a list of distances."""
     return np.argsort(distances)
+
 
 def pca_components_from_embeddings(
         embeddings: List[List[float]], n_components=2
@@ -426,7 +425,7 @@ def predict_with_sample(
         to_predict_texts: List[str],
         embedding_model_name: str = "text-embedding-3-small",
         quality_threshold: float = 0.5,
-)->pd.DataFrame:
+) -> pd.DataFrame:
     """
     带有预测质量检查的通用预测方法
 
@@ -481,3 +480,38 @@ def predict_with_sample(
     })
 
     return results_df
+
+
+def calculate_percentile_cosine_similarity(data: pd.DataFrame, categories: List[str]) -> pd.DataFrame:
+    # 计算不同聚类之间整体关系的亲疏，注意：这种相似度比较只是关于文本语义的相似度比较，而不是因果关系的概率比较，
+    # 比如在推荐系统中，我们可能想要了解用户的评论文本与产品描述文本之间的语义相似性，或者在客户服务中分析客户反馈
+    # 与已知问题之间的相似度。然而，对于关心不同类别数据之间如何随时间变化而产生互动的情况，我们需要另一种方法，
+    # 另外，目前算法会受不平衡的个体关系的影响较大，必要时要对个体的权重影响进行考量。
+    embeddings = {
+        category: data[category].apply(get_embedding_with_cache).tolist()
+        for category in categories
+    }
+
+    # Calculate cumulative cosine similarity for each unique pair of categories
+    results = []
+    for i, cat1 in enumerate(categories):
+        for cat2 in categories[i + 1:]:
+            # Initialize the cumulative similarity and count
+            cumulative_similarity = 0
+            count = 0
+
+            # Calculate similarity for each element in cat1 to each element in cat2
+            for emb1 in embeddings[cat1]:
+                for emb2 in embeddings[cat2]:
+                    cumulative_similarity += cosine_similarity(emb1, emb2)
+                    count += 1
+
+            # Compute the average similarity for the category pair
+            average_similarity = cumulative_similarity / count if count else 0
+            results.append({'Category_Pair': f'{cat1} & {cat2}', 'Cosine_Similarity': average_similarity})
+
+    # Create a DataFrame from the results
+    similarity_df = pd.DataFrame(results)
+    similarity_df['Percentile_Rank'] = similarity_df['Cosine_Similarity'].rank(pct=True)
+
+    return similarity_df

@@ -99,6 +99,12 @@ class TestGPT(asynctest.TestCase):
         result: Dict[str, str] = await gpt.a_generate_batch(model, inputs)
         self.assertEqual(2, len(result))
 
+    def test_del_file(self):
+        file_dir = "data/test.md"
+        file_id = gpt.upload_file(file_dir).id
+        deleted = gpt.delete_file(file_id)
+        self.assertTrue(deleted)
+
 
 if __name__ == '__main__':
     asynctest.main()  # 使用asynctest的main方法

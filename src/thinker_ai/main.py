@@ -32,17 +32,11 @@ def get_all_agent_ids(user_id: str) -> List:
 
 
 def upload_file(file_dir: str) -> str:
-    file = gpt.llm.files.create(
-        file=open(file_dir, "rb"),
-        purpose='assistants'
-    )
-    return file.id
+    return gpt.upload_file(file_dir).id
 
 
 def delete_file(file_id: str) -> bool:
-    deleted = gpt.llm.files.delete(file_id)
-    return deleted.deleted
-
+    return gpt.delete_file(file_id)
 
 def ask(user_id: str, agent_name: str, topic: str, content: str) -> List[Dict[str, Any]]:
     agent: Agent = agent_repository.get_agent(user_id, agent_name)

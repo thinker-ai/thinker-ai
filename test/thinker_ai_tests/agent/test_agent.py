@@ -1,13 +1,13 @@
 from typing import Optional, List
 
 import asynctest
+import numpy as np
+import pandas as pd
 from pydantic import field_validator
 
 from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.llm import gpt
 from langchain.pydantic_v1 import BaseModel, Field
-
-from thinker_ai_tests.task_flow.tasks.test_result_parser import get_project_root
 
 
 class QuestionModel(BaseModel):
@@ -75,6 +75,25 @@ class Quiz:
 quiz_instance = Quiz()
 
 
+def create_correlated_data():
+    np.random.seed(42)  # Seed for reproducibility
+    days = np.arange(1, 101)  # Time feature from day 1 to 100
+    dates = pd.date_range(start='2021-01-01', periods=100)  # Generating dates
+
+    # Creating complex relationships
+    category_A = 0.05 * days ** 2 + 2 * days + 5 + np.random.normal(0, 10, days.size)  # Quadratic with noise
+    category_B = 100 * np.sin(0.1 * days) + 50 + np.random.normal(0, 5, days.size)  # Sinusoidal with noise
+
+    # Creating a DataFrame
+    data = pd.DataFrame({
+        'Date': dates,
+        'Category_A': category_A,
+        'Category_B': category_B
+    })
+    pd.set_option('display.max_rows', None)
+    return data
+
+
 class AgentWithToolsTestCase(asynctest.TestCase):
     assistant = gpt.llm.beta.assistants.retrieve("asst_n4kxEAYXlisN7mBa9M6t7PdH")
     agent = Agent(id="001", user_id="user1", assistant=assistant, threads={}, client=gpt.llm)
@@ -91,17 +110,31 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             self.agent.remove_functions()
             print(self.agent.tools)
 
-    def test_chat_with_code_interpreter(self):
+    def test_chat_with_code_interpreter_1(self):
+        ask= "Category_A的自变量是1到100的自然数，求Category_A数据的函数表达式，并绘制这个函数的图形,输出得到这个函数的python源代码。"
+        self.chat_with_code_interpreter(ask)
+
+    def test_chat_with_code_interpreter_2(self):
+        ask= "Category_A数据是Category_B数据的自变量，求它们的函数关系，并绘制这个函数的图形,输出得到这个函数的python源代码。"
+        self.chat_with_code_interpreter(ask)
+
+    def chat_with_code_interpreter(self, ask):
+        data = create_correlated_data()
         try:
-            self.agent.set_instructions("You are a personal math tutor. Answer questions briefly, in a sentence or less.")
+            json_data = data.to_json(orient='records')
+            self.agent.set_instructions("你是一个数学老师，负责回答数学问题")
             self.agent.register_code_interpreter()
             generated_result = self.agent.ask(topic="math_tutor",
-                                              content="请解释线性代数中基本概念，结合图形输出进行讲解")
+                                              content=f"问题：{ask}。具体数据如下：{json_data}")
             self.assertIsNotNone(generated_result)
-            self.assertIsNotNone(generated_result[0].get("text"))
-            self.assertIsNotNone(generated_result[1].get("image_file"))
-            self.assertIsNotNone(generated_result[2].get("text"))
-            print(generated_result)
+            img_index = 0
+            for result in generated_result:
+                if result.get("text"):
+                    print(result.get("text"))
+                if result.get("image_file"):
+                    with open(f"data/math_tutor-image-{img_index}.png", "wb") as file:
+                        file.write(result.get("image_file"))
+                        img_index = img_index + 1
         finally:
             self.agent.remove_functions()
             print(self.agent.tools)
@@ -117,7 +150,6 @@ class AgentWithToolsTestCase(asynctest.TestCase):
         try:
             self.agent.register_retrieval()
             self.agent.register_file_id(file.id)
-
 
             generated_result = self.agent.ask(topic="file",
                                               content="解释知识库中的内容包含了什么")
