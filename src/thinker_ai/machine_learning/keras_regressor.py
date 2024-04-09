@@ -12,8 +12,8 @@ def build_keras_pipeline(model_build_fn, input_shape, degree=3, epochs=100, batc
         ('standard_scaler', StandardScaler())
     ])
 
-    return KerasRegressionAnalyzer(build_fn=model_build_fn, preprocessing_pipeline=preprocessing_pipeline,
-                                   input_shape=input_shape, epochs=epochs, batch_size=batch_size)
+    return KerasRegressor(build_fn=model_build_fn, preprocessing_pipeline=preprocessing_pipeline,
+                          input_shape=input_shape, epochs=epochs, batch_size=batch_size)
 
 
 def build_model(input_shape):
@@ -25,7 +25,7 @@ def build_model(input_shape):
     return model
 
 
-class KerasRegressionAnalyzer(BaseEstimator, TransformerMixin):
+class KerasRegressor(BaseEstimator, TransformerMixin):
     def __init__(self, build_fn, preprocessing_pipeline, epochs=100, batch_size=10, **kwargs):
         self.model = build_fn(**kwargs)
         self.preprocessing_pipeline = preprocessing_pipeline
@@ -42,6 +42,4 @@ class KerasRegressionAnalyzer(BaseEstimator, TransformerMixin):
     def predict(self, X):
         X_transformed = self.preprocessing_pipeline.transform(X)
         return self.model.predict(X_transformed)
-
-
 

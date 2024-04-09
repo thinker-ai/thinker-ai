@@ -3,10 +3,10 @@ import unittest
 
 from sklearn.linear_model import LinearRegression, Ridge, Lasso
 
-from thinker_ai.machine_learning.sklearn_regression_analyzer import regress
+from thinker_ai.machine_learning.sklearn_regressor import regress
 
 
-class TestRegressionModels(unittest.TestCase):
+class TestSklearnRegressor(unittest.TestCase):
     def setUp(self):
         np.random.seed(42)
         self.days = np.arange(1, 101).reshape(-1, 1)
