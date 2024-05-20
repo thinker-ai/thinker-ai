@@ -2,7 +2,7 @@
 import re
 from typing import NamedTuple, List, Dict
 
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.logs import logger
 
 from thinker_ai.agent.llm.token_counter import (
     TOKEN_COSTS,

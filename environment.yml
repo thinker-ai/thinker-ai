@@ -10,7 +10,7 @@ dependencies:
   - pydantic
   - starlette<0.28.0,>=0.27.0
   - transformers
-  - datasets
+  - datasets>=2.18.0
   - pip
   - pip:
     - aim
@@ -19,6 +19,7 @@ dependencies:
     - promptlayer
     - edge_tts
     - langchain
+    - langchain-community
     - google-cloud-speech
     - openai
     - tiktoken
@@ -50,4 +51,34 @@ dependencies:
     - keras
     - tensorflow
     - torch
-    - sklearn
+    - scikit-learn
+    - huggingface_hub
+    - tf-keras
+    - soundfile
+    - librosa
+    - torchvision
+    - gradio
+    - gymnasium
+    - sentencepiece
+    - timm
+    - packaging
+    - addict
+    - editdistance
+    - einops
+    - fairscale
+    - jsonlines
+    - markdown2
+    - more_itertools
+    - nltk
+    - numpy
+    - opencv_python_headless
+    - openpyxl
+    - Pillow
+    - sacrebleu
+    - shortuuid
+    - spacy
+    - tqdm
+    - protobuf
+    - typing_extensions
+    - uvicorn
+    - accelerate

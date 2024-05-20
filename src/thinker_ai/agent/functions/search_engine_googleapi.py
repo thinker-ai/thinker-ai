@@ -10,8 +10,8 @@ from typing import Optional
 from urllib.parse import urlparse
 
 import httplib2
-from pydantic import BaseModel, validator, field_validator
-from thinker_ai.utils.logs import logger
+from pydantic import BaseModel, field_validator
+from thinker_ai.common.logs import logger
 
 try:
     from googleapiclient.discovery import build

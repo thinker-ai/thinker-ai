@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import time
-from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal, Tuple
+from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
 
 from langchain_core.tools import BaseTool
 from openai import OpenAI
@@ -16,7 +16,7 @@ from thinker_ai.agent.functions.functions_register import FunctionsRegister
 from thinker_ai.agent.llm import gpt
 from thinker_ai.agent.llm.embeddings import get_most_similar_strings
 from thinker_ai.agent.llm.function_call import FunctionCall
-from thinker_ai.utils.common import show_json
+from thinker_ai.common.common import show_json
 
 
 class DataModel(BaseModel):

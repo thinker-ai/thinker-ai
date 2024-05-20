@@ -1,7 +1,7 @@
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, Dict
 
-from thinker_ai.utils.serializable import Serializable
+from thinker_ai.common.serializable import Serializable
 
 
 class Task(Serializable):

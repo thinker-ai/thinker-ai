@@ -4,7 +4,7 @@ from typing import List
 
 from thinker_ai.agent.functions.search_engine import SearchEngine
 from thinker_ai.agent.llm import gpt
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.logs import logger
 
 SYSTEM_PROMPT_FOR_SEARCH = """
 Based on the question, write a list of the most effective search statements, using the following format:

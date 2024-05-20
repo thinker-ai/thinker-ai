@@ -3,8 +3,8 @@ from threading import Lock
 from typing import List, Optional
 
 from thinker_ai.context import get_project_root
-from thinker_ai.utils.serializable import Serializable
-from thinker_ai.utils.singleton_meta import SingletonMeta
+from thinker_ai.common.serializable import Serializable
+from thinker_ai.common.singleton_meta import SingletonMeta
 
 
 class ThreadPO(Serializable):

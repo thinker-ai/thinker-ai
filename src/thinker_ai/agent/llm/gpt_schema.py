@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Optional
 
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.logs import logger
 
 
 @dataclass

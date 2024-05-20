@@ -1,13 +1,11 @@
 from threading import Lock
 from typing import Optional, List
 
-from openai import OpenAI
-
 from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.agent_dao import AgentDAO, ThreadPO, AgentPO
 from thinker_ai.agent.llm import gpt
 from thinker_ai.context import get_project_root
-from thinker_ai.utils.singleton_meta import SingletonMeta
+from thinker_ai.common.singleton_meta import SingletonMeta
 
 
 class AgentRepository(metaclass=SingletonMeta):

@@ -20,7 +20,7 @@ from thinker_ai.agent.llm.cost_manager import CostManager
 from thinker_ai.agent.llm.function_call import FunctionCall
 from thinker_ai.agent.llm.gpt_schema import PromptMessage
 from thinker_ai.utils.text_parser import TextParser
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.logs import logger
 
 
 class RateLimiter:

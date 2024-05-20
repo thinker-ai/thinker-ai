@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from typing import Any, Callable, Coroutine, Literal, overload
 
-from thinker_ai.agent.tools import WebBrowserEngineType, web_browser_engine_type
+from thinker_ai.agent.functions import web_browser_engine_type, WebBrowserEngineType
 from thinker_ai.utils.html_parser import WebPage
 
 
@@ -15,10 +15,10 @@ class WebBrowserEngine:
         run_func: Callable[..., Coroutine[Any, Any, WebPage | list[WebPage]]] | None = None,
     ):
         if web_browser_engine_type == WebBrowserEngineType.PLAYWRIGHT:
-            module = "metagpt.functions.web_browser_engine_playwright"
+            module = "thinker_ai.agent.functions.web_browser_engine_playwright"
             self.run_func = importlib.import_module(module).PlaywrightWrapper().run
         elif web_browser_engine_type == WebBrowserEngineType.SELENIUM:
-            module = "metagpt.functions.web_browser_engine_selenium"
+            module = "thinker_ai.agent.functions.web_browser_engine_selenium"
             self.run_func = importlib.import_module(module).SeleniumWrapper().run
         elif web_browser_engine_type == WebBrowserEngineType.CUSTOM:
             self.run_func = run_func

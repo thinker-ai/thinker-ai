@@ -25,6 +25,7 @@ body {
 #container {
     display: flex;
     margin: 0 auto;
+    flex-direction: column;
     width: 80%;
     max-width: 1200px;
 }
@@ -97,6 +98,7 @@ body {
 #input-container{
     height: 20%;
     display: flex;
+    flex-direction: column;
 }
 
 #chat {
@@ -114,74 +116,23 @@ body {
 
 #input {
     flex: 3;
-    height: 100%;
+    height: auto; /* 适应内容高度 */
+
 }
 
 #button-container {
-    flex: 2;
-    height: 100%;
+    flex: 1; /* 调整 flex 值，使按钮占用更少的空间 */
+    height: auto; /* 适应内容高度 */
     display: flex;
     flex-direction: column;
-    justify-content: space-around;
+    justify-content: center; /* 垂直居中按钮 */
     align-items: center;
 }
 
-#send, #mute, #dictation-container {
+#send
+{
     width: 80%;
-}
-
-#dictation-container {
-    height: 25%;
-    width: 80%;
-    display: flex;
-    align-items: center;
-}
-
-#dictate {
-    cursor: pointer;
-    position: relative;
-    flex-grow: 1;
-}
-
-.tooltiptext {
-    visibility: hidden;
-    width: 120px;
-    background-color: black;
-    color: #fff;
-    text-align: center;
-    border-radius: 6px;
-    padding: 5px 0;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    margin-left: -60px;
-    opacity: 0;
-    transition: opacity 0.3s;
-}
-
-#dictate:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
-
-#dictate.active .tooltiptext {
-  visibility: visible;
-  opacity: 1;
-}
-
-#continuous-dictation-checkbox {
-    margin-left: 5px;
-}
-
-@keyframes blinking {
-    0%   { opacity: 1; }
-    50%  { opacity: 0.5; }
-    100% { opacity: 1; }
-}
-
-.blinking {
-    animation: blinking 1s infinite;
+    height: 80%;
 }
 
 .message-container {
@@ -231,49 +182,61 @@ pre {
     /* 其他样式 */
 }
 
-#mermaid-graphics, #mermaid-editor, #update-graphics {
-    width: auto;  /* 从 100% 改为 auto */
-    max-width: 100%;
-    margin: 0 10px;  /* 左右各 10px 的间距，使其在水平方向上居中 */
-}
-#mermaid-panel {
-    width: 100%;
-    height: 700px;
-    padding: 10px;
+
+/* Tab container styles */
+.tab-container {
     display: flex;
     flex-direction: row;
-    justify-content: center;
+    width: 100%;
+    margin: 20px 0;
 }
 
-#mermaid-editor {
-    flex: 1;
-    height: 100%;
-    margin: 10px;
-    border: 1px solid #ccc;
-    padding: 10px;
-}
-
-#mermaid-graphics {
-    flex: 3;
-    height: 100%;
-    margin: 5px;
-    overflow: auto;
-    border: 1px solid #ccc;
-    padding: 10px;
-}
-
-#update-graphics {
+.tabs {
     display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    height: 250px;  /* 修改这里以调整高度 */
-    width: 40px;
-    margin: auto;  /* 修改这里以实现水平居中 */
-    font-size: 20px;
+    border-bottom: 2px solid #ccc;
 }
 
-#update-graphics i {
-    writing-mode: vertical-rl;
+.tab {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-bottom: none;
+    background-color: #f1f1f1;
+    margin-right: 2px;
 }
 
+.tab.active {
+    background-color: white;
+    border-top: 2px solid #000;
+    border-left: 2px solid #000;
+    border-right: 2px solid #000;
+}
+
+.tab-content {
+    border: 2px solid #000;
+    padding: 20px;
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Frame styles */
+.tab-frame {
+    width: 100%;
+    height: 700px;
+    border: none;
+}
+
+.add-tab
+{
+    width: 10%;
+    height: 40px;
+}
+.close-tab
+{
+    margin-left: 10px;
+    cursor: pointer;
+    color: red;
+}

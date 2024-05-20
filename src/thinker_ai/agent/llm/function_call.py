@@ -1,8 +1,6 @@
-from typing import Dict, Any
+from typing import Dict
 
-from pydantic import BaseModel
-
-from thinker_ai.utils.serializable import Serializable
+from thinker_ai.common.serializable import Serializable
 
 
 class FunctionCall(Serializable):

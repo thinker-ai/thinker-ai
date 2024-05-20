@@ -1,7 +1,7 @@
 import ast
 import re
 
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.logs import logger
 
 
 class CodeParser:

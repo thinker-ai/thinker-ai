@@ -1,9 +1,8 @@
 import unittest
-from pathlib import Path
 from typing import Dict, List
 
 from thinker_ai.context import get_project_root
-from thinker_ai.utils.common import load_file
+from thinker_ai.common.common import load_file
 from thinker_ai.utils.text_parser import TextParser
 
 

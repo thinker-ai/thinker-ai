@@ -1,7 +1,7 @@
 
 from typing import Any
 
-from thinker_ai.utils.serializable import Serializable
+from thinker_ai.common.serializable import Serializable
 
 
 class WorkEvent(Serializable):

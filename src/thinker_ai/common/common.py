@@ -4,6 +4,7 @@ import re
 import json
 from pathlib import Path
 
+
 from IPython.core.display_functions import display
 
 
@@ -15,18 +16,6 @@ def check_cmd_exists(command) -> int:
     check_command = 'command -v ' + command + ' >/dev/null 2>&1 || { echo >&2 "no mermaid"; exit 1; }'
     result = os.system(check_command)
     return result
-
-
-class NoMoneyException(Exception):
-    """Raised when the operation cannot be completed due to insufficient funds"""
-
-    def __init__(self, amount, message="Insufficient funds"):
-        self.amount = amount
-        self.message = message
-        super().__init__(self.message)
-
-    def __str__(self):
-        return f'{self.message} -> Amount required: {self.amount}'
 
 
 def print_members(module, indent=0):
@@ -60,3 +49,5 @@ def load_file(file_dir, file_name):
     with open(file, 'r') as file:
         content = file.read()
     return content
+
+

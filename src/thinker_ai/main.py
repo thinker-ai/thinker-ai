@@ -1,11 +1,14 @@
 from typing import List, Optional, Any, Dict
 
+import uvicorn
+from fastapi import FastAPI
 from openai.types.beta.assistant_create_params import AssistantToolParam
 
 from thinker_ai.agent.agent import Agent
 from thinker_ai.agent.agent_dao import AgentDAO
 from thinker_ai.agent.agent_repository import AgentRepository
 from thinker_ai.agent.llm import gpt
+from thinker_ai.app.Chat import chat_router
 
 agent_repository = AgentRepository.get_instance()
 

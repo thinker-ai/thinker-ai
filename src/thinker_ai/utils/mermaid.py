@@ -2,8 +2,8 @@ import os
 import subprocess
 from pathlib import Path
 
-from thinker_ai.utils.common import check_cmd_exists
-from thinker_ai.utils.logs import logger
+from thinker_ai.common.common import check_cmd_exists
+from thinker_ai.common.logs import logger
 
 
 def mermaid_to_file(mermaid_code, output_file_without_suffix, width=2048, height=2048) -> int:

@@ -1,5 +1,5 @@
 from thinker_ai.utils.read_document import read_docx
-from thinker_ai.utils.singleton import Singleton
+from thinker_ai.common.singleton import Singleton
 
 __all__ = [
     "read_docx",

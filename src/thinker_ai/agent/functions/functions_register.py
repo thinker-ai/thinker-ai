@@ -1,7 +1,7 @@
 from typing import List, Dict, Callable, Optional, Type, Any
 
 from langchain.agents import load_tools
-from langchain.tools import format_tool_to_openai_function, BaseTool, StructuredTool
+from langchain_community.tools import format_tool_to_openai_function, BaseTool, StructuredTool
 from pydantic import BaseModel
 
 
