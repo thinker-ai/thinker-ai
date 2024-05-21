@@ -32,7 +32,7 @@ class TestActionResult(unittest.TestCase):
     def load_test_file(self, file_name: str) -> str:
         if file_name.startswith('/'):
             file_name = file_name[1:]  # 否则会误判为根路径
-        file_dir = get_project_root() / "test/thinker_ai_tests/task_flow/tasks"
+        file_dir = get_project_root() / "test/thinker_ai_tests/tasks/tasks"
         return load_file(file_dir, file_name)
 
 

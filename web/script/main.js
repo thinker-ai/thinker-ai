@@ -166,34 +166,37 @@ let tabCount = 0;
 function addTab() {
     const url = prompt("请输入网页地址:");
     if (url) {
-        tabCount++;
-        const newTab = document.createElement('div');
-        newTab.className = 'tab';
-        newTab.id = 'tab' + tabCount;
-        newTab.setAttribute('onclick', `openTab(event, 'tab${tabCount}')`);
-
-        const closeButton = document.createElement('span');
-        closeButton.textContent = 'X';
-        closeButton.className = 'close-tab';
-        closeButton.setAttribute('onclick', `closeTab(event, 'tab${tabCount}')`);
-
-        newTab.textContent = 'Tab ' + tabCount;
-        newTab.appendChild(closeButton);
-        document.getElementById('tab-container').appendChild(newTab);
-
-        const newTabContent = document.createElement('div');
-        newTabContent.className = 'tab-content';
-        newTabContent.id = 'tab' + tabCount + '-content';
-
-        const newIframe = document.createElement('iframe');
-        newIframe.className = 'tab-frame';
-        newIframe.src = url;
-        newTabContent.appendChild(newIframe);
-
-        document.getElementById('container').appendChild(newTabContent);
+        addTabWithUrl(url, `Tab ${tabCount + 1}`);
     }
 }
 
+function addTabWithUrl(url, title) {
+    tabCount++;
+    const newTab = document.createElement('div');
+    newTab.className = 'tab';
+    newTab.id = 'tab' + tabCount;
+    newTab.setAttribute('onclick', `openTab(event, 'tab${tabCount}')`);
+
+    const closeButton = document.createElement('span');
+    closeButton.textContent = 'X';
+    closeButton.className = 'close-tab';
+    closeButton.setAttribute('onclick', `closeTab(event, 'tab${tabCount}')`);
+
+    newTab.textContent = title;
+    newTab.appendChild(closeButton);
+    document.getElementById('tab-container').appendChild(newTab);
+
+    const newTabContent = document.createElement('div');
+    newTabContent.className = 'tab-content';
+    newTabContent.id = 'tab' + tabCount + '-content';
+
+    const newIframe = document.createElement('iframe');
+    newIframe.className = 'tab-frame';
+    newIframe.src = url;
+    newTabContent.appendChild(newIframe);
+
+    document.getElementById('container').appendChild(newTabContent);
+}
 function closeTab(event, tabId) {
     event.stopPropagation();
     const confirmClose = confirm("确定要关闭这个标签页吗？");
@@ -204,5 +207,21 @@ function closeTab(event, tabId) {
         tabContent.remove();
     }
 }
+
+const user_id = 'some_unique_user_id'; // 这里需要替换为实际的用户ID
+const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
+
+socket.onopen = () => {
+    console.log('Connected to server');
+};
+
+socket.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+    const port = data.port;
+    const url = `http://localhost:${port}`;
+    addTabWithUrl(url, data.title);
+};
+
+
 
 

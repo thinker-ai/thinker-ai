@@ -30557,7 +30557,7 @@ module.exports = JSON.parse('{"name":"mermaid","version":"8.14.0","description":
 /******/ 	__webpack_require__.c = __webpack_module_cache__;
 /******/ 	
 /************************************************************************/
-/******/ 	/* webpack/runtime/compat get default export */
+/******/ 	/* webpack/dynamic_task/compat get default export */
 /******/ 	(() => {
 /******/ 		// getDefaultExport function for compatibility with non-harmony modules
 /******/ 		__webpack_require__.n = (module) => {
@@ -30569,7 +30569,7 @@ module.exports = JSON.parse('{"name":"mermaid","version":"8.14.0","description":
 /******/ 		};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/define property getters */
+/******/ 	/* webpack/dynamic_task/define property getters */
 /******/ 	(() => {
 /******/ 		// define getter functions for harmony exports
 /******/ 		__webpack_require__.d = (exports, definition) => {
@@ -30581,12 +30581,12 @@ module.exports = JSON.parse('{"name":"mermaid","version":"8.14.0","description":
 /******/ 		};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	/* webpack/dynamic_task/hasOwnProperty shorthand */
 /******/ 	(() => {
 /******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	/* webpack/dynamic_task/make namespace object */
 /******/ 	(() => {
 /******/ 		// define __esModule on exports
 /******/ 		__webpack_require__.r = (exports) => {
@@ -30597,7 +30597,7 @@ module.exports = JSON.parse('{"name":"mermaid","version":"8.14.0","description":
 /******/ 		};
 /******/ 	})();
 /******/ 	
-/******/ 	/* webpack/runtime/node module decorator */
+/******/ 	/* webpack/dynamic_task/node module decorator */
 /******/ 	(() => {
 /******/ 		__webpack_require__.nmd = (module) => {
 /******/ 			module.paths = [];
