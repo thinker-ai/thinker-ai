@@ -9,10 +9,17 @@ document.getElementById('input').addEventListener('keydown', function (event) {
     }
 });
 
+function to_inner_html(message) {
+    var htmlMessage = marked.parse(message).slice(0, -1);
+    if (htmlMessage.endsWith('\n')) {
+        htmlMessage = htmlMessage.slice(0, -1);
+    }
+    return htmlMessage;
+}
 
 function append_human_message(message) {
     const chat = document.getElementById('chat');
-    const htmlMessage = marked.parse(message);
+    const htmlMessage = to_inner_html(message);
     chat.innerHTML += `<div class="message-container human-container"><pre class="human_message">${htmlMessage}</pre>
                                     <img class="human_avatar" src="/static/human-avatar.jpg" alt="Human Avatar"></div>`;
     chat.scrollTo({
@@ -28,7 +35,7 @@ function append_human_message(message) {
 
 function append_ai_message(message) {
     message = highlightCode(message); // 对三引号中的代码进行高亮处理
-    const htmlMessage = marked.parse(message);
+    var htmlMessage = to_inner_html(message);
     const chat = document.getElementById('chat');
     chat.innerHTML += `<div class="message-container ai-container">
                         <img class="ai_avatar" src="/static/ai-avatar.jpg" alt="AI Avatar">
