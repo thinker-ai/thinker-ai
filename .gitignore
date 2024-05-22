@@ -7,3 +7,6 @@
 /test/test.md
 /test/Thumbs.db
 /data/embeddings_cache.pkl
+/src/thinker_ai/session_store.pkl
+/src/thinker_ai/tasks/dynamic/gradio/gradio_test.py
+/test/data/math_tutor-image-0.png
