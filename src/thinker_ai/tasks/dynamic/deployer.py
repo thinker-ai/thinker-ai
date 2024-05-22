@@ -4,7 +4,7 @@ from flask import Flask, jsonify
 from flask_socketio import SocketIO, emit
 import threading
 
-from thinker_ai.ui.Main import socket_clients
+from thinker_ai.main import socket_clients
 
 # 获取当前脚本所在的目录
 current_dir = os.path.dirname(os.path.abspath(__file__))

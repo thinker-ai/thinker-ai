@@ -61,7 +61,7 @@ return /******/ (() => { // webpackBootstrap
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -958,7 +958,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -1741,7 +1741,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -2778,7 +2778,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -3554,7 +3554,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -4260,7 +4260,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -4791,7 +4791,7 @@ stateStackSize:function stateStackSize() {
     },
 options: {"case-insensitive":true},
 performAction: function anonymous(yy,yy_,$avoiding_name_collisions,YY_START) {
-	// Pre-lexer code can go here
+	// Pre-lexer code1 can go here
 
 var YYSTATE=YY_START;
 switch($avoiding_name_collisions) {
@@ -4892,7 +4892,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -5563,7 +5563,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -6373,7 +6373,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -7270,7 +7270,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -8117,7 +8117,7 @@ if ( true && __webpack_require__.c[__webpack_require__.s] === module) {
         options: {
             ranges: boolean           (optional: true ==> token location info will include a .range[] member)
             flex: boolean             (optional: true ==> flex-like lexing behaviour where the rules are tested exhaustively to find the longest match)
-            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code is invoked; the lexer terminates the scan when a token is returned by the action code)
+            backtrack_lexer: boolean  (optional: true ==> lexer regexes are tested in order and for each matching regex the action code1 is invoked; the lexer terminates the scan when a token is returned by the action code1)
         },
 
         performAction: function(yy, yy_, $avoiding_name_collisions, YY_START),
@@ -8917,7 +8917,7 @@ var sanitize = function sanitize(options) {
   Object.keys(siteConfig.secure).forEach(function (key) {
     if (typeof options[siteConfig.secure[key]] !== 'undefined') {
       // DO NOT attempt to print options[siteConfig.secure[key]] within `${}` as a malicious script
-      // can exploit the logger's attempt to stringify the value and execute arbitrary code
+      // can exploit the logger's attempt to stringify the value and execute arbitrary code1
       _logger__WEBPACK_IMPORTED_MODULE_3__.log.debug("Denied attempt to modify a secure key ".concat(siteConfig.secure[key]), options[siteConfig.secure[key]]);
       delete options[siteConfig.secure[key]];
     }
@@ -9868,7 +9868,7 @@ var insertEdge = function insertEdge(elem, e, edge, clusterDb, diagramType, grap
       break;
   }
 
-  var svgPath = elem.append('path').attr('d', lineFunction(lineData)).attr('id', edge.id).attr('class', ' ' + strokeClasses + (edge.classes ? ' ' + edge.classes : '')).attr('style', edge.style); // DEBUG code, adds a red circle at each edge coordinate
+  var svgPath = elem.append('path').attr('d', lineFunction(lineData)).attr('id', edge.id).attr('class', ' ' + strokeClasses + (edge.classes ? ' ' + edge.classes : '')).attr('style', edge.style); // DEBUG code1, adds a red circle at each edge coordinate
   // edge.points.forEach(point => {
   //   elem
   //     .append('circle')
@@ -12210,7 +12210,7 @@ var config = {
   /**
    * | Parameter           | Description                                                                  | Type    | Required | Values      |
    * | ------------------- | ---------------------------------------------------------------------------- | ------- | -------- | ----------- |
-   * | arrowMarkerAbsolute | Controls whether or arrow markers in html code are absolute paths or anchors | boolean | Required | true, false |
+   * | arrowMarkerAbsolute | Controls whether or arrow markers in html code1 are absolute paths or anchors | boolean | Required | true, false |
    *
    * **Notes**:
    *
@@ -25974,7 +25974,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _utils__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./utils */ "./src/utils.js");
 /**
  * Web page integration module for the mermaid framework. It uses the mermaidAPI for mermaid
- * functionality and to render the diagrams to svg code.
+ * functionality and to render the diagrams to svg code1.
  */
 
 
@@ -26474,7 +26474,7 @@ var decodeEntities = function decodeEntities(text) {
  *
  * @param {any} id The id of the element to be rendered
  * @param {any} _txt The graph definition
- * @param {any} cb Callback which is called after rendering is finished with the svg code as inparam.
+ * @param {any} cb Callback which is called after rendering is finished with the svg code1 as inparam.
  * @param {any} container Selector to element in which a div with the graph temporarily will be
  *   inserted. In one is provided a hidden div will be inserted in the body of the page instead. The
  *   element will be removed when rendering is completed.

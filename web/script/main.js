@@ -1,3 +1,4 @@
+
 document.getElementById('input').addEventListener('keydown', function (event) {
     // 如果按下的是 Enter 键，并且没有同时按下 Shift 键，Alt 键或 Ctrl 键
     if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey) {
@@ -11,28 +12,39 @@ document.getElementById('input').addEventListener('keydown', function (event) {
 
 function append_human_message(message) {
     const chat = document.getElementById('chat');
-    chat.innerHTML += `<div class="message-container human-container"><pre class="human_message">${message}</pre>
+    const htmlMessage = marked.parse(message);
+    chat.innerHTML += `<div class="message-container human-container"><pre class="human_message">${htmlMessage}</pre>
                                     <img class="human_avatar" src="/static/human-avatar.jpg" alt="Human Avatar"></div>`;
     chat.scrollTo({
         top: chat.scrollHeight,
         behavior: 'smooth'
     });
+        // 为生成的图片添加响应式类
+    const images = chat.querySelectorAll('img');
+    images.forEach(image => {
+        image.classList.add('responsive-image');
+    });
 }
 
 function append_ai_message(message) {
     message = highlightCode(message); // 对三引号中的代码进行高亮处理
+    const htmlMessage = marked.parse(message);
     const chat = document.getElementById('chat');
     chat.innerHTML += `<div class="message-container ai-container">
                         <img class="ai_avatar" src="/static/ai-avatar.jpg" alt="AI Avatar">
-                        <div class="ai_message">${message}</div>
+                        <div class="ai_message">${htmlMessage}</div>
                        </div>`;
     chat.scrollTo({
         top: chat.scrollHeight,
         behavior: 'smooth'
     });
-
     // 重新触发Prism高亮，因为动态添加了代码块
     Prism.highlightAll();
+    // 为生成的图片添加响应式类
+    const images = chat.querySelectorAll('img');
+    images.forEach(image => {
+        image.classList.add('responsive-image');
+    });
 }
 
 function highlightCode(message) {
@@ -47,9 +59,9 @@ function highlightCode(message) {
         const formattedCode = `<pre style="font-size: 12px; background-color: black;"><code class='language-${language}'>${highlightedCode}</code></pre>`;
         message = message.replace(match[0], formattedCode);
     }
-
     return message;
 }
+
 function sendMessage() {
     const inputField = document.getElementById('input');
     let message = inputField.value;
@@ -57,26 +69,24 @@ function sendMessage() {
     if (message.trim() === '')
         return;
     append_human_message(message);
+        // 从 localStorage 中获取 user_id 和 topic
     // 发送消息到服务器
-    fetch('/chat_to', {
-        method: 'POST',
+    axios.post('/chat', {
+        topic:"default",
+        content: message
+    }, {
         headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            text: message,
-        }),
+            'Content-Type': 'application/json'
+        }
     }).then(response => {
-        if (!response.ok) {
+        // 检查响应状态
+        if (response.status === 200) {
+            // 添加 AI 的消息
+            append_ai_message(response.data);
+        } else {
             alert(`HTTP error! status: ${response.status}`);
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        return response.json();
-    }).then(response => {
-        // 添加 AI 的消息
-        append_ai_message(response.text);
-        // 播放音频
-        Speaker.playAudio(response.audio_base64);  // Change 'bytes' to 'audio_base64'
     }).catch(e => {
         alert(e)
         console.error('Error:', e);
@@ -85,8 +95,6 @@ function sendMessage() {
 
 let isPanelOpen = true;
 let isDragging = false;
-let panelPosition = { x: 0, y: 100 }; // 初始位置
-let prevX = 0, prevY = 0;
 
 
 function toggleFloatingPanel() {
@@ -110,10 +118,13 @@ function toggleFloatingPanel() {
 
 // 在页面加载时调用，以确保面板的初始状态与 isPanelOpen 匹配
 window.addEventListener("load", function() {
-
+    const verticalText = document.querySelector(".vertical-text-wrapper"); // 获取vertical-text-wrapper元素
     const panel = document.getElementById("floating-panel");
+    let prevX = 0;
+    let prevY = 0;
+    let panelPosition = { x: 0, y: 100 }; // 初始位置
 
-    panel.addEventListener("mousedown", function(event) {
+    verticalText.addEventListener("mousedown", function(event) {
         isDragging = true;
         prevX = event.clientX;
         prevY = event.clientY;
@@ -208,20 +219,35 @@ function closeTab(event, tabId) {
     }
 }
 
-const user_id = 'some_unique_user_id'; // 这里需要替换为实际的用户ID
-const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
+const user_id = localStorage.getItem("user_id");
+if (user_id) {
+    const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
+    socket.onopen = () => {
+        console.log('Connected to server');
+    };
 
-socket.onopen = () => {
-    console.log('Connected to server');
-};
+    socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const port = data.port;
+        const url = `http://localhost:${port}`;
+        addTabWithUrl(url, data.title);
+    };
+}
 
-socket.onmessage = (event) => {
-    const data = JSON.parse(event.data);
-    const port = data.port;
-    const url = `http://localhost:${port}`;
-    addTabWithUrl(url, data.title);
-};
 
+
+// 添加请求拦截器
+axios.interceptors.request.use(config => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, error => {
+    return Promise.reject(error);
+});
+if(!localStorage.getItem('access_token'))
+    login();
 
 
 

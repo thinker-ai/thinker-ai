@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import time
 from typing import Optional, List, Dict, Union, Any, Callable, Type, Literal
 
@@ -63,7 +64,7 @@ class GPT_Config(BaseModel):
     auto_max_tokens: bool = False
     max_tokens_rsp: int = 2048
     proxy: str = None
-    api_base: str = "https://api.openai.com/v1"
+    api_base: str = "https://api.openai.com/v2"
     rpm: int = 10
     timeout: float = 3.0
     max_retries: int = 3
@@ -95,7 +96,7 @@ class GPT:
         return self.__init__openai(config, openai)
 
     def __init__openai(self, config, openai: Union[OpenAI, AsyncOpenAI]) -> Union[OpenAI, AsyncOpenAI]:
-        openai.api_base = config.api_base
+        openai.api_base = os.environ.get("OPENAI_BASE_URL")
         openai.proxy = config.proxy
         openai.timeout = config.timeout
         openai.max_retries = config.max_retries

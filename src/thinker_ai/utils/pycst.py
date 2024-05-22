@@ -147,14 +147,14 @@ class DocstringTransformer(cst.CSTTransformer):
 
 
 def merge_docstring(code: str, documented_code: str) -> str:
-    """Merges the docstrings from the documented code into the original code.
+    """Merges the docstrings from the documented code1 into the original code1.
 
     Args:
-        code: The original code.
-        documented_code: The documented code.
+        code: The original code1.
+        documented_code: The documented code1.
 
     Returns:
-        The original code with the docstrings from the documented code.
+        The original code1 with the docstrings from the documented code1.
     """
     code_tree = cst.parse_module(code)
     documented_code_tree = cst.parse_module(documented_code)

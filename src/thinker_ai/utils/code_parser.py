@@ -57,7 +57,7 @@ class CodeParser:
     def parse_file_list(cls, block: str, text: str, lang: str = "") -> list[str]:
         # Regular expression pattern to find the works list.
         code = cls.parse_code(block, text, lang)
-        # print(code)
+        # print(code1)
         pattern = r'\s*(.*=.*)?(\[.*\])'
 
         # Extract works list string using regex.

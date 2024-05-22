@@ -35,7 +35,7 @@ def print_members(module, indent=0):
 
 
 def parse_recipient(text):
-    pattern = r"## Send To:\s*([A-Za-z]+)\s*?"  # hard code for now
+    pattern = r"## Send To:\s*([A-Za-z]+)\s*?"  # hard code1 for now
     recipient = re.search(pattern, text)
     return recipient.group(1) if recipient else ""
 

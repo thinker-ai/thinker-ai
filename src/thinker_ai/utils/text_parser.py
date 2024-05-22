@@ -131,19 +131,19 @@ class TextParser:
     @staticmethod
     def parse_python_code(text: str) -> str:
         for pattern in (
-                r'(.*?```python.*?\s+)?(?P<code>.*)(```.*?)',
-                r'(.*?```python.*?\s+)?(?P<code>.*)',
+                r'(.*?```python.*?\s+)?(?P<code1>.*)(```.*?)',
+                r'(.*?```python.*?\s+)?(?P<code1>.*)',
         ):
             match = re.search(pattern, text, re.DOTALL)
             if not match:
                 continue
-            code = match.group("code")
+            code = match.group("code1")
             if not code:
                 continue
             with contextlib.suppress(Exception):
                 ast.parse(code)
                 return code
-        raise ValueError("Invalid python code")
+        raise ValueError("Invalid python code1")
 
     @classmethod
     def parse_data(cls, data):

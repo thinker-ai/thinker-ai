@@ -30,7 +30,7 @@ def test_parse_python_code():
     expected_result = "print('```Hello, world!```')"
     assert TextParser.parse_python_code("```python\nprint('```Hello, world!```')```") == expected_result
     assert TextParser.parse_python_code(
-        "The code is: ```python\nprint('```Hello, world!```')```") == expected_result
+        "The code1 is: ```python\nprint('```Hello, world!```')```") == expected_result
     assert TextParser.parse_python_code(
         "xxx.\n```python\nprint('```Hello, world!```')```\nxxx") == expected_result
 

@@ -1,8 +1,7 @@
 from typing import List, Optional, Any, Dict
 from openai.types.beta.assistant_create_params import AssistantToolParam
 
-from thinker_ai.agent.agent import Agent
-from thinker_ai.agent.agent_dao import AgentDAO
+from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.agent.agent_repository import AgentRepository
 from thinker_ai.agent.llm import gpt
 
@@ -18,7 +17,7 @@ def create_agent(model: str, user_id: str, name: str, instructions: str = None, 
         tools=tools,
         file_ids=file_ids,
         description=description)
-    agent = Agent(id=assistant.id, user_id=user_id, assistant=assistant, threads={}, client=gpt.llm)
+    agent = AssistantAgent.from_instance(assistant)
     return agent_repository.add_agent(agent=agent, user_id=user_id)
 
 
@@ -37,9 +36,10 @@ def upload_file(file_dir: str) -> str:
 def delete_file(file_id: str) -> bool:
     return gpt.delete_file(file_id)
 
-def ask(user_id: str, agent_name: str, topic: str, content: str) -> List[Dict[str, Any]]:
-    agent: Agent = agent_repository.get_agent(user_id, agent_name)
-    result: List[Dict[str, Any]] = []
+
+def ask(user_id: str, agent_name: str, topic: str, content: str) -> str:
+    agent: AssistantAgent = agent_repository.get_agent(user_id, agent_name)
+    result=""
     if agent:
         result = agent.ask(topic=topic, content=content)
     return result

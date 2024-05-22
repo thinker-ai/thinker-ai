@@ -1,22 +1,16 @@
 import unittest
 from thinker_ai.agent.agent_repository import AgentRepository
-from thinker_ai.agent.agent import Agent
+from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.agent.llm import gpt
 
 
 class TestAgentRepository(unittest.TestCase):
     def setUp(self):
         self.client = gpt.llm  # Replace with actual OpenAI client initialization
-        self.assistant_id = "asst_n4kxEAYXlisN7mBa9M6t7PdH"
         self.user_id = 'user_1'
         self.agent_id = '1'
-
-        # Replace with actual retrieval of threads and assistant from the GPT-3 API
-        assistant = gpt.llm.beta.assistants.retrieve(self.assistant_id)
-        threads = {}  # Dictionary of thread objects
-
-        self.agent = Agent(id=self.agent_id, user_id=self.user_id, assistant=assistant, threads=threads,
-                           client=self.client)
+        self.assistant_id = "asst_n4kxEAYXlisN7mBa9M6t7PdH"
+        self.agent = AssistantAgent.from_id(self.assistant_id)
 
         # Get the singleton instance of AgentRepository
         self.agent_repo = AgentRepository.get_instance()

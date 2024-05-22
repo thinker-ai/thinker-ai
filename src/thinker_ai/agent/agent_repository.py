@@ -1,7 +1,7 @@
 from threading import Lock
 from typing import Optional, List
 
-from thinker_ai.agent.agent import Agent
+from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.agent.agent_dao import AgentDAO, ThreadPO, AgentPO
 from thinker_ai.agent.llm import gpt
 from thinker_ai.context import get_project_root
@@ -26,23 +26,23 @@ class AgentRepository(metaclass=SingletonMeta):
         else:
             raise Exception("Attempting to instantiate a singleton class.")
 
-    def _agent_to_po(self, agent: Agent) -> AgentPO:
+    def _agent_to_po(self, agent: AssistantAgent) -> AgentPO:
         threads_po = [ThreadPO(name=thread.name, thread_id=thread.id) for thread in agent.threads.values()]
         return AgentPO(id=agent.id, user_id=agent.user_id, threads=threads_po, assistant_id=agent.assistant.id)
 
-    def _po_to_agent(self, agent_po: AgentPO) -> Agent:
+    def _po_to_agent(self, agent_po: AgentPO) -> AssistantAgent:
         assistant = gpt.llm.beta.assistants.retrieve(agent_po.assistant_id)
         threads = {thread_po.thread_id: gpt.llm.beta.threads.retrieve(thread_po.thread_id) for thread_po in
                    agent_po.threads}
-        return Agent(id=agent_po.id, user_id=agent_po.user_id, assistant=assistant, threads=threads, client=self.client)
+        return AssistantAgent(id=agent_po.id, user_id=agent_po.user_id, assistant=assistant, threads=threads, client=self.client)
 
-    def add_agent(self, agent: Agent, user_id: str):
+    def add_agent(self, agent: AssistantAgent, user_id: str):
         if agent.user_id != user_id:
             raise PermissionError("Cannot add an agent for another user.")
         with self._lock:
             self.agent_dao.add_agent(self._agent_to_po(agent))
 
-    def get_agent(self, agent_id: str, user_id: str) -> Optional[Agent]:
+    def get_agent(self, agent_id: str, user_id: str) -> Optional[AssistantAgent]:
         with self._lock:
             agent_po = self.agent_dao.get_agent(agent_id)
             if agent_po is not None and agent_po.user_id == user_id:
@@ -53,7 +53,7 @@ class AgentRepository(metaclass=SingletonMeta):
         with self._lock:
             return self.agent_dao.get_my_agent_ids(user_id)
 
-    def update_agent(self, agent: Agent, user_id: str):
+    def update_agent(self, agent: AssistantAgent, user_id: str):
         if agent.user_id != user_id:
             raise PermissionError("Cannot update an agent for another user.")
         with self._lock:
