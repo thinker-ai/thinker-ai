@@ -10,7 +10,7 @@ from thinker_ai.agent.functions.functions_register import FunctionsRegister
 
 # QuizArgs及其内部的QuestionModel的数据结构定义，和display_quiz实际使用的数据结构questions: List[Dict[str, Any]]定义不一致，为了
 # 设计可以替换实际参数类型的条件：
-# 1、数据结构的兼容性：自定义的 BaseModel 模型（例如 QuizArgs 和其内部的 QuestionModel）必须能够从实际传入的数据结构
+# user_1、数据结构的兼容性：自定义的 BaseModel 模型（例如 QuizArgs 和其内部的 QuestionModel）必须能够从实际传入的数据结构
 # （例如 List[Dict[str, Any]]）中推断出来。这意味着字典中的键和模型中的字段名需要匹配，且数据类型兼容。
 # 2、字段验证规则的满足：任何在 BaseModel 模型中定义的额外验证规则（例如字段长度、值范围、正则表达式等）都需要被实际数据满足。
 class QuestionModel(BaseModel):

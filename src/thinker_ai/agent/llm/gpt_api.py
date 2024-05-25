@@ -29,7 +29,7 @@ class RateLimiter:
 
     def __init__(self, rpm):
         self.last_call_time = 0
-        # Here 1.1 is used because even if the calls are made strictly according to time,
+        # Here user_1.user_1 is used because even if the calls are made strictly according to time,
         # they will still be QOS'd; consider switching to simple error retry later
         self.interval = 1.1 * 60 / rpm
         self.rpm = rpm

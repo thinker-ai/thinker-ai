@@ -32,7 +32,7 @@ class TestStateMachine(unittest.TestCase):
             transitions={"test_event": [transition]}
         )
 
-        sm = StateMachine(definition=sm_definition, instance_id="1", current_state=start_state, history=[])
+        sm = StateMachine(definition=sm_definition, instance_id="user_1", current_state=start_state, history=[])
         event = sm.handle(Command(name="test_command"))
         self.assertIsNotNone(event)
         self.assertEqual(event.name, "test_event")
@@ -40,7 +40,7 @@ class TestStateMachine(unittest.TestCase):
     def test_no_action_for_command(self):
         state = State(name="start", actions={})
         sm_definition = StateMachineDefinition(business_id="test_business", states={"start": state}, transitions={})
-        sm = StateMachine(definition=sm_definition, instance_id="1", current_state=state, history=[])
+        sm = StateMachine(definition=sm_definition, instance_id="user_1", current_state=state, history=[])
 
         event = sm.handle(Command(name="test_command"))
 
@@ -54,7 +54,7 @@ class TestStateMachine(unittest.TestCase):
         sm_definition = StateMachineDefinition(business_id="test_business", states={
             "start": start_state, "end": end_state}, transitions={"test_event": [transition]})
 
-        sm = StateMachine(definition=sm_definition, instance_id="1", current_state=start_state, history=[])
+        sm = StateMachine(definition=sm_definition, instance_id="user_1", current_state=start_state, history=[])
 
         sm.handle(Command(name="test_command"))
 
@@ -64,7 +64,7 @@ class TestStateMachine(unittest.TestCase):
     def test_no_transition_for_event(self):
         state = State(name="start", actions={"test_command": TestAction()})
         sm_definition = StateMachineDefinition(business_id="test_business", states={"start": state}, transitions={})
-        sm = StateMachine(definition=sm_definition, instance_id="1", current_state=state, history=[])
+        sm = StateMachine(definition=sm_definition, instance_id="user_1", current_state=state, history=[])
 
         with self.assertRaises(ValueError):
             sm.handle(Command(name="test_command"))

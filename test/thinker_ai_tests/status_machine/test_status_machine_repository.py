@@ -55,12 +55,12 @@ class TestPersistence(unittest.TestCase):
         definition = StateMachineDefinition(business_id="test_business", states={"start": state}, transitions={})
         self.definition_repo.save(definition)
 
-        sm = StateMachine(definition=definition, instance_id="1", current_state=state, history=[])
+        sm = StateMachine(definition=definition, instance_id="user_1", current_state=state, history=[])
         self.instance_repo.save(sm)
 
-        loaded_sm = self.instance_repo.load("test_business", "1")
+        loaded_sm = self.instance_repo.load("test_business", "user_1")
         self.assertEqual(loaded_sm.current_state.name, "start")
-        self.assertEqual(loaded_sm.instance_id, "1")
+        self.assertEqual(loaded_sm.instance_id, "user_1")
 
     def test_missing_definition(self):
         with self.assertRaises(ValueError):

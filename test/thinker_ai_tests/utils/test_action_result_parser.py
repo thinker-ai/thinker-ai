@@ -6,8 +6,8 @@ from thinker_ai.utils.text_parser import TextParser
 
 
 def test_parse_blocks():
-    test_text = "##block1\nThis is block 1.\n##block2\nThis is block 2."
-    expected_result = {'block1': 'This is block 1.', 'block2': 'This is block 2.'}
+    test_text = "##block1\nThis is block user_1.\n##block2\nThis is block 2."
+    expected_result = {'block1': 'This is block user_1.', 'block2': 'This is block 2.'}
     assert TextParser.parse_blocks(test_text) == expected_result
 
 
@@ -82,21 +82,21 @@ def test_parse_dict():
 {
     "Create User Information": {
         "Success Path": [
-            "1. Actor inputs personal information (name, age, email)",
+            "user_1. Actor inputs personal information (name, age, email)",
             "2. System validates the input and creates a new user record, returns a success message"
         ],
         "Failure Path": [
             "2a. System validates input error, prompts 'Invalid input'",
-            "2a1. Actor re-enters, return to step 1"
+            "2a1. Actor re-enters, return to step user_1"
         ],
         "I/O and Validation Rules": {
-            "1. input": ["name (string, not null)", "age (integer, not null)", "email (string, not null)"],
+            "user_1. input": ["name (string, not null)", "age (integer, not null)", "email (string, not null)"],
             "2. output": ["success message (string)"]
         }
     },
     "Read User Information": {
         "Success Path": [
-            "1. Actor requests to read personal information",
+            "user_1. Actor requests to read personal information",
             "2. System retrieves and returns the user's personal information"
         ],
         "Failure Path": [],
@@ -110,21 +110,21 @@ def test_parse_dict():
     expected_result = {"Use Case Detail": {
         "Create User Information": {
             "Success Path": [
-                "1. Actor inputs personal information (name, age, email)",
+                "user_1. Actor inputs personal information (name, age, email)",
                 "2. System validates the input and creates a new user record, returns a success message"
             ],
             "Failure Path": [
                 "2a. System validates input error, prompts 'Invalid input'",
-                "2a1. Actor re-enters, return to step 1"
+                "2a1. Actor re-enters, return to step user_1"
             ],
             "I/O and Validation Rules": {
-                "1. input": ["name (string, not null)", "age (integer, not null)", "email (string, not null)"],
+                "user_1. input": ["name (string, not null)", "age (integer, not null)", "email (string, not null)"],
                 "2. output": ["success message (string)"]
             }
         },
         "Read User Information": {
             "Success Path": [
-                "1. Actor requests to read personal information",
+                "user_1. Actor requests to read personal information",
                 "2. System retrieves and returns the user's personal information"
             ],
             "Failure Path": [],
@@ -148,7 +148,7 @@ The original idea is to develop a system that can effectively manage the user re
 
 ## Business Analysis
 To achieve the business objectives, the system should have the following features:
-1. Requirement Identification: The system should be able to identify the user needs effectively.
+user_1. Requirement Identification: The system should be able to identify the user needs effectively.
 2. Structured Representation: The system should provide a structured representation of user requirements.
 3. User-friendly Interface: The system should have a user-friendly interface for easy navigation and usage.
 4. Efficient Management: The system should be efficient in managing the user requirements.

@@ -146,7 +146,7 @@ class FireworksCostManager(CostManager):
             elif 16 < model_size <= 80:
                 token_costs = FIREWORKS_GRADE_TOKEN_COSTS["80"]
             else:
-                token_costs = FIREWORKS_GRADE_TOKEN_COSTS["-1"]
+                token_costs = FIREWORKS_GRADE_TOKEN_COSTS["-user_1"]
         return token_costs
 
     def update_cost(self, prompt_tokens: int, completion_tokens: int, model: str):

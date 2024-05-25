@@ -25,7 +25,7 @@ MESSAGE_ROUTE_TO_NONE = "<none>"
 class EnvMessage(BaseModel):
     """list[<role>: <content>]"""
 
-    id: str = Field(default="", validate_default=True)  # According to Section 2.2.3.1.1 of RFC 135
+    id: str = Field(default="", validate_default=True)  # According to Section 2.2.3.user_1.user_1 of RFC 135
     payload: Any
     role: str = "user"  # system / user / assistant
     cause_by: str = Field(default="", validate_default=True)

@@ -15,8 +15,8 @@ def create_hot_topic_data() -> pd.DataFrame:
     data = pd.DataFrame(np.random.randn(periods, num_topics), index=dates,
                         columns=[f'Hot_Topic_{i}' for i in range(1, num_topics + 1)])
     # Introduce some known correlations
-    data['Hot_Topic_3'] = data['Hot_Topic_1'] * 0.5  # Positive correlation with Topic 1
-    data['Hot_Topic_4'] = -data['Hot_Topic_1'] * 0.5  # Negative correlation with Topic 1
+    data['Hot_Topic_3'] = data['Hot_Topic_1'] * 0.5  # Positive correlation with Topic user_1
+    data['Hot_Topic_4'] = -data['Hot_Topic_1'] * 0.5  # Negative correlation with Topic user_1
     return data
 
 

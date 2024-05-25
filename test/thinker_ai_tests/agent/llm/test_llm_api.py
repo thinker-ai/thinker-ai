@@ -94,7 +94,7 @@ class TestGPT(asynctest.TestCase):
 
     async def test_a_completion_batch_text(self):
         inputs: Dict[str, str] = {
-            "1": "我用session.request()向你发送消息，你才能记住我们之前交流的上下文是吗，能记住多少条上下文？",
+            "user_1": "我用session.request()向你发送消息，你才能记住我们之前交流的上下文是吗，能记住多少条上下文？",
             "2": "如果我不用session.request()向你发送消息，而是每次都新建一个request，你就不能获取我们之前交流的上下文，是吗？"}
         result: Dict[str, str] = await gpt.a_generate_batch(model, inputs)
         self.assertEqual(2, len(result))

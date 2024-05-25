@@ -224,7 +224,7 @@ def chart_from_components(
         labels: Optional[List[str]] = None,
         strings: Optional[List[str]] = None,
         x_title="Component 0",
-        y_title="Component 1",
+        y_title="Component user_1",
         mark_size=5,
         **kwargs,
 ):
@@ -257,7 +257,7 @@ def chart_from_components_3D(
         labels: Optional[List[str]] = None,
         strings: Optional[List[str]] = None,
         x_title: str = "Component 0",
-        y_title: str = "Component 1",
+        y_title: str = "Component user_1",
         z_title: str = "Compontent 2",
         mark_size: int = 5,
         **kwargs,

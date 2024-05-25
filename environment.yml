@@ -85,3 +85,4 @@ dependencies:
     - bcrypt
     - passlib
     - fastapi-jwt-auth
+    - nest-asyncio

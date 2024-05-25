@@ -1,13 +1,13 @@
 import os
-
 from fastapi import APIRouter, Depends
 from fastapi import Request
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 from thinker_ai.login import get_session
-from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.context import get_project_root
+from thinker_ai.tasks.dynamic.service_loader import load_service
+from thinker_ai.web_socket import enqueue_message
 
 chat_router = APIRouter()
 
@@ -40,6 +40,13 @@ def to_assistant_id(user_id, topic) -> str:
 @chat_router.post("/chat", response_model=str)
 async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> str:
     user_id = session.get("user_id")
-    # launch_service("gradio_test", user_id)
-    agent = AssistantAgent.from_id(to_assistant_id(user_id, request.topic))
-    return agent.ask(request.content)
+    mount_path = await load_service(user_id, "demo")
+    message = {
+        "port":"8000",
+        "title":"demo",
+        "mount_path":mount_path
+    }
+    enqueue_message(user_id, message)
+    # agent = AssistantAgent.from_id(to_assistant_id(user_id, request.topic))
+    # return agent.ask(request.content)
+    return "ok"

@@ -40,9 +40,9 @@ TOKEN_COSTS = {
     "mistral-small-latest": {"prompt": 0.002, "completion": 0.006},
     "mistral-medium-latest": {"prompt": 0.0027, "completion": 0.0081},
     "mistral-large-latest": {"prompt": 0.008, "completion": 0.024},
-    "claude-instant-1.2": {"prompt": 0.0008, "completion": 0.0024},
+    "claude-instant-user_1.2": {"prompt": 0.0008, "completion": 0.0024},
     "claude-2.0": {"prompt": 0.008, "completion": 0.024},
-    "claude-2.1": {"prompt": 0.008, "completion": 0.024},
+    "claude-2.user_1": {"prompt": 0.008, "completion": 0.024},
     "claude-3-sonnet-20240229": {"prompt": 0.003, "completion": 0.015},
     "claude-3-opus-20240229": {"prompt": 0.015, "completion": 0.075},
     "yi-34b-chat-0205": {"prompt": 0.0003, "completion": 0.0003},
@@ -117,7 +117,7 @@ DASHSCOPE_TOKEN_COSTS = {
     "qwen-72b-chat": {"prompt": 0.0, "completion": 0.0},
     "qwen-14b-chat": {"prompt": 0.0011, "completion": 0.0011},
     "qwen-7b-chat": {"prompt": 0.00084, "completion": 0.00084},
-    "qwen-1.8b-chat": {"prompt": 0.0, "completion": 0.0},
+    "qwen-user_1.8b-chat": {"prompt": 0.0, "completion": 0.0},
     "baichuan2-13b-chat-v1": {"prompt": 0.0011, "completion": 0.0011},
     "baichuan2-7b-chat-v1": {"prompt": 0.00084, "completion": 0.00084},
     "baichuan-7b-v1": {"prompt": 0.0, "completion": 0.0},
@@ -133,7 +133,7 @@ DASHSCOPE_TOKEN_COSTS = {
 
 
 FIREWORKS_GRADE_TOKEN_COSTS = {
-    "-1": {"prompt": 0.0, "completion": 0.0},  # abnormal condition
+    "-user_1": {"prompt": 0.0, "completion": 0.0},  # abnormal condition
     "16": {"prompt": 0.2, "completion": 0.8},  # 16 means model size <= 16B; 0.2 means $0.2/1M tokens
     "80": {"prompt": 0.7, "completion": 2.8},  # 80 means 16B < model size <= 80B
     "mixtral-8x7b": {"prompt": 0.4, "completion": 1.6},
@@ -169,9 +169,9 @@ TOKEN_MAX = {
     "mistral-small-latest": 32768,
     "mistral-medium-latest": 32768,
     "mistral-large-latest": 32768,
-    "claude-instant-1.2": 100000,
+    "claude-instant-user_1.2": 100000,
     "claude-2.0": 100000,
-    "claude-2.1": 200000,
+    "claude-2.user_1": 200000,
     "claude-3-sonnet-20240229": 200000,
     "claude-3-opus-20240229": 200000,
     "yi-34b-chat-0205": 4000,

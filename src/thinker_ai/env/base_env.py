@@ -165,7 +165,7 @@ class Environment(ExtEnv):
     def publish_message(self, message: EnvMessage, peekable: bool = True) -> bool:
         """
         Distribute the message to the recipients.
-        In accordance with the Message routing structure design in Chapter 2.2.1 of RFC 116, as already planned
+        In accordance with the Message routing structure design in Chapter 2.2.user_1 of RFC 116, as already planned
         in RFC 113 for the entire system, the routing information in the Message is only responsible for
         specifying the message recipient, without concern for where the message recipient is located. How to
         route the message to the message recipient is a problem addressed by the transport framework designed

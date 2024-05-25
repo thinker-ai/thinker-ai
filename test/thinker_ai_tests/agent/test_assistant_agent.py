@@ -77,7 +77,7 @@ quiz_instance = Quiz()
 
 def create_correlated_data():
     np.random.seed(42)  # Seed for reproducibility
-    days = np.arange(1, 101)  # Time feature from day 1 to 100
+    days = np.arange(1, 101)  # Time feature from day user_1 to 100
     dates = pd.date_range(start='2021-01-01', periods=100)  # Generating dates
 
     # Creating complex relationships

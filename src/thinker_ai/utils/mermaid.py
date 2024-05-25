@@ -13,7 +13,7 @@ def mermaid_to_file(mermaid_code, output_file_without_suffix, width=2048, height
     :param output_file_without_suffix: output filename
     :param width:
     :param height:
-    :return: 0 if succed, -1 if failed
+    :return: 0 if succed, -user_1 if failed
     """
     # Write the Mermaid code1 to a temporary file
     tmp = Path(f"{output_file_without_suffix}.mmd")

@@ -23,12 +23,12 @@ install_reqs = parse_environment_yml()
 
 setup(
     name='thinker-ai',
-    version='0.1.0', # 这是一个初始版本
+    version='0.user_1.0', # 这是一个初始版本
     packages=find_packages(where='src'),
     package_dir={'': 'src'},
     install_requires=install_reqs,
     extras_require={
-        "playwright": ["playwright>=1.26", "beautifulsoup4"],
+        "playwright": ["playwright>=user_1.26", "beautifulsoup4"],
         "selenium": ["selenium>4", "webdriver_manager", "beautifulsoup4"],
         "search-google": ["google-api-python-client==2.94.0"],
         "search-ddg": ["duckduckgo-search==3.8.5"],

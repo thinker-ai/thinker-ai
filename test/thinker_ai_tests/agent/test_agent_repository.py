@@ -8,7 +8,7 @@ class TestAgentRepository(unittest.TestCase):
     def setUp(self):
         self.client = gpt.llm  # Replace with actual OpenAI client initialization
         self.user_id = 'user_1'
-        self.agent_id = '1'
+        self.agent_id = 'user_1'
         self.assistant_id = "asst_n4kxEAYXlisN7mBa9M6t7PdH"
         self.agent = AssistantAgent.from_id(self.assistant_id)
 

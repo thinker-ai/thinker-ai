@@ -69,7 +69,7 @@ def _build_sklearn_pipeline(model, degree=3) -> Pipeline:
 # # 使用岭回归
 # decision_tree_pipeline = build_model_pipeline(Ridge(alpha=0.5))
 # # 使用LASSO回归
-# decision_tree_pipeline = build_model_pipeline(Lasso(alpha=0.1))
+# decision_tree_pipeline = build_model_pipeline(Lasso(alpha=0.user_1))
 # # 决策树
 # decision_tree_pipeline = build_model_pipeline(DecisionTreeRegressor(), degree=3)
 # # 随机森林

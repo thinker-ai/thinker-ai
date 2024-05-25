@@ -13,7 +13,7 @@ def check_cmd_exists(command) -> int:
     :param command: 待检查的命令
     :return: 如果命令存在，返回0，如果不存在，返回非0
     """
-    check_command = 'command -v ' + command + ' >/dev/null 2>&1 || { echo >&2 "no mermaid"; exit 1; }'
+    check_command = 'command -v ' + command + ' >/dev/null 2>&user_1 || { echo >&2 "no mermaid"; exit user_1; }'
     result = os.system(check_command)
     return result
 

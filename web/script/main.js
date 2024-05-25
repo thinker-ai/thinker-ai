@@ -175,9 +175,12 @@ function openTab(event, tabId) {
         tabContents.forEach(content => {
             content.classList.remove('active');
         });
-
-        event.currentTarget.classList.add('active');
-        document.getElementById(tabId + '-content').classList.add('active');
+        if(tabId) {
+            document.getElementById(tabId + '-content').classList.add('active');
+        }
+        if(event) {
+            event.currentTarget.classList.add('active');
+        }
     }
 
 let tabCount = 0;
@@ -214,6 +217,9 @@ function addTabWithUrl(url, title) {
     newTabContent.appendChild(newIframe);
 
     document.getElementById('container').appendChild(newTabContent);
+    // Switch to the new tab
+    openTab(null, 'tab' + tabCount);
+    saveTabsToLocalStorage();
 }
 function closeTab(event, tabId) {
     event.stopPropagation();
@@ -223,6 +229,7 @@ function closeTab(event, tabId) {
         const tabContent = document.getElementById(tabId + '-content');
         tab.remove();
         tabContent.remove();
+        saveTabsToLocalStorage();
     }
 }
 
@@ -234,15 +241,39 @@ if (user_id) {
     };
 
     socket.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        const port = data.port;
-        const url = `http://localhost:${port}`;
+        const data= JSON.parse(event.data);
+        // alert(JSON.stringify(data));
+        const url = `http://localhost:${data.port}${data.mount_path}`;
         addTabWithUrl(url, data.title);
     };
 }
 
+function saveTabsToLocalStorage() {
+    const tabs = [];
+    const tabElements = document.getElementsByClassName('tab');
+    for (let i = 0; i < tabElements.length; i++) {
+        const tabId = tabElements[i].id;
+        const title = tabElements[i].textContent.replace('X', '').trim();
+        const url = document.getElementById(tabId + '-content').getElementsByTagName('iframe')[0].src;
+        tabs.push({ id: tabId, title: title, url: url });
+    }
+    localStorage.setItem('tabs', JSON.stringify(tabs));
+}
 
+function restoreTabsFromLocalStorage() {
+    const tabs = JSON.parse(localStorage.getItem('tabs'));
+    if (tabs) {
+        tabs.forEach(tab => {
+            const { title, url } = tab;
+            addTabWithUrl(url, title);
+        });
+    }
+}
 
+// Call this function when the page loads
+window.onload = () => {
+    restoreTabsFromLocalStorage();
+};
 // 添加请求拦截器
 axios.interceptors.request.use(config => {
     const token = localStorage.getItem('access_token');

@@ -9,7 +9,7 @@ class TestAgentDAO(unittest.TestCase):
     def setUp(self):
         # 在测试前准备环境，比如创建一个测试用的文件路径
         self.agent_dao = AgentDAO(filepath=self.db_path)
-        self.test_agent = AgentPO(id='1', user_id='user_1', threads=[], assistant_id='assistant_1')
+        self.test_agent = AgentPO(id='user_1', user_id='user_1', threads=[], assistant_id='assistant_1')
 
     def tearDown(self):
         # 测试后清理环境，例如删除测试文件
@@ -26,7 +26,7 @@ class TestAgentDAO(unittest.TestCase):
 
     def test_update_agent(self):
         self.agent_dao.add_agent(self.test_agent)
-        updated_agent = AgentPO(id='1', user_id='user_2', threads=[], assistant_id='assistant_2')
+        updated_agent = AgentPO(id='user_1', user_id='user_2', threads=[], assistant_id='assistant_2')
         self.agent_dao.update_agent(updated_agent)
         retrieved_agent = self.agent_dao.get_agent(self.test_agent.id)
         self.assertEqual(updated_agent.user_id, retrieved_agent.user_id)
