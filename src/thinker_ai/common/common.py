@@ -1,3 +1,4 @@
+import asyncio
 import inspect
 import os
 import re
@@ -50,4 +51,11 @@ def load_file(file_dir, file_name):
         content = file.read()
     return content
 
+def run_async(coro):
+    """
+    在同步代码中运行异步协程的助手函数。
+    """
+    loop = asyncio.get_event_loop()
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    return future.result()
 

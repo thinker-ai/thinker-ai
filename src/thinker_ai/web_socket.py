@@ -4,6 +4,8 @@ from collections import deque
 
 from fastapi import WebSocket, APIRouter
 
+from thinker_ai.common.common import run_async
+
 # 存储待发送的消息
 message_queue = deque()
 socket_router = APIRouter()
@@ -25,21 +27,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 
 
 # 主动向客户端发送消息的示例函数
-async def send_message_to_client(user_id: str, message: dict):
+def send_message_to_client(user_id: str, message: dict):
     websocket = socket_clients.get(user_id)
     if websocket:
-        await websocket.send_text(json.dumps(message,ensure_ascii=False))
-
-
-# 后台任务：处理消息队列并发送消息给客户端
-async def background_task():
-    while True:
-        while message_queue:
-            user_id, message = message_queue.popleft()
-            await send_message_to_client(user_id,message)
-        await asyncio.sleep(1)  # 每秒检查一次消息队列
-
-
-# 发送消息到队列的函数
-def enqueue_message(user_id: str, message: dict):
-    message_queue.append((user_id, message))
+        run_async(websocket.send_text(json.dumps(message,ensure_ascii=False)))

@@ -1,0 +1,26 @@
+{
+  "name": "deploy_service",
+  "description": "deploy_service(name, gradio_code, user_id: Optional[str]) -> str - 保存一段已生成的gradio代码\n    :param name: gradio代码文件名.\n    :param user_id: 用户id\n    :return: 文件的保存路径.",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "description": "应用名称，即是gradio文件名，也是代码中最后一句创建的Blocks实例的名称",
+        "type": "string"
+      },
+      "gradio_code": {
+        "description": "gradio代码内容，所有import语句只能是局部作用域，这是为了回避gradio的bug",
+        "type": "string"
+      },
+      "user_id": {
+        "description": "用户id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "gradio_code",
+      "user_id"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "name": "is_service_exist",
+  "description": "is_service_exist(name, user_id: Optional[str]) -> bool - 判断一份gradio代码是否存在\n    :param name: gradio代码文件名.\n    :param user_id: 用户id",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "description": "应用名称，即是gradio文件名",
+        "type": "string"
+      },
+      "user_id": {
+        "description": "用户id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "user_id"
+    ]
+  }
+}

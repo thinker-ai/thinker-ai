@@ -42,7 +42,7 @@ def save_session_store():
 # 假设这里有一个用户数据库
 fake_users_db = {
     "testuser": {
-        "id": "1",
+        "id": "abc",
         "username": "testuser",
         "full_name": "Test User",
         "hashed_password": bcrypt.hashpw("testpassword".encode('utf-8'), bcrypt.gensalt()),

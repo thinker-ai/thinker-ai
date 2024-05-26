@@ -1,0 +1,21 @@
+{
+  "name": "load_service_and_push_to_user",
+  "description": "load_service_and_push_to_user(name: str, user_id: Optional[str] = None) -> str - 将gradio代码加载运行后把地址推给用户\n    :param name: 加载文件名\n    :param user_id: 用户id\n    :return: 加载的服务的挂载地址",
+  "parameters": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "description": "应用名称，即是gradio文件名",
+        "type": "string"
+      },
+      "user_id": {
+        "description": "用户id",
+        "type": "string"
+      }
+    },
+    "required": [
+      "name",
+      "user_id"
+    ]
+  }
+}

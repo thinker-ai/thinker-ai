@@ -85,10 +85,10 @@ class AssistantAgent:
             if exist_file_id == file_id:
                 exist_file_ids.remove(exist_file_id)
                 self.client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
-                                               "code_interpreter": {
-                                                   "file_ids": exist_file_ids
-                                               }
-                                           })
+                    "code_interpreter": {
+                        "file_ids": exist_file_ids
+                    }
+                })
 
     def remove_vector_store_id(self, vector_store_id: str):
         exist_vector_store_ids: List[str] = self.assistant.tool_resources.file_search.vector_store_ids
@@ -96,10 +96,10 @@ class AssistantAgent:
             if exist_vector_store_id == vector_store_id:
                 exist_vector_store_ids.remove(exist_vector_store_id)
                 self.client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
-                                               "file_search": {
-                                                   "vector_store_ids": exist_vector_store_ids
-                                               }
-                                           })
+                    "file_search": {
+                        "vector_store_ids": exist_vector_store_ids
+                    }
+                })
 
     def ask(self, content: str, topic: str = "default") -> str:
         message: Message = self._ask_for_messages(topic, content)
@@ -212,7 +212,7 @@ class AssistantAgent:
             thread_id=thread.id,
             role="user",
             content=content,
-            attachments= attachments
+            attachments=attachments
         )
         return self.client.beta.threads.runs.create(
             model=self.assistant.model,
@@ -255,15 +255,15 @@ class AssistantAgent:
 
     def register_langchain_tool(self, tool: BaseTool):
         self.functions_register.register_langchain_tool(tool)
-        self._update_functions()
+        self._add_functions()
 
     def register_function(self, func: Callable, args_schema: Optional[Type[BaseModel]]):
         self.functions_register.register_function(func, args_schema)
-        self._update_functions()
+        self._add_functions()
 
     def register_langchain_tool_name(self, tool_name: str):
         self.functions_register.register_langchain_tool_names([tool_name])
-        self._update_functions()
+        self._add_functions()
 
     def _register_native_tool(self, native_tool: Union[CodeInterpreterTool, FileSearchTool]):
         tools = self.assistant.tools
@@ -290,23 +290,36 @@ class AssistantAgent:
     def remove_file_search(self):
         self._remove_native_tool("file_search")
 
-    def _update_functions(self):
+    def _add_functions(self):
         tools = self.assistant.tools
-        tools = [tool for tool in tools if tool.type != "function"]
         new_functions = self.functions_register.functions_schema
+        update = False
         for new_function in new_functions:
             new_tool = {
                 "type": "function",
                 "function": new_function
             }
-            tools.append(new_tool)  # 添加到工具列表中
+            if not self.is_function_registered(new_function.get("name")):
+                tools.append(new_tool)  # 添加到工具列表中
+                update = True
         # 使用更新后的工具列表更新助手
-        self.client.beta.assistants.update(self.assistant.id, tools=tools)
+        if update:
+            self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def remove_functions(self):
         tools = self.assistant.tools
-        tools = [tool for tool in tools if tool.type != "function"]
-        self.client.beta.assistants.update(self.assistant.id, tools=tools)
+        new_tools=[]
+        for tool in tools:
+            if tool.type != "function":
+                new_tools.append(tool)
+        self.client.beta.assistants.update(self.assistant.id, tools=new_tools)
+
+    def is_function_registered(self, name: str) -> bool:
+        tools = self.assistant.tools
+        for tool in tools:
+            if tool.type == "function" and tool.function.name == name:
+                return True
+        return False
 
     def get_most_similar_strings(self,
                                  source_strings: List[str],

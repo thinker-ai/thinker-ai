@@ -234,20 +234,38 @@ function closeTab(event, tabId) {
 }
 
 const user_id = localStorage.getItem("user_id");
-if (user_id) {
-    const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
-    socket.onopen = () => {
-        console.log('Connected to server');
-    };
+let reconnectInterval = 1000; // 1 second
 
-    socket.onmessage = (event) => {
-        const data= JSON.parse(event.data);
-        // alert(JSON.stringify(data));
-        const url = `http://localhost:${data.port}${data.mount_path}`;
-        addTabWithUrl(url, data.title);
-    };
+function connect() {
+    if (user_id) {
+        const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
+
+        socket.onopen = () => {
+            console.log('Connected to server');
+            reconnectInterval = 1000; // Reset the interval on successful connection
+        };
+
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            // alert(JSON.stringify(data));
+            const url = `http://localhost:${data.port}${data.mount_path}`;
+            addTabWithUrl(url, data.title);
+        };
+
+        socket.onclose = (event) => {
+            console.log('Connection closed', event);
+            // Attempt to reconnect after a delay
+            setTimeout(connect, reconnectInterval);
+            // Increment the interval for each failed attempt
+            reconnectInterval = Math.min(reconnectInterval * 2, 5000); // Max 5 seconds
+        };
+
+        socket.onerror = (error) => {
+            console.log('WebSocket error', error);
+        };
+    }
 }
-
+connect();
 function saveTabsToLocalStorage() {
     const tabs = [];
     const tabElements = document.getElementsByClassName('tab');

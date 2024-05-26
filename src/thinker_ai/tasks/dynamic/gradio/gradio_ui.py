@@ -2,8 +2,8 @@ import os
 from typing import List
 
 from openai import OpenAI
-import gradio as gr
-
+import gradio
+gr=gradio
 api_key = os.environ.get("OPENAI_API_KEY")
 client = OpenAI(api_key=api_key)
 
@@ -36,7 +36,7 @@ def predict(history:List[List[str]]):
 
 
 
-with gr.Blocks() as demo:
+with gr.Blocks() as gradio_ui:
     chatbot = gr.Chatbot(
         [],
         elem_id="chatbot",
@@ -51,7 +51,7 @@ with gr.Blocks() as demo:
 
     chatbot.like(print_like_dislike, None, None)
 
-demo.queue()
-demo.launch()
+gradio_ui.queue()
+gradio_ui.launch()
 
 # gr.ChatInterface(predict).launch()
