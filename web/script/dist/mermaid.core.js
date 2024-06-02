@@ -10146,7 +10146,7 @@ var render = function render(elem, graph, markers, diagramtype, id) {
   (0,_mermaid_graphlib__WEBPACK_IMPORTED_MODULE_5__.clear)();
   _logger__WEBPACK_IMPORTED_MODULE_2__.log.warn('Graph at first:', graphlib__WEBPACK_IMPORTED_MODULE_1___default().json.write(graph));
   (0,_mermaid_graphlib__WEBPACK_IMPORTED_MODULE_5__.adjustClustersAndEdges)(graph);
-  _logger__WEBPACK_IMPORTED_MODULE_2__.log.warn('Graph after:', graphlib__WEBPACK_IMPORTED_MODULE_1___default().json.write(graph)); // log.warn('Graph ever  after:', graphlib.json.write(graph.node('A').graph));
+  _logger__WEBPACK_IMPORTED_MODULE_2__.log.warn('Graph after:', graphlib__WEBPACK_IMPORTED_MODULE_1___default().json.write(graph)); // log.warn('Graph ever  after:', graphlib.q.write(graph.node('A').graph));
 
   recursiveRender(elem, graph, diagramtype);
 }; // const shapeDefinitions = {};
@@ -26189,7 +26189,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var d3__WEBPACK_IMPORTED_MODULE_0___default = /*#__PURE__*/__webpack_require__.n(d3__WEBPACK_IMPORTED_MODULE_0__);
 /* harmony import */ var stylis__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! stylis */ "stylis");
 /* harmony import */ var stylis__WEBPACK_IMPORTED_MODULE_1___default = /*#__PURE__*/__webpack_require__.n(stylis__WEBPACK_IMPORTED_MODULE_1__);
-/* harmony import */ var _package_json__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ../package.json */ "./package.json");
+/* harmony import */ var _package_json__WEBPACK_IMPORTED_MODULE_38__ = __webpack_require__(/*! ../package.q */ "./package.json");
 /* harmony import */ var _config__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./config */ "./src/config.js");
 /* harmony import */ var _diagrams_class_classDb__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./diagrams/class/classDb */ "./src/diagrams/class/classDb.js");
 /* harmony import */ var _diagrams_class_classRenderer__WEBPACK_IMPORTED_MODULE_33__ = __webpack_require__(/*! ./diagrams/class/classRenderer */ "./src/diagrams/class/classRenderer.js");
@@ -28658,7 +28658,7 @@ var anyComment = /\s*%%.*\n/gm;
  * ```
  * @param {string} text The text defining the graph
  * @param {any} cnf
- * @returns {object} The json object representing the init passed to mermaid.initialize()
+ * @returns {object} The q object representing the init passed to mermaid.initialize()
  */
 
 var detectInit = function detectInit(text, cnf) {
@@ -30515,7 +30515,7 @@ module.exports = require("stylis");
 
 /***/ "./package.json":
 /*!**********************!*\
-  !*** ./package.json ***!
+  !*** ./package.q ***!
   \**********************/
 /***/ ((module) => {
 

@@ -44,7 +44,7 @@ class SerpAPIWrapper(BaseModel):
             params = self.get_params(query)
             params["source"] = "python"
             params["num"] = max_results
-            params["output"] = "json"
+            params["output"] = "q"
             url = "https://serpapi.com/search"
             return url, params
 

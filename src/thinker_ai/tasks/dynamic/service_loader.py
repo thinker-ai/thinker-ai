@@ -1,4 +1,3 @@
-import asyncio
 import threading
 from typing import Optional, Dict, Type
 import gradio as gr
@@ -99,15 +98,14 @@ class ServiceLoader:
             raise Exception(f"Failed to mount service at {service.mount_path}")
 
     def _unmount_gr_blocks(self, app: FastAPI, mount_path):
-        service = self.mounted_services_dict.pop(mount_path)
-
+        service = self.mounted_services_dict.get(mount_path)
         if service:
             # 停止处理队列
             service.gr_blocks.close(True)
             # 移除已加载服务
-            found = None
-            for route in app.routes:
-                if isinstance(route, Mount) and route.path.startswith(mount_path):
-                    found = route
-            if found:
-                app.routes.remove(found)
+        found = None
+        for route in app.routes:
+            if isinstance(route, Mount) and route.path.startswith(mount_path):
+                found = route
+        if found:
+            app.routes.remove(found)

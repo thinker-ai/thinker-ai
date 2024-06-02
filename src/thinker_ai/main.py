@@ -38,9 +38,6 @@ async def startup():
     if not is_router_included(loader_router):
         app.include_router(loader_router)
 
-    service_loader.load_service_dynamic(app=app, name="demo")
-
-
 def is_router_included(router: APIRouter) -> bool:
     # 获取 router 中所有路由的路径
     router_routes = {route.path for route in router.routes if isinstance(route, (Route, WebSocketRoute))}

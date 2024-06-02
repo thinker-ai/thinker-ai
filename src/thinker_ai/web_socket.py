@@ -30,4 +30,4 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
 def send_message_to_client(user_id: str, message: dict):
     websocket = socket_clients.get(user_id)
     if websocket:
-        run_async(websocket.send_text(json.dumps(message,ensure_ascii=False)))
+        run_async(websocket.send_text(json.dumps(message, ensure_ascii=False)))

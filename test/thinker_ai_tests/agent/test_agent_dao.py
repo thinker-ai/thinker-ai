@@ -5,7 +5,7 @@ from thinker_ai.agent.agent_dao import AgentDAO, AgentPO
 
 
 class TestAgentDAO(unittest.TestCase):
-    db_path:str='data/test_agents.json'
+    db_path:str='data/test_agents.q'
     def setUp(self):
         # 在测试前准备环境，比如创建一个测试用的文件路径
         self.agent_dao = AgentDAO(filepath=self.db_path)

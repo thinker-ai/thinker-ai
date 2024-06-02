@@ -25,12 +25,12 @@ class AgentDAO(metaclass=SingletonMeta):
     def __init__(self, filepath: str):
         # This ensures that initialization happens only once
         if not AgentDAO._instance:
-            self.filepath = filepath or get_project_root() / 'data/agents.json'
+            self.filepath = filepath or get_project_root() / 'data/agents.q'
             self._lock = Lock()
             self._load_agents()
 
     @classmethod
-    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.json') -> "AgentDAO":
+    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.q') -> "AgentDAO":
         """
         The factory method for getting the singleton instance.
         """

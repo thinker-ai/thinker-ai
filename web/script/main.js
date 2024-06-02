@@ -249,7 +249,7 @@ function connect() {
             const data = JSON.parse(event.data);
             // alert(JSON.stringify(data));
             const url = `http://localhost:${data.port}${data.mount_path}`;
-            addTabWithUrl(url, data.title);
+            addTabWithUrl(url, data.name);
         };
 
         socket.onclose = (event) => {

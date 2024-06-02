@@ -90,13 +90,13 @@ class EnvMessage(BaseModel):
         return {"role": self.role, "content": self.content}
 
     def dump(self) -> str:
-        """Convert the object to json string"""
+        """Convert the object to q string"""
         return self.model_dump_json(exclude_none=True, warnings=False)
 
     @staticmethod
     @handle_exception(exception_type=JSONDecodeError, default_return=None)
     def load(val):
-        """Convert the json string to object."""
+        """Convert the q string to object."""
 
         try:
             m = json.loads(val)
@@ -108,7 +108,7 @@ class EnvMessage(BaseModel):
                 msg.id = id
             return msg
         except JSONDecodeError as err:
-            logger.error(f"parse json failed: {val}, error:{err}")
+            logger.error(f"parse q failed: {val}, error:{err}")
         return None
 
 

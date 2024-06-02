@@ -67,7 +67,7 @@ class SerperWrapper(BaseModel):
         return json.dumps(payloads, sort_keys=True)
 
     def get_headers(self) -> Dict[str, str]:
-        headers = {"X-API-KEY": self.serper_api_key, "Content-Type": "application/json"}
+        headers = {"X-API-KEY": self.serper_api_key, "Content-Type": "application/q"}
         return headers
 
     @staticmethod

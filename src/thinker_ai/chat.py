@@ -40,11 +40,9 @@ def to_assistant_id(user_id, topic) -> str:
 
 @chat_router.post("/chat", response_model=str)
 async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> str:
-    # user_id = session.get("user_id")
-    await load_service_and_push_to_user("calculator","abc")
-    # agent = AssistantAgent.from_id(to_assistant_id(user_id, request.topic))
-    # return agent.ask(request.content)
-    return "ok"
+    user_id = session.get("user_id")
+    agent = AssistantAgent.from_id(to_assistant_id(user_id, request.topic))
+    return agent.ask(request.content)
 
 
 

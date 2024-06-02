@@ -3,8 +3,8 @@ import inspect
 import os
 import re
 import json
+import threading
 from pathlib import Path
-
 
 from IPython.core.display_functions import display
 
@@ -51,11 +51,21 @@ def load_file(file_dir, file_name):
         content = file.read()
     return content
 
-def run_async(coro):
-    """
-    在同步代码中运行异步协程的助手函数。
-    """
-    loop = asyncio.get_event_loop()
-    future = asyncio.run_coroutine_threadsafe(coro, loop)
-    return future.result()
 
+def run_async(coro):
+    loop = asyncio.new_event_loop()
+
+    def start_event_loop(loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
+
+    # 启动独立的事件循环线程
+    event_loop_thread = threading.Thread(target=start_event_loop, args=(loop,), daemon=True)
+    event_loop_thread.start()
+
+    future = asyncio.run_coroutine_threadsafe(coro, loop)
+    try:
+       future.result()
+    except Exception as e:
+        print(f"Error running async function: {e}")
+        raise

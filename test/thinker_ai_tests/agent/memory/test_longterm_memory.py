@@ -7,7 +7,7 @@ from thinker_ai.agent.memory import LongTermMemory
 class TestLongTermMemory(unittest.TestCase):
 
     def setUp(self):
-        self.file_path = 'test_memory.json'
+        self.file_path = 'test_memory.q'
         self.memory = LongTermMemory('agent1', self.file_path)
 
     def tearDown(self):

@@ -1,5 +1,6 @@
 import os
 import threading
+from importlib import util
 from typing import Optional
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,24 +24,26 @@ def get_mount_path(title, user_id: Optional[str] = None) -> str:
         return f"/tasks/user_{user_id}/{title}"
 
 
+def load_module_from_file(filepath, module_name):
+    spec = util.spec_from_file_location(module_name, filepath)
+    module = util.module_from_spec(spec)
+    with open(filepath, 'r') as file:
+        code = file.read()
+    exec(code, module.__dict__)
+    return module
+
+
 class Service:
     def __init__(self, name, user_id: Optional[str] = None):
         self.deploy_path = get_deploy_path(name, user_id)
         self.mount_path = get_mount_path(name, user_id)
-        # 在asyncio.events.py中的get_event_loop方法中，要求
-        # threading.current_thread() is threading.main_thread()
-        # 才能执行self.set_event_loop(self.new_event_loop()，否则event_loop为空
+
         if threading.current_thread() is threading.main_thread():
-            with open(self.deploy_path, 'r') as file:
-                gradio_code = file.read()
-            # 动态执行 Gradio 源代码
-            if gradio_code:
-                local_vars = {}
-                exec(gradio_code, {}, local_vars)
-                gr_blocks = local_vars.get(name)
-                if gr_blocks:
-                    self.gr_blocks = gr_blocks
-                else:
-                    raise RuntimeError("No interface defined")
+            # 动态加载模块
+            self.module = load_module_from_file(self.deploy_path, name)
+            # 获取 Gradio Blocks 实例
+            self.gr_blocks = getattr(self.module, name, None)
+            if not self.gr_blocks:
+                raise RuntimeError("未定义接口")
         else:
-            raise RuntimeError("current thread not main thread")
+            raise RuntimeError("当前线程不是主线程")

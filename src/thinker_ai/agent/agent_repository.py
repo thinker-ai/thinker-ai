@@ -12,7 +12,7 @@ class AgentRepository(metaclass=SingletonMeta):
     _instance = None
 
     @classmethod
-    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.json') -> "AgentRepository":
+    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.q') -> "AgentRepository":
         if not cls._instance:
             cls._instance = cls(filepath)
         return cls._instance
