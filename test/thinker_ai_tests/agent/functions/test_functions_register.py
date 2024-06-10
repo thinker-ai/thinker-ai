@@ -5,7 +5,7 @@ from deepdiff import DeepDiff
 from langchain.pydantic_v1 import BaseModel, Field
 from pydantic import field_validator
 
-from thinker_ai.agent.functions.functions_register import FunctionsRegister
+from thinker_ai.agent.tools.functions_register import FunctionsRegister
 
 
 # QuizArgs及其内部的QuestionModel的数据结构定义，和display_quiz实际使用的数据结构questions: List[Dict[str, Any]]定义不一致，为了

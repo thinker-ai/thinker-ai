@@ -1,7 +1,7 @@
 import unittest
 from typing import Dict, List
 
-from thinker_ai.context import get_project_root
+from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.common.common import load_file
 from thinker_ai.utils.text_parser import TextParser
 
@@ -32,7 +32,7 @@ class TestActionResult(unittest.TestCase):
     def load_test_file(self, file_name: str) -> str:
         if file_name.startswith('/'):
             file_name = file_name[1:]  # 否则会误判为根路径
-        file_dir = get_project_root() / "test/thinker_ai_tests/static/static"
+        file_dir = PROJECT_ROOT / "test/thinker_ai_tests/static/static"
         return load_file(file_dir, file_name)
 
 

@@ -1,12 +1,12 @@
 import unittest
 from thinker_ai.agent.agent_repository import AgentRepository
 from thinker_ai.agent.assistant_agent import AssistantAgent
-from thinker_ai.agent.llm import gpt
+from thinker_ai.agent.provider.llm import open_ai
 
 
 class TestAgentRepository(unittest.TestCase):
     def setUp(self):
-        self.client = gpt.llm  # Replace with actual OpenAI client initialization
+        self.client = open_ai  # Replace with actual OpenAI client initialization
         self.user_id = 'user_1'
         self.agent_id = 'user_1'
         self.assistant_id = "asst_n4kxEAYXlisN7mBa9M6t7PdH"

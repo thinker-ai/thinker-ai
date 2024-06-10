@@ -3,8 +3,8 @@ from typing import Optional, List
 
 from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.agent.agent_dao import AgentDAO, ThreadPO, AgentPO
-from thinker_ai.agent.llm import gpt
-from thinker_ai.context import get_project_root
+from thinker_ai.agent.provider.llm import open_ai
+from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.common.singleton_meta import SingletonMeta
 
 
@@ -12,7 +12,7 @@ class AgentRepository(metaclass=SingletonMeta):
     _instance = None
 
     @classmethod
-    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.q') -> "AgentRepository":
+    def get_instance(cls, filepath: Optional[str] = PROJECT_ROOT/ 'data/agents.q') -> "AgentRepository":
         if not cls._instance:
             cls._instance = cls(filepath)
         return cls._instance
@@ -20,7 +20,7 @@ class AgentRepository(metaclass=SingletonMeta):
     def __init__(self, filepath: str):
         if not AgentRepository._instance:
             self.agent_dao = AgentDAO.get_instance(filepath)
-            self.client = gpt.llm
+            self.client = open_ai.client
             self._lock = Lock()
             AgentRepository._instance = self
         else:
@@ -31,8 +31,8 @@ class AgentRepository(metaclass=SingletonMeta):
         return AgentPO(id=agent.id, user_id=agent.user_id, threads=threads_po, assistant_id=agent.assistant.id)
 
     def _po_to_agent(self, agent_po: AgentPO) -> AssistantAgent:
-        assistant = gpt.llm.beta.assistants.retrieve(agent_po.assistant_id)
-        threads = {thread_po.thread_id: gpt.llm.beta.threads.retrieve(thread_po.thread_id) for thread_po in
+        assistant = open_ai.client.beta.assistants.retrieve(agent_po.assistant_id)
+        threads = {thread_po.thread_id: open_ai.client.beta.threads.retrieve(thread_po.thread_id) for thread_po in
                    agent_po.threads}
         return AssistantAgent(id=agent_po.id, user_id=agent_po.user_id, assistant=assistant, threads=threads, client=self.client)
 

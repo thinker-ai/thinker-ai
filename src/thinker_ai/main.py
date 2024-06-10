@@ -5,16 +5,14 @@ import uvicorn
 from fastapi import APIRouter
 from starlette.routing import Route, WebSocketRoute
 from starlette.staticfiles import StaticFiles
-from thinker_ai.context import get_project_root
+from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.app_instance import app
 from thinker_ai.tasks.dynamic.service_loader import ServiceLoader
 
-root_dir = get_project_root()
-
 # 挂载静态文件目录
-app.mount("/static", StaticFiles(directory=os.path.join(root_dir, 'web', 'static')), name="static")
-app.mount("/script", StaticFiles(directory=os.path.join(root_dir, 'web', 'script')), name="script")
-app.mount("/css", StaticFiles(directory=os.path.join(root_dir, 'web', 'css')), name="css")
+app.mount("/static", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'static')), name="static")
+app.mount("/script", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'script')), name="script")
+app.mount("/css", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'css')), name="css")
 main_loop = asyncio.get_event_loop()
 service_loader = ServiceLoader()
 

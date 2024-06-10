@@ -1,5 +1,5 @@
-from keras.models import Sequential
-from keras.layers import Dense
+from keras import Sequential
+from keras.src.layers import Dense
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.metrics import r2_score
 from sklearn.model_selection import train_test_split

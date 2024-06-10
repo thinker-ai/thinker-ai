@@ -3,7 +3,7 @@ from pprint import pprint
 from typing import List, Dict, Any
 
 from thinker_ai.agent.agent_repository import AgentRepository
-from thinker_ai.main import create_agent, del_agent, upload_file, delete_file, ask
+from thinker_ai.agent.main import create_agent, del_agent, ask
 
 user_id = "test_user"
 

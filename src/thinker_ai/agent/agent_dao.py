@@ -2,7 +2,7 @@ import json
 from threading import Lock
 from typing import List, Optional
 
-from thinker_ai.context import get_project_root
+from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.common.serializable import Serializable
 from thinker_ai.common.singleton_meta import SingletonMeta
 
@@ -25,12 +25,12 @@ class AgentDAO(metaclass=SingletonMeta):
     def __init__(self, filepath: str):
         # This ensures that initialization happens only once
         if not AgentDAO._instance:
-            self.filepath = filepath or get_project_root() / 'data/agents.q'
+            self.filepath = filepath or PROJECT_ROOT/ 'data/agents.q'
             self._lock = Lock()
             self._load_agents()
 
     @classmethod
-    def get_instance(cls, filepath: Optional[str] = get_project_root() / 'data/agents.q') -> "AgentDAO":
+    def get_instance(cls, filepath: Optional[str] = PROJECT_ROOT / 'data/agents.q') -> "AgentDAO":
         """
         The factory method for getting the singleton instance.
         """

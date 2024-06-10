@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional, List, cast
 
 import asynctest
 import numpy as np
@@ -6,8 +6,9 @@ import pandas as pd
 from pydantic import field_validator
 
 from thinker_ai.agent.assistant_agent import AssistantAgent
-from thinker_ai.agent.llm import gpt
 from langchain.pydantic_v1 import BaseModel, Field
+
+from thinker_ai.agent.provider.llm import open_ai
 
 
 class QuestionModel(BaseModel):
@@ -138,7 +139,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             print(self.agent.tools)
 
     def test_chat_with_file_search(self):
-        file = gpt.llm.files.create(
+        file = open_ai.client.files.create(
             file=open(
                 "data/diy_llm.pdf",
                 "rb",
@@ -156,7 +157,7 @@ class AgentWithToolsTestCase(asynctest.TestCase):
         finally:
             self.agent.remove_file_id(file.id)
             self.agent.remove_file_search()
-            gpt.llm.files.delete(file.id)
+            open_ai.client.files.delete(file.id)
 
 
 if __name__ == '__main__':

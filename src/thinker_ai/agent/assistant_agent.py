@@ -3,26 +3,26 @@ from __future__ import annotations
 import base64
 import json
 import time
-from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal, Iterable
+from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
 
 from langchain_core.tools import BaseTool
-from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, CodeInterpreterToolParam, FileSearchToolParam
+from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool
 from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message, Text, Run
 from pydantic import BaseModel
 
-from thinker_ai.agent.functions.functions_register import FunctionsRegister
-from thinker_ai.agent.llm import gpt
-from thinker_ai.agent.llm.embeddings import get_most_similar_strings
-from thinker_ai.agent.llm.function_call import FunctionCall
-from thinker_ai.common.common import show_json
+from thinker_ai.agent.provider.llm import open_ai
+from thinker_ai.agent.tools.functions_register import FunctionsRegister
 
+from thinker_ai.agent.tools.embeddings import get_most_similar_strings
+from thinker_ai.agent.tools.function_call import FunctionCall
+from thinker_ai.common.common import show_json
 
 class AssistantAgent:
     user_id: str
     threads: Dict[str, Thread] = {}
     functions_register = FunctionsRegister()
-    client = gpt.llm
+    client = open_ai
 
     def __init__(self, assistant: Assistant):
         self.assistant = assistant
@@ -33,7 +33,7 @@ class AssistantAgent:
 
     @classmethod
     def from_id(cls, assistant_id: str):
-        assistant = gpt.llm.beta.assistants.retrieve(assistant_id)
+        assistant = open_ai.client.beta.assistants.retrieve(assistant_id)
         return cls(assistant)
 
     @property
@@ -335,5 +335,5 @@ class AssistantAgent:
                                    k: int = 1,
                                    embedding_model="text-embedding-3-small",
                                    ) -> list[tuple[str, float]]:
-        source_strings = gpt.llm.files.retrieve(file_id)
+        source_strings = open_ai.client.files.retrieve(file_id)
         return get_most_similar_strings(source_strings, compare_string, k, embedding_model)

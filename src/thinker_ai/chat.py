@@ -5,14 +5,12 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 
-from thinker_ai.tasks.dynamic.service_loader import load_service_and_push_to_user
 from thinker_ai.agent.assistant_agent import AssistantAgent
 from thinker_ai.login import get_session
-from thinker_ai.context import get_project_root
-from thinker_ai.web_socket import send_message_to_client
+from thinker_ai.configs.const import PROJECT_ROOT
 
 chat_router = APIRouter()
-root_dir = get_project_root()
+root_dir = PROJECT_ROOT
 template_dir = os.path.join(root_dir, 'web', 'templates')
 templates = Jinja2Templates(directory=template_dir)
 # 添加调试信息

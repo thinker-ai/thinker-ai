@@ -3,10 +3,9 @@ import json
 import asynctest  # 导入asynctest
 from unittest.mock import patch, AsyncMock
 
-from thinker_ai.agent.functions.search_and_summarize import SearchAndSummarize
-from thinker_ai.agent.functions.search_engine import SearchEngine
-from thinker_ai.agent.llm import GPT
-
+from thinker_ai.agent.actions import SearchAndSummarize
+from thinker_ai.agent.provider import OpenAILLM
+from thinker_ai.agent.tools.search_engine import SearchEngine
 
 class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestCase
 
@@ -15,7 +14,7 @@ class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestC
 
     @patch.object(SearchAndSummarize, '_get_queries', new_callable=AsyncMock)
     @patch.object(SearchAndSummarize, '_batch_query', new_callable=AsyncMock)
-    @patch.object(GPT, 'a_generate', new_callable=AsyncMock)
+    @patch.object(OpenAILLM, 'a_generate', new_callable=AsyncMock)
     async def test_run(self, mock_a_generate, mock_batch_query, mock_get_queries):
         # 定义预期的问题和答案
         question = "What is the capital of France?"
@@ -27,12 +26,12 @@ class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestC
         mock_a_generate.return_value = expected_answer
 
         # 调用待测试的方法并捕获返回值
-        result = await SearchAndSummarize.run("GPT4",question)
+        result = await SearchAndSummarize.run(question)
 
         # 断言方法返回了预期的答案
         self.assertEqual(result, expected_answer)
 
-    @patch.object(GPT, 'a_generate', new_callable=AsyncMock)
+    @patch.object(OpenAILLM, 'a_generate', new_callable=AsyncMock)
     async def test_get_queries(self, mock_generate):
         mock_generate.return_value = """
         '''list

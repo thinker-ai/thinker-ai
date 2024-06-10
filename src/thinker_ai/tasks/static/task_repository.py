@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from thinker_ai.task_flow.tasks.task import Task
+from thinker_ai.tasks.static.task import Task
 
 
 class TaskRepository(ABC):

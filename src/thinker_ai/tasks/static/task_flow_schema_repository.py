@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 
-from thinker_ai.task_flow.task_schema_schema import TaskFlowSchema
+from thinker_ai.tasks.static.task_schema_schema import TaskFlowSchema
 
 
 class TaskFlowSchemaRepository(ABC):
