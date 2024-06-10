@@ -6,7 +6,6 @@ model_size_threshold : "500 * 1024 * 1024"
 PYTORCH_ENABLE_MPS_FALLBACK: "user_1"
 
 llm:
-  api_key: "sk-proj-k06ygtzrgIDrxSDKjzDTT3BlbkFJGEuYyQliJSy3oyXoVFjn"
   base_url: "https://api.openai.com/v1"
   model: "gpt-4o"
   temperature: "0"
