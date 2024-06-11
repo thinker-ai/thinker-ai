@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import re
-from typing import Literal, Tuple
+from typing import Literal, Tuple, Dict, Any
 
 import nbformat
 from nbclient import NotebookClient
@@ -30,21 +30,15 @@ class ExecuteNbCode(Action):
     interaction: str
     timeout: int = 600
 
-    def __init__(
-        self,
-        nb=nbformat.v4.new_notebook(),
-        timeout=600,
-    ):
-        super().__init__(
-            nb=nb,
-            nb_client=NotebookClient(nb, timeout=timeout),
-            timeout=timeout,
-            console=Console(),
-            interaction=("ipython" if self.is_ipython() else "terminal"),
-        )
+    def __init__(self, nb=nbformat.v4.new_notebook(), timeout=600, **data: Any):
+        super().__init__(nb = nb,
+                         console = Console(),
+                         nb_client = NotebookClient(nb,timeout=timeout),
+                         interaction= ("ipython" if self.is_ipython() else "terminal"),
+                         **data)
 
     async def build(self):
-        if self.nb_client.kc is None or not await self.nb_client.kc.is_alive():
+        if self.nb_client.kc is None or not await self.nb_client.kc._async_is_alive():
             self.nb_client.create_kernel_manager()
             self.nb_client.start_new_kernel()
             self.nb_client.start_new_kernel_client()
@@ -100,7 +94,7 @@ class ExecuteNbCode(Action):
         else:
             cell["outputs"].append(new_output(output_type="stream", name="stdout", text=str(output)))
 
-    def parse_outputs(self, outputs: list[str], keep_len: int = 2000) -> Tuple[bool, str]:
+    def parse_outputs(self, outputs: list[Dict], keep_len: int = 2000) -> Tuple[bool, str]:
         """Parses the outputs received from notebook execution."""
         assert isinstance(outputs, list)
         parsed_output, is_success = [], True
@@ -136,7 +130,7 @@ class ExecuteNbCode(Action):
             parsed_output.append(output_text)
         return is_success, ",".join(parsed_output)
 
-    def show_bytes_figure(self, image_base64: str, interaction_type: Literal["ipython", None]):
+    def show_bytes_figure(self, image_base64: str, interaction_type: Literal["ipython", "terminal"]):
         image_bytes = base64.b64decode(image_base64)
         if interaction_type == "ipython":
             from IPython.display import Image, display
