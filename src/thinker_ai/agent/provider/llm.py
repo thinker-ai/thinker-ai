@@ -14,4 +14,4 @@ def LLM(llm_config: Optional[LLMConfig] = None, context: Context = None) -> Base
         return ctx.llm_with_cost_manager_from_llm_config(llm_config)
     return ctx.llm()
 
-open_ai=cast(OpenAILLM, LLM(config.client))
+open_ai=cast(OpenAILLM, LLM(config.llm))

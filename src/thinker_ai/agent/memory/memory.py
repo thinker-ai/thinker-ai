@@ -1,45 +1,98 @@
-from typing import Iterable, Dict, List
+from collections import defaultdict
+from typing import DefaultDict, Iterable, Set
+
+from pydantic import BaseModel, Field, SerializeAsAny
+
+from thinker_ai.common.val_class import any_to_str_set,any_to_str
+from thinker_ai.configs.const import IGNORED_MESSAGE_ID
+from thinker_ai.agent.provider.schema import Message
 
 
-class Memory:
+class Memory(BaseModel):
+    """The most basic memory: super-memory"""
 
-    def __init__(self, agent_id: str):
-        self.agent_id = agent_id
-        # 将storage定义为一个字典，键为主题（topic），值为属于该主题的消息列表
-        self.storage: Dict[str, List[str]] = {}
+    storage: list[SerializeAsAny[Message]] = []
+    index: DefaultDict[str, list[SerializeAsAny[Message]]] = Field(default_factory=lambda: defaultdict(list))
+    ignore_id: bool = False
 
-    def add(self, topic: str, message: str):
-        # 如果主题在storage中不存在，则初始化一个空列表
-        if topic not in self.storage:
-            self.storage[topic] = []
-        # 将消息添加到对应主题的列表中
-        self.storage[topic].append(message)
+    def add(self, message: Message):
+        """Add a new message to storage, while updating the index"""
+        if self.ignore_id:
+            message.id = IGNORED_MESSAGE_ID
+        if message in self.storage:
+            return
+        self.storage.append(message)
+        if message.cause_by:
+            self.index[message.cause_by].append(message)
 
-    def add_batch(self, topic: str, messages: Iterable[str]):
-        # 对批量消息进行迭代，逐一添加
+    def add_batch(self, messages: Iterable[Message]):
         for message in messages:
-            self.add(topic, message)
+            self.add(message)
 
-    def get_by_keyword(self, topic: str, keyword: str) -> List[str]:
-        # 仅在指定主题中搜索包含关键字的消息
-        if topic in self.storage:
-            return [message for message in self.storage[topic] if keyword in message]
+    def get_by_role(self, role: str) -> list[Message]:
+        """Return all messages of a specified role"""
+        return [message for message in self.storage if message.role == role]
+
+    def get_by_content(self, content: str) -> list[Message]:
+        """Return all messages containing a specified content"""
+        return [message for message in self.storage if content in message.content]
+
+    def delete_newest(self) -> "Message":
+        """delete the newest message from the storage"""
+        if len(self.storage) > 0:
+            newest_msg = self.storage.pop()
+            if newest_msg.cause_by and newest_msg in self.index[newest_msg.cause_by]:
+                self.index[newest_msg.cause_by].remove(newest_msg)
         else:
-            return []
+            newest_msg = None
+        return newest_msg
 
-    def delete(self, topic: str, message: str):
-        # 如果消息存在于指定主题中，则删除该消息
-        if topic in self.storage and message in self.storage[topic]:
-            self.storage[topic].remove(message)
-            # 如果删除消息后主题下没有任何消息，可以选择删除该主题键
-            if not self.storage[topic]:
-                self.del_topic(topic)
-
-    def del_topic(self, topic: str):
-        # 清空主题存储
-        if topic in self.storage:
-            del self.storage[topic]
+    def delete(self, message: Message):
+        """Delete the specified message from storage, while updating the index"""
+        if self.ignore_id:
+            message.id = IGNORED_MESSAGE_ID
+        self.storage.remove(message)
+        if message.cause_by and message in self.index[message.cause_by]:
+            self.index[message.cause_by].remove(message)
 
     def clear(self):
-        # 清空所有存储
-        self.storage = {}
+        """Clear storage and index"""
+        self.storage = []
+        self.index = defaultdict(list)
+
+    def count(self) -> int:
+        """Return the number of messages in storage"""
+        return len(self.storage)
+
+    def try_remember(self, keyword: str) -> list[Message]:
+        """Try to recall all messages containing a specified keyword"""
+        return [message for message in self.storage if keyword in message.content]
+
+    def get(self, k=0) -> list[Message]:
+        """Return the most recent k memories, return all when k=0"""
+        return self.storage[-k:]
+
+    def find_news(self, observed: list[Message], k=0) -> list[Message]:
+        """find news (previously unseen messages) from the the most recent k memories, from all memories when k=0"""
+        already_observed = self.get(k)
+        news: list[Message] = []
+        for i in observed:
+            if i in already_observed:
+                continue
+            news.append(i)
+        return news
+
+    def get_by_action(self, action) -> list[Message]:
+        """Return all messages triggered by a specified Action"""
+        index = any_to_str(action)
+        return self.index[index]
+
+    def get_by_actions(self, actions: Set) -> list[Message]:
+        """Return all messages triggered by specified Actions"""
+        rsp = []
+        indices = any_to_str_set(actions)
+        for action in indices:
+            if action not in self.index:
+                continue
+            rsp += self.index[action]
+        return rsp

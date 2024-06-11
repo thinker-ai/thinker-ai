@@ -102,7 +102,7 @@ class ExecuteNbCode(Action):
             output_text = ""
             if output["output_type"] == "stream" and not any(
                 tag in output["text"]
-                for tag in ["| INFO     | metagpt", "| ERROR    | metagpt", "| WARNING  | metagpt", "DEBUG"]
+                for tag in ["| INFO     | thinker_ai", "| ERROR    | thinker_ai", "| WARNING  | thinker_ai", "DEBUG"]
             ):
                 output_text = output["text"]
             elif output["output_type"] == "display_data":

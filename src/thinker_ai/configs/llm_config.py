@@ -80,7 +80,7 @@ class LLMConfig(YamlModel):
     region_name: str = None
 
     # For Network
-    proxy: Optional[str] = None
+    proxy: Optional[str] = "http://localhost:8001"
 
     # Cost Control
     calc_usage: bool = True

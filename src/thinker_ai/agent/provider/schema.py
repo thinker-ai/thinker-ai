@@ -762,3 +762,14 @@ class UMLClassView(UMLClassMeta):
             method.return_type = i.return_args.type_
             class_view.methods.append(method)
         return class_view
+
+
+def is_send_to(message: Message, addresses: set):
+    """Return whether it's consumer"""
+    if MESSAGE_ROUTE_TO_ALL in message.send_to:
+        return True
+
+    for i in addresses:
+        if i in message.send_to:
+            return True
+    return False

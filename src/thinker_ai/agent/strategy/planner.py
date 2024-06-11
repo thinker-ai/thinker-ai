@@ -5,13 +5,13 @@ import json
 from pydantic import BaseModel, Field
 
 from thinker_ai.agent.actions.di.ask_review import AskReview, ReviewConst
+from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message, Plan, Task, TaskResult
 from thinker_ai.agent.actions.di.write_plan import (
     WritePlan,
     precheck_update_plan_from_rsp,
     update_plan_from_rsp,
 )
-from thinker_ai.agent.memory import Memory
 from thinker_ai.agent.strategy.task_type import TaskType
 from thinker_ai.common.logs import logger
 from thinker_ai.common.val_class import remove_comments
@@ -70,6 +70,7 @@ class Planner(BaseModel):
             self.plan = Plan(goal=goal)
 
         plan_confirmed = False
+        rsp:str = ""
         while not plan_confirmed:
             context = self.get_useful_memories()
             rsp = await WritePlan().run(context, max_tasks=max_tasks)
@@ -147,9 +148,9 @@ class Planner(BaseModel):
         """find useful memories only to reduce context length and improve performance"""
         user_requirement = self.plan.goal
         context = self.plan.context
-        tasks = [task.dict(exclude=task_exclude_field) for task in self.plan.tasks]
+        tasks = [task.model_dump(exclude=task_exclude_field) for task in self.plan.tasks]
         tasks = json.dumps(tasks, indent=4, ensure_ascii=False)
-        current_task = self.plan.current_task.json() if self.plan.current_task else {}
+        current_task = self.plan.current_task.model_dump_json() if self.plan.current_task else {}
         context = STRUCTURAL_CONTEXT.format(
             user_requirement=user_requirement, context=context, tasks=tasks, current_task=current_task
         )

@@ -9,7 +9,7 @@ from thinker_ai.agent.actions import Action, ActionOutput
 from thinker_ai.agent.actions.action_node import ActionNode
 from thinker_ai.agent.actions.add_requirement import UserRequirement
 from thinker_ai.agent.provider.schema import Message, MessageQueue, SerializationMixin, Task, TaskResult
-from thinker_ai.agent.memory import Memory
+from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider import HumanProvider
 from thinker_ai.agent.strategy.planner import Planner
 from thinker_ai.common.common import role_raise_decorator
@@ -314,10 +314,6 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
             self.llm.cost_manager = self.context.cost_manager
             self.set_actions(self.actions)  # reset actions to update llm and prefix
 
-    @property
-    def name(self):
-        """Get the role name"""
-        return self._setting.name
 
     def _get_prefix(self):
         """Get the role prefix"""

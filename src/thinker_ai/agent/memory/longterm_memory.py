@@ -1,43 +1,78 @@
-import json
-from pathlib import Path
-from typing import Iterable, Dict, List
-from thinker_ai.agent.memory.memory import Memory  # 假设这是经过修改的Memory类
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+"""
+@Desc   : the implement of Long-term memory
+"""
+
+from typing import Optional
+
+from pydantic import ConfigDict, Field
+
+from thinker_ai.common.logs import logger
+from thinker_ai.agent.memory.memory import Memory
+from thinker_ai.agent.memory.memory_storage import MemoryStorage
+from thinker_ai.agent.roles.role import RoleContext
+from thinker_ai.agent.provider.schema import Message
 
 
 class LongTermMemory(Memory):
-    def __init__(self, agent_id: str, file_path: str):
-        super().__init__(agent_id)
-        self._file_path = file_path
-        self._load_data_from_file()
+    """
+    The Long-term memory for Roles
+    - recover memory when it staruped
+    - update memory when it changed
+    """
 
-    def _save_data_to_file(self):
-        Path(self._file_path).parent.mkdir(parents=True, exist_ok=True)
-        with open(self._file_path, 'w', encoding='utf-8') as file:
-            json.dump(obj=self.storage, fp=file, ensure_ascii=False, indent=4)
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def _load_data_from_file(self):
-        try:
-            with open(self._file_path, 'r', encoding='utf-8') as file:
-                self.storage = json.load(file)
-        except (IOError, json.JSONDecodeError):
-            # 文件不存在或读取错误时，初始化storage为一个空字典
-            self.storage = {}
+    memory_storage: MemoryStorage = Field(default_factory=MemoryStorage)
+    rc: Optional[RoleContext] = None
+    msg_from_recover: bool = False
 
-    def add(self, topic: str, message: str):
-        super().add(topic, message)
-        self._save_data_to_file()
+    def recover_memory(self, role_id: str, rc: RoleContext):
+        self.memory_storage.recover_memory(role_id)
+        self.rc = rc
+        if not self.memory_storage.is_initialized:
+            logger.warning(f"It may the first time to run Role {role_id}, the long-term memory is empty")
+        else:
+            logger.warning(f"Role {role_id} has existing memory storage and has recovered them.")
+        self.msg_from_recover = True
+        # self.add_batch(messages) # TODO no need
+        self.msg_from_recover = False
 
-    def add_batch(self, topic: str, messages: Iterable[str]):
-        super().add_batch(topic, messages)
-        self._save_data_to_file()
+    def add(self, message: Message):
+        super().add(message)
+        for action in self.rc.watch:
+            if message.cause_by == action and not self.msg_from_recover:
+                # currently, only add role's watching messages to its memory_storage
+                # and ignore adding messages from recover repeatedly
+                self.memory_storage.add(message)
 
-    def get_by_keyword(self, topic: str, keyword: str) -> List[str]:
-        return super().get_by_keyword(topic, keyword)
+    async def find_news(self, observed: list[Message], k=0) -> list[Message]:
+        """
+        find news (previously unseen messages) from the the most recent k memories, from all memories when k=0
+            1. find the short-term memory(stm) news
+            2. furthermore, filter out similar messages based on ltm(long-term memory), get the final news
+        """
+        stm_news = super().find_news(observed, k=k)  # shot-term memory news
+        if not self.memory_storage.is_initialized:
+            # memory_storage hasn't initialized, use default `find_news` to get stm_news
+            return stm_news
 
-    def delete(self, topic: str, message: str):
-        super().delete(topic, message)
-        self._save_data_to_file()
+        ltm_news: list[Message] = []
+        for mem in stm_news:
+            # filter out messages similar to those seen previously in ltm, only keep fresh news
+            mem_searched = await self.memory_storage.search_similar(mem)
+            if len(mem_searched) == 0:
+                ltm_news.append(mem)
+        return ltm_news[-k:]
+
+    def persist(self):
+        self.memory_storage.persist()
+
+    def delete(self, message: Message):
+        super().delete(message)
+        # TODO delete message in memory_storage
 
     def clear(self):
         super().clear()
-        self._save_data_to_file()
+        self.memory_storage.clean()

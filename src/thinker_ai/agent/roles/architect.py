@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-@Time    : 2023/5/11 14:43
-@Author  : alexanderwu
-@File    : architect.py
-"""
-
 from thinker_ai.agent.actions import WritePRD
 from thinker_ai.agent.actions.design_api import WriteDesign
 from thinker_ai.agent.roles.role import Role

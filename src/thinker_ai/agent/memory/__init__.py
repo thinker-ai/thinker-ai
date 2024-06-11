@@ -1,7 +1,7 @@
 __all__ = [
-    "Memory",
-    "LongTermMemory",
+    "AgentMemory",
+    "AgentLongTermMemory",
 ]
 
-from thinker_ai.agent.memory.longterm_memory import LongTermMemory
-from thinker_ai.agent.memory.memory import Memory
+from thinker_ai.agent.memory.agent_longterm_memory import AgentLongTermMemory
+from thinker_ai.agent.memory.agent_memory import AgentMemory

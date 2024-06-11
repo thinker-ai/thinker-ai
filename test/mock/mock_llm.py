@@ -57,7 +57,7 @@ class MockLLM(OriginalLLM):
         return rsp
 
     async def original_aask_batch(self, msgs: list, timeout=3) -> str:
-        """A copy of thinker_ai.provider.base_llm.BaseLLM.aask_batch, we can't use super().aask because it will be mocked"""
+        """A copy of thinker_ai.agent.provider.base_llm.BaseLLM.aask_batch, we can't use super().aask because it will be mocked"""
         context = []
         for msg in msgs:
             umsg = self._user_msg(msg)
@@ -68,7 +68,7 @@ class MockLLM(OriginalLLM):
 
     async def original_aask_code(self, messages: Union[str, Message, list[dict]], **kwargs) -> dict:
         """
-        A copy of thinker_ai.provider.openai_api.OpenAILLM.aask_code, we can't use super().aask because it will be mocked.
+        A copy of thinker_ai.agent.provider.openai_api.OpenAILLM.aask_code, we can't use super().aask because it will be mocked.
         Since openai_api.OpenAILLM.aask_code is different from base_llm.BaseLLM.aask_code, we use the former.
         """
         if "tools" not in kwargs:

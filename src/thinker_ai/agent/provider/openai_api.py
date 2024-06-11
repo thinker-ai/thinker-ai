@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import os
 import time
 from typing import Optional, List, Dict, Union, Any, Callable, Type, Literal
 from thinker_ai.agent.provider.llm_provider_registry import register_provider
@@ -70,6 +71,8 @@ class OpenAILLM(BaseLLM):
 
     def __init__(self, config: LLMConfig):
         self.config = config
+        if config.api_key is None or config.api_key=="sk-":
+            config.api_key = os.getenv("OPENAI_PROJECT_API_KEY")
         self.client = self.__init_n_openai(config)
         self.aclient = self.__init_a_openai(config)
         self._cost_manager = CostManager()
@@ -141,19 +144,19 @@ class OpenAILLM(BaseLLM):
             "temperature": self.config.temperature,
             "timeout": self.get_timeout(timeout),
         }
-        if proxy_params := self._get_proxy_params():
-            kwargs["http_client"] = AsyncHttpxClientWrapper(**proxy_params)
+        # if proxy_params := self._get_proxy_params():
+        #     kwargs["http_client"] = AsyncHttpxClientWrapper(**proxy_params)
         if extra_kwargs:
             kwargs.update(extra_kwargs)
         return kwargs
 
-    def _get_proxy_params(self) -> dict:
-        params = {}
-        if self.config.proxy:
-            params = {"proxies": self.config.proxy}
-            if self.config.base_url:
-                params["base_url"] = self.config.base_url
-        return params
+    # def _get_proxy_params(self) -> dict:
+    #     params = {}
+    #     if self.config.proxy:
+    #         params = {"proxies": self.config.proxy}
+    #         if self.config.base_url:
+    #             params["base_url"] = self.config.base_url
+    #     return params
 
     def _chat_completion_with_function(self, prompt: PromptMessage, model: Optional[str] = None, timeout: Optional[int] = None) -> str:
         functions_schema = self.functions_register.functions_schema
