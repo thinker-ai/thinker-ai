@@ -92,7 +92,7 @@ dependencies:
     - pyppeteer
     - gitignore_parser
     - nbformat
-    - nbclient
+    - nbconvert
     - paddleocr
     - chromadb
     - llama-index
@@ -131,3 +131,5 @@ dependencies:
     - pydantic-core < 2.16.0
     - clip
     - rf-groundingdino
+    - connexion
+    - modelscope

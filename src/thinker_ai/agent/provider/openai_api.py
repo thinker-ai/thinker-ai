@@ -23,7 +23,7 @@ from thinker_ai.agent.provider.constant import GENERAL_FUNCTION_SCHEMA
 from thinker_ai.agent.provider.cost_manager import CostManager
 from thinker_ai.agent.provider.token_counter import get_openrouter_tokens
 from thinker_ai.agent.tools.function_call import FunctionCall
-from thinker_ai.agent.provider.gpt_schema import PromptMessage
+from thinker_ai.agent.provider.llm_schema import PromptMessage
 from thinker_ai.agent.tools.functions_register import FunctionsRegister
 from thinker_ai.common.common import log_and_reraise, decode_image
 from thinker_ai.common.exceptions import handle_exception
@@ -502,7 +502,7 @@ class OpenAILLM(BaseLLM):
     ) -> ChatCompletion:
         messages = self.format_msg(messages)
         kwargs = self._cons_kwargs(messages=messages,timeout=self.get_timeout(timeout), **chat_configs)
-        rsp: ChatCompletion = await self.aclient.chat.completions.create(self.get_model(model), **kwargs)
+        rsp: ChatCompletion = await self.aclient.chat.completions.create(self.get_model(), **kwargs)
         self.cost_manager.update_costs(self.pricing_plan,rsp.usage)
         return rsp
 

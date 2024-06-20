@@ -6,8 +6,9 @@ import re
 from typing import Literal, Tuple, Dict, Any
 
 import nbformat
-from nbclient import NotebookClient
-from nbclient.exceptions import CellTimeoutError, DeadKernelError
+from nbclient.exceptions import CellTimeoutError
+from nbconvert.preprocessors import ExecutePreprocessor
+from nbconvert.preprocessors.execute import CellExecutionError
 from nbformat import NotebookNode
 from nbformat.v4 import new_code_cell, new_markdown_cell, new_output
 from rich.box import MINIMAL
@@ -20,57 +21,16 @@ from rich.syntax import Syntax
 from thinker_ai.agent.actions import Action
 from thinker_ai.common.logs import logger
 
-
 class ExecuteNbCode(Action):
     """execute notebook code block, return result to llm, and display it."""
 
     nb: NotebookNode
-    nb_client: NotebookClient
     console: Console
-    interaction: str
     timeout: int = 600
 
     def __init__(self, nb=nbformat.v4.new_notebook(), timeout=600, **data: Any):
-        super().__init__(nb = nb,
-                         console = Console(),
-                         nb_client = NotebookClient(nb,timeout=timeout),
-                         interaction= ("ipython" if self.is_ipython() else "terminal"),
-                         **data)
-
-    async def build(self):
-        if self.nb_client.kc is None or not await self.nb_client.kc._async_is_alive():
-            self.nb_client.create_kernel_manager()
-            self.nb_client.start_new_kernel()
-            self.nb_client.start_new_kernel_client()
-
-    async def terminate(self):
-        """kill NotebookClient"""
-        if self.nb_client.km is not None and await self.nb_client.km.is_alive():
-            await self.nb_client.km.shutdown_kernel(now=True)
-            await self.nb_client.km.cleanup_resources()
-
-            channels = [
-                self.nb_client.kc.stdin_channel,  # The channel for handling standard input to the kernel.
-                self.nb_client.kc.hb_channel,  # The channel for heartbeat communication between the kernel and client.
-                self.nb_client.kc.control_channel,  # The channel for controlling the kernel.
-            ]
-
-            # Stops all the running channels for this kernel
-            for channel in channels:
-                if channel.is_alive():
-                    channel.stop()
-
-            self.nb_client.kc = None
-            self.nb_client.km = None
-
-    async def reset(self):
-        """reset NotebookClient"""
-        await self.terminate()
-
-        # sleep 1s to wait for the kernel to be cleaned up completely
-        await asyncio.sleep(1)
-        await self.build()
-        self.nb_client = NotebookClient(self.nb, timeout=self.timeout)
+        super().__init__(nb=nb, console=Console(), timeout=timeout, **data)
+        self.executor = ExecutePreprocessor(timeout=self.timeout, kernel_name='python3')
 
     def add_code_cell(self, code: str):
         self.nb.cells.append(new_code_cell(source=code))
@@ -146,7 +106,6 @@ class ExecuteNbCode(Action):
 
     def is_ipython(self) -> bool:
         try:
-            # 如果在Jupyter Notebook中运行，__file__ 变量不存在
             from IPython import get_ipython
 
             if get_ipython() is not None and "IPKernelApp" in get_ipython().config:
@@ -161,19 +120,20 @@ class ExecuteNbCode(Action):
         returns the success or failure of the cell execution, and an optional error message.
         """
         try:
-            await self.nb_client.async_execute_cell(cell, cell_index)
-            return self.parse_outputs(self.nb.cells[-1].outputs)
-        except CellTimeoutError:
-            assert self.nb_client.km is not None
-            await self.nb_client.km.interrupt_kernel()
-            await asyncio.sleep(1)
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, self.executor.preprocess, self.nb, {'metadata': {'path': './'}})
+            outputs = self.parse_outputs(self.nb.cells[cell_index].outputs)
+            print(f"执行结果：{str(outputs)}")
+            return outputs
+        except CellTimeoutError as e:
             error_msg = "Cell execution timed out: Execution exceeded the time limit and was stopped; consider optimizing your code for better performance."
             return False, error_msg
-        except DeadKernelError:
-            await self.reset()
-            return False, "DeadKernelError"
-        except Exception:
-            return self.parse_outputs(self.nb.cells[-1].outputs)
+        except CellExecutionError as e:
+            print(f"执行异常：{str(e)}")
+            return self.parse_outputs(self.nb.cells[cell_index].outputs)
+        except Exception as e:
+            print(f"执行异常：{str(e)}")
+            return self.parse_outputs(self.nb.cells[cell_index].outputs)
 
     async def run(self, code: str, language: Literal["python", "markdown"] = "python") -> Tuple[str, bool]:
         """
@@ -185,12 +145,9 @@ class ExecuteNbCode(Action):
             # add code to the notebook
             self.add_code_cell(code=code)
 
-            # build code executor
-            await self.build()
-
             # run code
             cell_index = len(self.nb.cells) - 1
-            success, outputs = await self.run_cell(self.nb.cells[-1], cell_index)
+            success, outputs = await self.run_cell(self.nb.cells[cell_index], cell_index)
 
             if "!pip" in code:
                 success = False
@@ -204,6 +161,11 @@ class ExecuteNbCode(Action):
             return code, True
         else:
             raise ValueError(f"Only support for language: python, markdown, but got {language}, ")
+
+    async def reset(self):
+        """reset ExecuteNbCode by creating a new notebook and executor."""
+        self.nb = nbformat.v4.new_notebook()
+        self.executor = ExecutePreprocessor(timeout=self.timeout, kernel_name='python3')
 
 
 def remove_escape_and_color_codes(input_str: str):

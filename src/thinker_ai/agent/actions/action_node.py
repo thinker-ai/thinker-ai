@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import typing
 from enum import Enum
@@ -327,7 +329,7 @@ class ActionNode:
         else:
             return str(i)
 
-    def tagging(self, text, schema, tag="") -> str:
+    def tagging(self, text, tag="") -> str:
         if not tag:
             return text
         return f"[{tag}]\n{text}\n[/{tag}]"
@@ -335,7 +337,7 @@ class ActionNode:
     def _compile_f(self, schema, mode, tag, format_func, kv_sep, exclude=None) -> str:
         nodes = self.to_dict(format_func=format_func, mode=mode, exclude=exclude)
         text = self.compile_to(nodes, schema, kv_sep)
-        return self.tagging(text, schema, tag)
+        return self.tagging(text,tag)
 
     def compile_instruction(self, schema="markdown", mode="children", tag="", exclude=None) -> str:
         """compile to raw/json/markdown template with all/root/children nodes"""
@@ -511,7 +513,7 @@ class ActionNode:
 
         return review_comments
 
-    def _makeup_nodes_output_with_req(self) -> dict[str, str]:
+    def _makeup_nodes_output_with_req(self) -> dict[str, dict[str, str | Any]]:
         instruct_content_dict = self.instruct_content.model_dump()
         nodes_output = {}
         for key, value in instruct_content_dict.items():
@@ -557,7 +559,7 @@ class ActionNode:
         instruct_content = output_class(**parsed_data)
         return instruct_content.model_dump()
 
-    async def simple_review(self, review_mode: ReviewMode = ReviewMode.AUTO):
+    async def simple_review(self, review_mode: ReviewMode = ReviewMode.AUTO)-> dict[str, str]:
         # generate review comments
         if review_mode == ReviewMode.HUMAN:
             review_comments = await self.human_review()
@@ -568,7 +570,7 @@ class ActionNode:
             logger.warning("There are no review comments")
         return review_comments
 
-    async def review(self, strgy: str = "simple", review_mode: ReviewMode = ReviewMode.AUTO):
+    async def review(self, strgy: str = "simple", review_mode: ReviewMode = ReviewMode.AUTO)-> dict[str, str]:
         """only give the review comment of each exist and mismatch key
 
         :param strgy: simple/complex
@@ -579,7 +581,7 @@ class ActionNode:
             raise RuntimeError("use `review` after `fill`")
         assert review_mode in ReviewMode
         assert self.instruct_content, 'review only support with `schema != "raw"`'
-
+        review_comments={}
         if strgy == "simple":
             review_comments = await self.simple_review(review_mode)
         elif strgy == "complex":
@@ -588,7 +590,6 @@ class ActionNode:
             for _, child in self.children.items():
                 child_review_comment = await child.simple_review(review_mode)
                 review_comments.update(child_review_comment)
-
         return review_comments
 
     async def human_revise(self) -> dict[str, str]:
@@ -599,7 +600,7 @@ class ActionNode:
         self.update_instruct_content(review_contents)
         return review_contents
 
-    def _makeup_nodes_output_with_comment(self, review_comments: dict[str, str]) -> dict[str, str]:
+    def _makeup_nodes_output_with_comment(self, review_comments: dict[str, str]) -> dict[str, dict[str, str | Any]]:
         instruct_content_dict = self.instruct_content.model_dump()
         nodes_output = {}
         for key, value in instruct_content_dict.items():
@@ -612,6 +613,7 @@ class ActionNode:
     ) -> dict[str, str]:
         """revise the value of incorrect keys"""
         # generate review comments
+        review_comments={}
         if revise_mode == ReviseMode.AUTO:
             review_comments: dict = await self.auto_review()
         elif revise_mode == ReviseMode.HUMAN_REVIEW:
@@ -662,6 +664,7 @@ class ActionNode:
          - simple: run only once
          - complex: run each node
         """
+        revise_contents={}
         if not hasattr(self, "llm"):
             raise RuntimeError("use `revise` after `fill`")
         assert revise_mode in ReviseMode
@@ -671,7 +674,6 @@ class ActionNode:
             revise_contents = await self.simple_revise(revise_mode)
         elif strgy == "complex":
             # revise each child node one-by-one
-            revise_contents = {}
             for _, child in self.children.items():
                 child_revise_content = await child.simple_revise(revise_mode)
                 revise_contents.update(child_revise_content)
