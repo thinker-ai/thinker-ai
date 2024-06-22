@@ -133,3 +133,5 @@ dependencies:
     - rf-groundingdino
     - connexion
     - modelscope
+    - pyshine
+    - pyarrow

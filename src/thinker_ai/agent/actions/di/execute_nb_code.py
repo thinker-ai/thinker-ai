@@ -21,6 +21,7 @@ from rich.syntax import Syntax
 from thinker_ai.agent.actions import Action
 from thinker_ai.common.logs import logger
 
+
 class ExecuteNbCode(Action):
     """execute notebook code block, return result to llm, and display it."""
 
@@ -61,8 +62,9 @@ class ExecuteNbCode(Action):
         for i, output in enumerate(outputs):
             output_text = ""
             if output["output_type"] == "stream" and not any(
-                tag in output["text"]
-                for tag in ["| INFO     | thinker_ai", "| ERROR    | thinker_ai", "| WARNING  | thinker_ai", "DEBUG"]
+                    tag in output["text"]
+                    for tag in
+                    ["| INFO     | thinker_ai", "| ERROR    | thinker_ai", "| WARNING  | thinker_ai", "DEBUG"]
             ):
                 output_text = output["text"]
             elif output["output_type"] == "display_data":
@@ -185,7 +187,7 @@ def display_markdown(content: str):
     style = "black on white"
     # Print the matching text and code one by one.
     for match in matches:
-        text_content = content[start_index : match.start()].strip()
+        text_content = content[start_index: match.start()].strip()
         code_content = match.group(0).strip()[3:-3]  # Remove triple backticks
 
         if text_content:

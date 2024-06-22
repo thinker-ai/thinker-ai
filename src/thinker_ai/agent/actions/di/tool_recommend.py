@@ -9,7 +9,6 @@ from rank_bm25 import BM25Okapi
 
 from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.common.logs import logger
-from thinker_ai.agent.provider.schema import Plan
 from thinker_ai.agent.tools import TOOL_REGISTRY
 from thinker_ai.agent.tools.tool_data_type import Tool
 from thinker_ai.agent.tools.tool_registry import validate_tool_names
@@ -68,14 +67,14 @@ class ToolRecommender(BaseModel):
             return validate_tool_names(v)
 
     async def recommend_tools(
-        self, context: str = "", plan: Plan = None, recall_topk: int = 20, topk: int = 5
+        self, context: str = "", task_instruction:str = None, recall_topk: int = 20, topk: int = 5
     ) -> list[Tool]:
         """
         Recommends a list of tools based on the given context and plan. The recommendation process includes two stages: recall from a large pool and rank the recalled tools to select the final set.
 
         Args:
             context (str): The context for tool recommendation.
-            plan (Plan): The plan for tool recommendation.
+            task_instruction(str): The task_instruction for tool recommendation.
             recall_topk (int): The number of tools to recall in the initial step.
             topk (int): The number of tools to return after rank as final recommendations.
 
@@ -86,16 +85,16 @@ class ToolRecommender(BaseModel):
         if not self.tools:
             return []
 
-        if self.force or (not context and not plan):
+        if self.force or (not context and not task_instruction):
             # directly use what users have specified as result for forced recommendation;
             # directly use the whole set if there is no useful information
             return list(self.tools.values())
 
-        recalled_tools = await self.recall_tools(context=context, plan=plan, topk=recall_topk)
+        recalled_tools = await self.recall_tools(context=context, task_instruction=task_instruction, topk=recall_topk)
         if not recalled_tools:
             return []
 
-        ranked_tools = await self.rank_tools(recalled_tools=recalled_tools, context=context, plan=plan, topk=topk)
+        ranked_tools = await self.rank_tools(recalled_tools=recalled_tools, context=context, task_instruction=task_instruction, topk=topk)
 
         logger.info(f"Recommended tools: \n{[tool.name for tool in ranked_tools]}")
 
@@ -111,19 +110,19 @@ class ToolRecommender(BaseModel):
         tool_schemas = {tool.name: tool.schemas for tool in recommended_tools}
         return TOOL_INFO_PROMPT.format(tool_schemas=tool_schemas)
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
+    async def recall_tools(self, context: str = "", task_instruction:str = None, topk: int = 20) -> list[Tool]:
         """
         Retrieves a list of relevant tools from a large pool, based on the given context and plan.
         """
         raise NotImplementedError
 
     async def rank_tools(
-        self, recalled_tools: list[Tool], context: str = "", plan: Plan = None, topk: int = 5
+        self, recalled_tools: list[Tool], context: str = "", task_instruction:str = None, topk: int = 5
     ) -> list[Tool]:
         """
         Default rank methods for a ToolRecommender. Use LLM to rank the recalled tools based on the given context, plan, and topk value.
         """
-        current_task = plan.current_task.instruction if plan else context
+        current_task = task_instruction if task_instruction else context
 
         available_tools = {tool.name: tool.schemas["description"] for tool in recalled_tools}
         prompt = TOOL_RECOMMENDATION_PROMPT.format(
@@ -147,12 +146,11 @@ class TypeMatchToolRecommender(ToolRecommender):
     2. Rank: LLM rank, the same as the default ToolRecommender.
     """
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
-        if not plan:
+    async def recall_tools(self, context: str = "", task_type:str = None, topk: int = 20) -> list[Tool]:
+        if not task_type:
             return list(self.tools.values())[:topk]
 
         # find tools based on exact match between task type and tool tag
-        task_type = plan.current_task.task_type
         candidate_tools = TOOL_REGISTRY.get_tools_by_tag(task_type)
         candidate_tool_names = set(self.tools.keys()) & candidate_tools.keys()
         recalled_tools = [candidate_tools[tool_name] for tool_name in candidate_tool_names][:topk]
@@ -176,15 +174,16 @@ class BM25ToolRecommender(ToolRecommender):
         self._init_corpus()
 
     def _init_corpus(self):
-        corpus = [f"{tool.name} {tool.tags}: {tool.schemas['description']}" for tool in self.tools.values()]
-        tokenized_corpus = [self._tokenize(doc) for doc in corpus]
-        self.bm25 = BM25Okapi(tokenized_corpus)
+        if len(self.tools)>0:
+            corpus = [f"{tool.name} {tool.tags}: {tool.schemas['description']}" for tool in self.tools.values()]
+            tokenized_corpus = [self._tokenize(doc) for doc in corpus]
+            self.bm25 = BM25Okapi(tokenized_corpus)
 
     def _tokenize(self, text):
         return text.split()  # FIXME: needs more sophisticated tokenization
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
-        query = plan.current_task.instruction if plan else context
+    async def recall_tools(self, context: str = "", task_instruction:str = None, topk: int = 20) -> list[Tool]:
+        query = task_instruction if task_instruction else context
 
         query_tokens = self._tokenize(query)
         doc_scores = self.bm25.get_scores(query_tokens)
@@ -209,5 +208,5 @@ class EmbeddingToolRecommender(ToolRecommender):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    async def recall_tools(self, context: str = "", plan: Plan = None, topk: int = 20) -> list[Tool]:
+    async def recall_tools(self, context: str = "", task_instruction:str = None, topk: int = 20) -> list[Tool]:
         pass

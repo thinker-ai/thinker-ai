@@ -74,39 +74,5 @@ Output a json following the format:
 ```
 """
 
-CHECK_DATA_PROMPT = """
-# Background
-Check latest data info to guide subsequent tasks.
 
-## Finished Tasks
-```python
-{code_written}
-```end
 
-# Task
-Check code in finished tasks, print key variables to guide your following actions.
-Specifically, if it is a data analysis or machine learning task, print the the latest column information using the following code, with DataFrame variable from 'Finished Tasks' in place of df:
-```python
-from thinker_ai.agent.tools.libs.data_preprocess import get_column_info
-
-column_info = get_column_info(df)
-print("column_info")
-print(column_info)
-```end
-Otherwise, print out any key variables you see fit. Return an empty string if you think there is no important data to check.
-
-# Constraints:
-- Your code is to be added to a new cell in jupyter.
-
-# Instruction
-Output code following the format:
-```python
-your code
-```
-"""
-
-DATA_INFO = """
-# Latest Data Info
-Latest data info after previous tasks:
-{info}
-"""

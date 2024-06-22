@@ -5,7 +5,7 @@ from thinker_ai.common.serializable import Serializable
 
 
 class Task(Serializable):
-    done = False
+    done:bool = False
 
     def __init__(self, solution_id:str,id:str,name: str, guide: str, checklist: Dict, goals: str, max_try: int = 3, **data: Any):
         super().__init__(**data)

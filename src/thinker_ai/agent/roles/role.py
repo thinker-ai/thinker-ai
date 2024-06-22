@@ -8,10 +8,9 @@ from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validat
 from thinker_ai.agent.actions import Action, ActionOutput
 from thinker_ai.agent.actions.action_node import ActionNode
 from thinker_ai.agent.actions.add_requirement import UserRequirement
-from thinker_ai.agent.provider.schema import Message, MessageQueue, SerializationMixin, Task, TaskResult
+from thinker_ai.agent.provider.schema import Message, MessageQueue, SerializationMixin
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider import HumanProvider
-from thinker_ai.agent.strategy.planner import Planner
 from thinker_ai.common.common import role_raise_decorator
 from thinker_ai.common.logs import logger
 from thinker_ai.common.val_class import (any_to_name, any_to_str)
@@ -21,7 +20,6 @@ from thinker_ai.utils.repair_llm_raw_output import extract_state_value_from_outp
 
 if TYPE_CHECKING:
     from thinker_ai.environment import Environment  # noqa: F401
-
 
 PREFIX_TEMPLATE = """You are a {profile}, named {name}, your goal is {goal}. """
 CONSTRAINT_TEMPLATE = "the constraint is {constraints}. "
@@ -61,7 +59,7 @@ class RoleReactMode(str, Enum):
 
     @classmethod
     def values(cls):
-        return [item.value for item in cls]
+        return [item.lower() for item in cls]
 
 
 class RoleContext(BaseModel):
@@ -127,7 +125,6 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
     actions: list[SerializeAsAny[Action]] = Field(default=[], validate_default=True)
     rc: RoleContext = Field(default_factory=RoleContext)
     addresses: set[str] = set()
-    planner: Planner = Field(default_factory=Planner)
 
     # builtin variables
     recovered: bool = False  # to tag if a recovered role
@@ -257,7 +254,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
             self.actions.append(i)
             self.states.append(f"{len(self.actions) - 1}. {action}")
 
-    def _set_react_mode(self, react_mode: str, max_react_loop: int = 1, auto_run: bool = True):
+    def _set_react_mode(self, react_mode: str, max_react_loop: int = 1):
         """Set strategy of the Role reacting to observed Message. Variation lies in how
         this Role elects action to perform during the _think stage, especially if it is capable of multiple Actions.
 
@@ -277,8 +274,7 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
         self.rc.react_mode = react_mode
         if react_mode == RoleReactMode.REACT:
             self.rc.max_react_loop = max_react_loop
-        elif react_mode == RoleReactMode.PLAN_AND_ACT:
-            self.planner = Planner(goal=self.goal, working_memory=self.rc.working_memory, auto_run=auto_run)
+
 
     def _watch(self, actions: Iterable[Type[Action]] | Iterable[Action]):
         """Watch Actions of interest. Role will select Messages caused by these Actions from its personal message
@@ -313,7 +309,6 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
             self.llm.system_prompt = self._get_prefix()
             self.llm.cost_manager = self.context.cost_manager
             self.set_actions(self.actions)  # reset actions to update llm and prefix
-
 
     def _get_prefix(self):
         """Get the role prefix"""
@@ -450,50 +445,10 @@ class Role(SerializationMixin, ContextMixin, BaseModel):
             actions_taken += 1
         return rsp  # return output from the last action
 
-    async def _plan_and_act(self) -> Message:
-        """first plan, then execute an action sequence, i.e. _think (of a plan) -> _act -> _act -> ... Use llm to come up with the plan dynamically."""
-
-        # create initial plan and update it until confirmation
-        goal = self.rc.memory.get()[-1].content  # retreive latest user requirement
-        await self.planner.update_plan(goal=goal)
-
-        # take on tasks until all finished
-        while self.planner.current_task:
-            task = self.planner.current_task
-            logger.info(f"ready to take on task {task}")
-
-            # take on current task
-            task_result = await self._act_on_task(task)
-
-            # process the result, such as reviewing, confirming, plan updating
-            await self.planner.process_task_result(task_result)
-
-        rsp = self.planner.get_useful_memories()[0]  # return the completed plan as a response
-
-        self.rc.memory.add(rsp)  # add to persistent memory
-
-        return rsp
-
-    async def _act_on_task(self, current_task: Task) -> TaskResult:
-        """Taking specific action to handle one task in plan
-
-        Args:
-            current_task (Task): current task to take on
-
-        Raises:
-            NotImplementedError: Specific Role must implement this method if expected to use planner
-
-        Returns:
-            TaskResult: Result from the actions
-        """
-        raise NotImplementedError
-
     async def react(self) -> Message:
         """Entry to one of three strategies by which Role reacts to the observed Message"""
         if self.rc.react_mode == RoleReactMode.REACT or self.rc.react_mode == RoleReactMode.BY_ORDER:
             rsp = await self._react()
-        elif self.rc.react_mode == RoleReactMode.PLAN_AND_ACT:
-            rsp = await self._plan_and_act()
         else:
             raise ValueError(f"Unsupported react mode: {self.rc.react_mode}")
         self._set_state(state=-1)  # current reaction is complete, reset state to -1 and todo back to None

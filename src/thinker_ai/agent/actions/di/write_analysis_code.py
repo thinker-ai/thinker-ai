@@ -3,16 +3,14 @@ from __future__ import annotations
 import json
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.agent.provider.schema import Message, Plan
+from thinker_ai.agent.provider.schema import Message
 from thinker_ai.agent.prompts.di.write_analysis_code import (
-    CHECK_DATA_PROMPT,
     DEBUG_REFLECTION_EXAMPLE,
     INTERPRETER_SYSTEM_MSG,
     REFLECTION_PROMPT,
     REFLECTION_SYSTEM_MSG,
     STRUCTUAL_PROMPT,
 )
-from thinker_ai.common.val_class import remove_comments
 from thinker_ai.utils.code_parser import CodeParser
 
 
@@ -57,12 +55,4 @@ class WriteAnalysisCode(Action):
         return code
 
 
-class CheckData(Action):
-    async def run(self, plan: Plan) -> dict:
-        finished_tasks = plan.get_finished_tasks()
-        code_written = [remove_comments(task.code) for task in finished_tasks]
-        code_written = "\n\n".join(code_written)
-        prompt = CHECK_DATA_PROMPT.format(code_written=code_written)
-        rsp = await self._aask(prompt)
-        code = CodeParser.parse_code(block=None, text=rsp)
-        return code
+

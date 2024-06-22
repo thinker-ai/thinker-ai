@@ -127,9 +127,9 @@ class AssistantAgent:
             raise Exception("未正常获取回复")
         for content in message.content:
             result: Dict = {}
-            if content.type == "text":
+            if content.task_type == "text":
                 result["text"] = self._do_with_text_result(content.text)
-            if content.type == "image_file":
+            if content.task_type == "image_file":
                 result["image_file"] = self._do_with_image_result(content.image_file)
         return result
 
@@ -159,7 +159,7 @@ class AssistantAgent:
         return run
 
     def _execute_function(self, run, thread_id):
-        if run.status == "requires_action":
+        if run.plane_status_msg == "requires_action":
             tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
             tool_outputs: List[Dict] = []
             for tool_call in tool_calls:
@@ -268,14 +268,14 @@ class AssistantAgent:
     def _register_native_tool(self, native_tool: Union[CodeInterpreterTool, FileSearchTool]):
         tools = self.assistant.tools
         for tool in tools:
-            if tool.type == native_tool.type:
+            if tool.task_type == native_tool.type:
                 return
         tools.append(native_tool)
         self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def _remove_native_tool(self, tool_type: Literal["code_interpreter", "file_search"]):
         tools = self.assistant.tools
-        tools = [tool for tool in tools if tool.type != tool_type]
+        tools = [tool for tool in tools if tool.task_type != tool_type]
         self.client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def register_code_interpreter(self):
@@ -310,14 +310,14 @@ class AssistantAgent:
         tools = self.assistant.tools
         new_tools=[]
         for tool in tools:
-            if tool.type != "function":
+            if tool.task_type != "function":
                 new_tools.append(tool)
         self.client.beta.assistants.update(self.assistant.id, tools=new_tools)
 
     def is_function_registered(self, name: str) -> bool:
         tools = self.assistant.tools
         for tool in tools:
-            if tool.type == "function" and tool.function.name == name:
+            if tool.task_type == "function" and tool.function.name == name:
                 return True
         return False
 
