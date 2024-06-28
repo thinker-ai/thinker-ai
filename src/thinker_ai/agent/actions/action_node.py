@@ -277,7 +277,7 @@ class ActionNode:
 
         # 如果没有提供格式化函数，则使用默认的格式化函数
         if format_func is None:
-            format_func = lambda node: node.instruction
+            format_func = lambda node: node.task_desc
 
         # 使用提供的格式化函数来格式化当前节点的值
         formatted_value = format_func(self)
@@ -341,7 +341,7 @@ class ActionNode:
 
     def compile_instruction(self, schema="markdown", mode="children", tag="", exclude=None) -> str:
         """compile to raw/json/markdown template with all/root/children nodes"""
-        format_func = lambda i: f"{i.expected_type}  # {i.instruction}"
+        format_func = lambda i: f"{i.expected_type}  # {i.task_desc}"
         return self._compile_f(schema, mode, tag, format_func, kv_sep=": ", exclude=exclude)
 
     def compile_example(self, schema="json", mode="children", tag="", exclude=None) -> str:

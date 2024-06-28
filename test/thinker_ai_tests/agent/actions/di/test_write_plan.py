@@ -1,7 +1,7 @@
 import pytest
 
-from thinker_ai.agent.actions.di.composite_task import (
-    CompositeTask,
+from thinker_ai.agent.actions.di.task_tree import (
+    TaskTree,
     Task,
     WritePlan,
     precheck_update_plan_from_rsp,
@@ -10,7 +10,7 @@ from thinker_ai.agent.provider.schema import Message
 
 
 def test_precheck_update_plan_from_rsp():
-    plan = CompositeTask(goal="")
+    plan = TaskTree(goal="")
     plan.add_tasks([Task(task_id="1")])
     rsp = '[{"task_id": "2"}]'
     success, _ = precheck_update_plan_from_rsp(rsp, plan)

@@ -30,7 +30,42 @@ async def test_split_code_running():
 async def test_execute_error():
     executor = ExecuteNbCode()
     try:
-        output, is_success = await executor.run("z=1/0")
+        code="""
+        from thinker_ai.agent.tools.libs.feature_engineering import TargetMeanEncoder, OneHotEncode, CatCount, GroupStat, PolynomialExpansion
+
+# Copy the preprocessed data
+train_df_fe = train_df_copy.copy()
+eval_df_fe = eval_df_copy.copy()
+
+# Target Mean Encoding for 'Pclass'
+target_mean_encoder = TargetMeanEncoder(col='Pclass', label='Survived')
+train_df_fe = target_mean_encoder.fit_transform(train_df_fe)
+eval_df_fe = target_mean_encoder.transform(eval_df_fe)
+
+# One-Hot Encoding for 'Embarked'
+one_hot_encoder = OneHotEncode(features=['Embarked'])
+train_df_fe = one_hot_encoder.fit_transform(train_df_fe)
+eval_df_fe = one_hot_encoder.transform(eval_df_fe)
+
+# Adding value counts for 'Sex'
+cat_count = CatCount(col='Sex')
+train_df_fe = cat_count.fit_transform(train_df_fe)
+eval_df_fe = cat_count.transform(eval_df_fe)
+
+# Group statistics for 'Fare' by 'Pclass'
+group_stat = GroupStat(group_col='Pclass', agg_col='Fare', agg_funcs=['mean', 'std'])
+train_df_fe = group_stat.fit_transform(train_df_fe)
+eval_df_fe = group_stat.transform(eval_df_fe)
+
+# Polynomial Expansion for 'Age' and 'Fare'
+polynomial_expansion = PolynomialExpansion(cols=['Age', 'Fare'], label_col='Survived', degree=2)
+train_df_fe = polynomial_expansion.fit_transform(train_df_fe)
+eval_df_fe = polynomial_expansion.transform(eval_df_fe)
+
+print(train_df_fe.head())
+print(eval_df_fe.head())
+        """
+        output, is_success = await executor.run(code)
         assert not is_success
     finally:
         await executor.reset()

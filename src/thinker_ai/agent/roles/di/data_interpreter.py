@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import json
-from typing import Literal, Any
+from typing import Literal
 
 from pydantic import model_validator
-
-from thinker_ai.agent.actions.di.composite_task import CompositeTask
+from thinker_ai.agent.actions.di.task_tree import TaskTree
 from thinker_ai.agent.actions.di.tool_recommend import ToolRecommender
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.agent.actions.di.write_analysis_code import WriteAnalysisCode
@@ -39,16 +38,6 @@ class DataInterpreter(Role):
     react_mode: Literal["plan_and_act", "react"] = "plan_and_act"
     max_react_loop: int = 10  # used for react mode
 
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-        self.composite_task = CompositeTask(
-            id=self.name,
-            instruction=self.goal,
-            use_reflection=self.use_reflection,
-            tools=self.tools,
-            auto_run=self.auto_run,
-            tool_recommender=self.tool_recommender
-        )
 
     @model_validator(mode="after")
     def set_plan_and_tool(self) -> "Interpreter":
@@ -96,6 +85,15 @@ class DataInterpreter(Role):
         """first plan, then execute an action sequence, i.e. _think (of a plan) -> _act -> _act -> ... Use llm to come up with the plan dynamically."""
         # create initial plan and update it until confirmation
         instruction = self.rc.memory.get()[-1].content  # retreive latest user requirement
-        rsp = await self.composite_task.execute_plan(instruction)
-        self.rc.memory.add(rsp)  # add to persistent memory
-        return rsp
+        task_tree = TaskTree(
+            id="tree_root",
+            instruction=instruction,
+            use_reflection=self.use_reflection,
+            tools=self.tools,
+            auto_run=self.auto_run,
+            tool_recommender=self.tool_recommender
+        )
+        await task_tree.execute_plan()
+        result_msg=Message(role="assistant", content=task_tree.task_result.result)
+        self.rc.memory.add(result_msg)  # add to persistent memory
+        return result_msg

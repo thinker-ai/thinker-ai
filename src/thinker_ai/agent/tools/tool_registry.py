@@ -68,7 +68,7 @@ class ToolRegistry(BaseModel):
             logger.info(f"{tool_name} registered")
             logger.info(f"schema made at {str(schema_path)}, can be used for checking")
 
-    def has_tool(self, key: str) -> Tool:
+    def has_tool(self, key: str) -> bool:
         return key in self.tools
 
     def get_tool(self, key) -> Tool:
@@ -129,7 +129,7 @@ def make_schema(tool_source_object, include, path):
     return schema
 
 
-def validate_tool_names(tools: list[str]) -> dict[str, Tool]:
+def get_register_tools(tools: list[str]) -> dict[str, Tool]:
     assert isinstance(tools, list), "tools must be a list of str"
     valid_tools = {}
     for key in tools:
@@ -153,12 +153,15 @@ def register_tools_from_file(file_path) -> dict[str, Tool]:
     registered_tools = {}
     code = Path(file_path).read_text(encoding="utf-8")
     tool_schemas = convert_code_to_tool_schema_ast(code)
-    for name, schemas in tool_schemas.items():
-        tool_code = schemas.pop("code", "")
+    for schema in tool_schemas:
+        name = schema.get("name")
+        if not name:
+            raise ValueError("Each tool schema must have a 'name' key.")
+        tool_code = schema.pop("code", "")
         TOOL_REGISTRY.register_tool(
             tool_name=name,
             tool_path=file_path,
-            schemas=schemas,
+            schemas=schema,
             tool_code=tool_code,
         )
         registered_tools.update({name: TOOL_REGISTRY.get_tool(name)})

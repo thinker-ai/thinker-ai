@@ -117,25 +117,29 @@ class ExecuteNbCode(Action):
         except NameError:
             return False
 
-    async def run_cell(self, cell: NotebookNode, cell_index: int) -> Tuple[bool, str]:
+    async def run_cell(self, cell: NotebookNode) -> Tuple[bool, str]:
         """set timeout for run code.
         returns the success or failure of the cell execution, and an optional error message.
         """
         try:
             loop = asyncio.get_event_loop()
             await loop.run_in_executor(None, self.executor.preprocess, self.nb, {'metadata': {'path': './'}})
-            outputs = self.parse_outputs(self.nb.cells[cell_index].outputs)
+            outputs = self.parse_outputs(cell.outputs)
             print(f"执行结果：{str(outputs)}")
             return outputs
         except CellTimeoutError as e:
-            error_msg = "Cell execution timed out: Execution exceeded the time limit and was stopped; consider optimizing your code for better performance."
+            error_msg = ("Cell execution timed out: Execution exceeded the time limit and was stopped; consider "
+                         "optimizing your code for better performance.")
+            self.nb.cells.remove(cell)
             return False, error_msg
         except CellExecutionError as e:
             print(f"执行异常：{str(e)}")
-            return self.parse_outputs(self.nb.cells[cell_index].outputs)
+            self.nb.cells.remove(cell)
+            return False, str(e)
         except Exception as e:
             print(f"执行异常：{str(e)}")
-            return self.parse_outputs(self.nb.cells[cell_index].outputs)
+            self.nb.cells.remove(cell)
+            return False, str(e)
 
     async def run(self, code: str, language: Literal["python", "markdown"] = "python") -> Tuple[str, bool]:
         """
@@ -149,7 +153,8 @@ class ExecuteNbCode(Action):
 
             # run code
             cell_index = len(self.nb.cells) - 1
-            success, outputs = await self.run_cell(self.nb.cells[cell_index], cell_index)
+            cell: NotebookNode=self.nb.cells[cell_index]
+            success, outputs = await self.run_cell(cell)
 
             if "!pip" in code:
                 success = False

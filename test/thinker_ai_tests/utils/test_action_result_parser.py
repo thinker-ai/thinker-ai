@@ -1,7 +1,10 @@
+import json
+from json import JSONDecodeError
 from typing import List, Tuple, Dict
 
 import pytest
 
+from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.utils.text_parser import TextParser
 
 
@@ -19,6 +22,42 @@ def test_parse_code():
     with pytest.raises(Exception):
         TextParser.parse_code(test_text, 'java')
 
+
+def test_parse_code_2():
+    rsp = """```json
+{
+    "reflection": "The previous implementation encountered an error due to an unterminated string. This error typically occurs when a string literal is not properly closed with a matching quote. The error message indicates that the issue is at line 3, column 22. This suggests that there might be a missing quote in the string definition. Additionally, the context requires us to train a model to predict passenger survival using the preprocessed data. We need to ensure that the code is executable in the same Jupyter notebook as the previous executed code and prioritize using pre-defined tools for the same functionality.",
+    "improved_impl": "```python\nimport pandas as pd\nimport numpy as np\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.ensemble import RandomForestClassifier\nfrom sklearn.metrics import accuracy_score\n\n# Assuming train_df_copy and eval_df_copy are already defined from previous steps\n\n# Splitting the data into features and target\nX = train_df_copy.drop(columns=['Survived'])\ny = train_df_copy['Survived']\n\n# Splitting the data into training and validation sets\nX_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)\n\n# Training a RandomForestClassifier\nmodel = RandomForestClassifier(n_estimators=100, random_state=42)\nmodel.fit(X_train, y_train)\n\n# Making predictions on the validation set\ny_pred = model.predict(X_val)\n\n# Calculating the accuracy\naccuracy = accuracy_score(y_val, y_pred)\nprint(f'Validation Accuracy: {accuracy}')\n\n# Making predictions on the evaluation set\neval_X = eval_df_copy\neval_predictions = model.predict(eval_X)\nprint(f'Evaluation Predictions: {eval_predictions}')\n```"
+}
+```"""
+    json_str = CodeParser.parse_code(block=None, text=rsp)
+    try:
+        reflection = json.loads(json_str)
+        assert reflection["improved_impl"] == "python\nimport pandas as pd\nimport numpy as np\nfrom sklearn.model_selection import train_test_split\nfrom sklearn.ensemble import RandomForestClassifier\nfrom sklearn.metrics import accuracy_score\n\n# Assuming train_df_copy and eval_df_copy are already defined from previous steps\n\n# Splitting the data into features and target\nX = train_df_copy.drop(columns=['Survived'])\ny = train_df_copy['Survived']\n\n# Splitting the data into training and validation sets\nX_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)\n\n# Training a RandomForestClassifier\nmodel = RandomForestClassifier(n_estimators=100, random_state=42)\nmodel.fit(X_train, y_train)\n\n# Making predictions on the validation set\ny_pred = model.predict(X_val)\n\n# Calculating the accuracy\naccuracy = accuracy_score(y_val, y_pred)\nprint(f'Validation Accuracy: {accuracy}')\n\n# Making predictions on the evaluation set\neval_X = eval_df_copy\neval_predictions = model.predict(eval_X)\nprint(f'Evaluation Predictions: {eval_predictions}')\n"
+    except JSONDecodeError as err:
+        print(err.args)
+        assert False
+
+
+def normalize_code(code: str) -> str:
+    """
+    Normalize the code string by stripping leading/trailing whitespace
+    and removing redundant blank lines and uniforming indentation.
+    """
+    # Split the code into lines
+    lines = code.splitlines()
+
+    # Strip leading and trailing whitespace from each line
+    lines = [line.strip() for line in lines]
+
+    # Remove leading and trailing blank lines
+    while lines and lines[0] == "":
+        lines.pop(0)
+    while lines and lines[-1] == "":
+        lines.pop(-1)
+
+    # Rejoin the lines into a single string with normalized indentation
+    return "\n".join(lines)
 
 def test_parse_python_code():
     expected_result = "print('Hello, world!')"

@@ -140,7 +140,7 @@ class GitRepository:
         """Return the Git repository's status as a string."""
         if not self.is_valid:
             return ""
-        return self._repository.git.plane_status_msg()
+        return self._repository.git.status()
 
     @property
     def workdir(self) -> Path | None:

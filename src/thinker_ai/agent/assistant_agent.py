@@ -159,7 +159,7 @@ class AssistantAgent:
         return run
 
     def _execute_function(self, run, thread_id):
-        if run.plane_status_msg == "requires_action":
+        if run.status == "requires_action":
             tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
             tool_outputs: List[Dict] = []
             for tool_call in tool_calls:

@@ -2,10 +2,14 @@ INTERPRETER_SYSTEM_MSG = """As a data scientist, you need to help user to achiev
 
 STRUCTUAL_PROMPT = """
 # User Requirement
-{user_requirement}
-
+{parent_task_instruction}
+# Plan
+{parent_plan}
 # Plan Status
 {plan_status}
+
+# Current Task
+{task_desc}
 
 # Tool Info
 {tool_info}
@@ -57,19 +61,16 @@ Here is an example of debugging with reflection.
 {debug_example}
 [/example]
 
-[context]
-{context}
-
 [previous impl]:
 {previous_impl}
 
 [instruction]
-Analyze your previous code and error in [context] step by step, provide me with improved method and code. Remember to follow [context] requirement. Don't forget to write code for steps behind the error step.
+Analyze your previous code and error in [previous impl] step by step, provide me with improved method and code. Remember to follow [context] requirement. Don't forget to write code for steps behind the error step.
 Output a json following the format:
 ```json
 {{
     "reflection": str = "Reflection on previous implementation",
-    "improved_impl": str = "Refined code after reflection.",
+    "improved_impl": str = "Refined code after reflection NOT in Code Block",
 }}
 ```
 """
