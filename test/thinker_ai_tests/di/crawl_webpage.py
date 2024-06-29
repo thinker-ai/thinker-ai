@@ -31,7 +31,7 @@ NEWS_36KR_REQ = """从36kr创投平台https://pitchhub.36kr.com/financing-flash 
 async def main():
     di = DataInterpreter(tools=["scrape_web_playwright"])
 
-    await di.run(ECOMMERCE_REQ)
+    await di.run(NEWS_36KR_REQ)
 
 
 if __name__ == "__main__":

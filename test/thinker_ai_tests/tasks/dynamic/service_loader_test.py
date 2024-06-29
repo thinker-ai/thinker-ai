@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from starlette.responses import HTMLResponse
 
-from thinker_ai.agent.assistant_agent import AssistantAgent
+from thinker_ai.agent.openai_assistant_agent import AssistantAgent
 from thinker_ai.tasks.dynamic.service_deployer import is_service_exist, deploy_service
 from langchain.pydantic_v1 import BaseModel, Field
 

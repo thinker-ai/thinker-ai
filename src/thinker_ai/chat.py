@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 
-from thinker_ai.agent.assistant_agent import AssistantAgent
+from thinker_ai.agent.openai_assistant_agent import AssistantAgent
 from thinker_ai.login import get_session
 from thinker_ai.configs.const import PROJECT_ROOT
 

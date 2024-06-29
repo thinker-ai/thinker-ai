@@ -13,5 +13,3 @@ def LLM(llm_config: Optional[LLMConfig] = None, context: Context = None) -> Base
     if llm_config is not None:
         return ctx.llm_with_cost_manager_from_llm_config(llm_config)
     return ctx.llm()
-
-open_ai=cast(OpenAILLM, LLM(config.llm))

@@ -24,8 +24,9 @@ def test_precheck_update_plan_from_rsp():
 
 @pytest.mark.asyncio
 async def test_write_plan():
+    plan = TaskTree(goal="Run data analysis on sklearn Iris dataset, include a plot", role="user")
     rsp = await WritePlan().run(
-        context=[Message("Run data analysis on sklearn Iris dataset, include a plot", role="user")]
+        task_tree=plan
     )
 
     assert "task_id" in rsp

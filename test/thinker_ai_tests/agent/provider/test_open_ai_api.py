@@ -4,11 +4,11 @@ from typing import Dict, cast
 
 from langchain.pydantic_v1 import BaseModel
 
-from thinker_ai.agent.provider.llm import open_ai
 from thinker_ai.agent.provider.openai_api import FunctionException, OpenAILLM
+from thinker_ai.context_mixin import ContextMixin
 
 model = "gpt-4o"
-
+open_ai=(cast(OpenAILLM, ContextMixin().llm))
 def hello_world(name: str) -> str:
     """
         :param name:str

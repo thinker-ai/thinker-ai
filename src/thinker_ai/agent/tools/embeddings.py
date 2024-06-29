@@ -1,6 +1,6 @@
 import pickle
 import textwrap as tr
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 
 import matplotlib.pyplot as plt
 import plotly.express as px
@@ -13,12 +13,15 @@ from sklearn.metrics import average_precision_score, precision_recall_curve, acc
 import numpy as np
 from sklearn.model_selection import train_test_split
 
-from thinker_ai.agent.provider.llm import open_ai
+from thinker_ai.agent.provider import OpenAILLM
 from thinker_ai.configs.const import PROJECT_ROOT
 from typing import List
 import pandas as pd
 
-client = open_ai.client
+from thinker_ai.context_mixin import ContextMixin
+
+
+client = (cast(OpenAILLM, ContextMixin().llm)).client
 
 
 def get_embedding_without_cache(text: str, model="text-embedding-3-small", **kwargs) -> List[float]:

@@ -1,15 +1,17 @@
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, cast
 from openai.types.beta.assistant_create_params import AssistantToolParam
 
-from thinker_ai.agent.assistant_agent import AssistantAgent
-from thinker_ai.agent.agent_repository import AgentRepository
-from thinker_ai.agent.provider.llm import open_ai
+from thinker_ai.agent.openai_assistant_agent import AssistantAgent
+from thinker_ai.agent.openai_agent_repository import AgentRepository
+from thinker_ai.agent.provider import OpenAILLM
+from thinker_ai.context_mixin import ContextMixin
 
 agent_repository = AgentRepository.get_instance()
-
+open_ai = (cast(OpenAILLM, ContextMixin().llm))
 
 def create_agent(model: str, user_id: str, name: str, instructions: str = None, description: str = None,
                  tools: List[AssistantToolParam] = None, file_ids: List[str] = None) -> str:
+
     assistant = open_ai.client.beta.assistants.create(
         name=name,
         model=model,
