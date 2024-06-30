@@ -63,7 +63,7 @@ exec_logger: Memory = Memory()
 
 class TaskResult(BaseModel):
     """Result of taking a task, with result and is_success required to be filled"""
-    code: str = ""
+    code: Optional[str] = ""
     result: str
     is_success: bool
 

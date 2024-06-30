@@ -1,4 +1,4 @@
 type: function
 description: 'The magic function that does something. '
-signature: '(arg1: str, arg2: int) -> dict'
-parameters: 'Args: arg1 (str): ... arg2 (int): ... Returns: dict: ...'
+signature: '(arg1: int, arg2: int) -> dict'
+parameters: 'Args: arg1 (int): ... arg2 (int): ... Returns: dict: ...'

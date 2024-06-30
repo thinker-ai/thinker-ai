@@ -94,6 +94,6 @@ class DataInterpreter(Role):
             tool_recommender=self.tool_recommender
         )
         await task_tree.execute_plan()
-        result_msg=Message(role="assistant", content=task_tree.task_result.result)
+        result_msg=Message(role="assistant", content=task_tree.task_result.result if task_tree.task_result else "")
         self.rc.memory.add(result_msg)  # add to persistent memory
         return result_msg

@@ -10,7 +10,7 @@ def convert_code_to_tool_schema(obj, include: list[str] = None) -> dict:
     """Converts an object (function or class) to a tool schema by inspecting the object"""
     docstring = inspect.getdoc(obj)
     # assert docstring, "no docstring found for the objects, skip registering"
-
+    schema = {}
     if inspect.isclass(obj):
         schema = {"type": "class", "description": remove_spaces(docstring), "methods": {}}
         for name, method in inspect.getmembers(obj, inspect.isfunction):
@@ -29,8 +29,8 @@ def convert_code_to_tool_schema(obj, include: list[str] = None) -> dict:
     return schema
 
 
-def convert_code_to_tool_schema_ast(code: str) -> list[dict]:
-    """Converts a code string to a list of tool schemas by parsing the code with AST"""
+def convert_code_to_tool_schema_ast(code: str) -> dict:
+    """Converts a code string to a dict of tool schemas by parsing the code with AST"""
 
     visitor = CodeVisitor(code)
     parsed_code = ast.parse(code)
@@ -136,5 +136,5 @@ class CodeVisitor(ast.NodeVisitor):
 
         return f"({', '.join(args)}){return_annotation}"
 
-    def get_tool_schemas(self):
+    def get_tool_schemas(self)->dict:
         return self.tool_schemas

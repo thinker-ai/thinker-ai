@@ -56,19 +56,13 @@ class TaskTree(Task):
                 continue
             execute_plan_success = await self.execute_plan_once(task_execute_max_retry)
             if execute_plan_success:
-                self.task_result = TaskResult(is_success=True,
-                                              result=json.dumps(obj=self.plan_status.exec_results,indent=4,ensure_ascii=False),
-                                              code=json.dumps(obj=self.plan_status.code_written,indent=4,ensure_ascii=False)
-                                              )
+                self.task_result = await AskPlanResult().run(self)
                 return
             else:
                 logger.info("计划执行失败，更新计划")
 
         logger.info("更新计划次数超限，任务失败")
-        self.task_result = TaskResult(is_success=False,
-                                      result=self.plan_status.exec_results,
-                                      code=self.plan_status.code_written
-                                      )
+        self.task_result = await AskPlanResult().run(self)
 
     async def execute_plan_once(self, task_execute_max_retry: Optional[int] = None) -> bool:
         task_execute_max_retry = task_execute_max_retry if task_execute_max_retry else self.task_execute_max_retry
@@ -451,3 +445,25 @@ class CheckData(Action):
         rsp = await self._aask(prompt)
         code = CodeParser.parse_code(block=None, text=rsp)
         return code
+
+
+class AskPlanResult(Action):
+    async def run(
+            self, task_tree: TaskTree
+    ) -> TaskResult:
+        PROMPT = """
+        # Task Goal
+        {user_requirement}
+        
+        ## Plan Status
+        {plan_status}
+        
+        # Instruction
+        Summery the plan execution status to answer the goal result
+        """
+        user_requirement = task_tree.instruction
+        plan_execution_status = [task.to_dict() for task in task_tree.tasks]
+        plan_status = json.dumps(obj=plan_execution_status, indent=4, ensure_ascii=False)
+        prompt = PROMPT.format(user_requirement=user_requirement, plan_status=plan_status)
+        rsp = await self._aask(prompt)
+        return TaskResult(is_success=task_tree.is_finished, result=rsp)

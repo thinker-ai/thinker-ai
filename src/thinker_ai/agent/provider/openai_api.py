@@ -195,6 +195,7 @@ class OpenAILLM(BaseLLM):
     async def _a_chat_completion(self, prompt: PromptMessage, model: Optional[str] = None,
                                  timeout: Optional[int] = None) -> str:
         kwargs = self._cons_kwargs(messages=prompt.to_dicts(), model=model,timeout=timeout,)
+        #这个方法会导致debug模式下主程序不能正常结束，处于必须手动中断的状态
         response = await self.aclient.chat.completions.create(model=self.get_model(model), **kwargs)
         if self.config.calc_usage:
             self.cost_manager.update_costs(self.get_model(model), response.usage)
@@ -219,6 +220,7 @@ class OpenAILLM(BaseLLM):
 
     async def _a_do_with_normal_stream(self, prompt, model: Optional[str] = None, timeout: Optional[int] = None) -> str:
         kwargs = self._cons_kwargs(messages=prompt.to_dicts(), model=model,timeout=timeout)
+        # 这个方法会导致debug模式下主程序不能正常结束，处于必须手动中断的状态
         response = await self.aclient.chat.completions.create(model=self.get_model(model), **kwargs, stream=True)
         full_reply_content,usage = await self._a_extract_from_stream_rsp(response)
         if self.config.calc_usage:

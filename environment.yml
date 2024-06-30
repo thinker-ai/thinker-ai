@@ -135,3 +135,5 @@ dependencies:
     - modelscope
     - pyshine
     - pyarrow
+    - ipywidgets
+    - jupyterlab_widgets
