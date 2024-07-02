@@ -1,44 +1,102 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StateMachineDefinition",
   "type": "object",
+  "definitions": {
+    "Action": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": ["name"]
+    },
+    "State": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "actions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Action" }
+        },
+        "inner_state_machine": { "$ref": "#/definitions/StateMachine" },
+        "to_inner_command_name_map": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "from_inner_event_name_map": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "required": ["name", "actions"]
+    },
+    "Transition": {
+      "type": "object",
+      "properties": {
+        "event": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": ["event", "source", "target"]
+    },
+    "StateMachine": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "states": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/State" }
+        },
+        "transitions": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Transition" }
+        }
+      },
+      "required": ["id", "states", "transitions"]
+    },
+    "Command": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "payload": {
+          "type": "object"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": ["name"]
+    }
+  },
   "properties": {
-    "business_id": {
+    "id": {
       "type": "string"
     },
     "states": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": {
-          "type": "object",
-          "properties": {
-            "type": {
-              "type": "string"
-            }
-          },
-          "required": ["type"],
-          "additionalProperties": false
-        }
-      }
+      "type": "array",
+      "items": { "$ref": "#/definitions/State" }
     },
     "transitions": {
       "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "from": {
-            "type": "string"
-          },
-          "to": {
-            "type": "string"
-          },
-          "event": {
-            "type": "string"
-          }
-        },
-        "required": ["from", "to", "event"]
-      }
+      "items": { "$ref": "#/definitions/Transition" }
     }
   },
-  "required": ["business_id", "states", "transitions"]
+  "required": ["id", "states", "transitions"]
 }
