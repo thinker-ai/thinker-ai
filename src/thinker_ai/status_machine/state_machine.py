@@ -12,7 +12,7 @@ class Event:
 
 
 class Command:
-    def __init__(self, name: str,  target:str, id: Optional[str] = None,payload: Optional[Any] = None):
+    def __init__(self, name: str, target: str, id: Optional[str] = None, payload: Optional[Any] = None):
         self.id = id
         self.name = name
         self.target = target
@@ -27,9 +27,11 @@ class Action(ABC):
         if command.name.strip() != self.name.strip():
             return None
         inner_command = outer_state.to_inner_command(command)
-        inner_event = outer_state.handle(inner_command, outer_state.inner_state_machine)
-        if inner_event:
-            return outer_state.from_inner_event(inner_event)
+        if inner_command:
+            inner_current_state=outer_state.inner_state_machine.current_state
+            inner_event = inner_current_state.handle(inner_command, outer_state.inner_state_machine)
+            if inner_event:
+                return outer_state.from_inner_event(inner_event)
         return None
 
     @abstractmethod
@@ -97,7 +99,7 @@ class StateMachine:
         self.id = id
         self.current_state = current_state
 
-    def handle(self, command: Command)-> Optional[Event]:
+    def handle(self, command: Command) -> Optional[Event]:
         if self.definition.id == command.target:
             return self.current_state.handle(command, self)
         else:
@@ -139,16 +141,17 @@ class CompositeState(State):
                 return event
         return None
 
-    def to_inner_command(self, command: Command) -> Command:
+    def to_inner_command(self, command: Command) -> Optional[Command]:
         inner_command_name = self.to_inner_command_name_map.get(command.name)
         if inner_command_name is None:
-            raise ValueError(f"No mapping found for command '{command.name}'")
-        return Command(id=command.id, name=inner_command_name, payload=command.payload)
+            return None
+        return Command(id=command.id, name=inner_command_name, payload=command.payload,
+                       target=self.inner_state_machine.definition.id)
 
-    def from_inner_event(self, inner_event: Event) -> Event:
+    def from_inner_event(self, inner_event: Event) -> Optional[Event]:
         outer_event_name = self.from_inner_event_name_map.get(inner_event.name)
         if outer_event_name is None:
-            raise ValueError(f"No mapping found for event '{inner_event.name}'")
+            return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
 
 
