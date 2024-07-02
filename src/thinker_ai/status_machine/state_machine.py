@@ -23,17 +23,6 @@ class Action(ABC):
     def __init__(self, name: str):
         self.name = name
 
-    def handle_inner(self, command: Command, outer_state: 'CompositeState') -> Optional[Event]:
-        if command.name.strip() != self.name.strip():
-            return None
-        inner_command = outer_state.to_inner_command(command)
-        if inner_command:
-            inner_current_state=outer_state.inner_state_machine.current_state
-            inner_event = inner_current_state.handle(inner_command, outer_state.inner_state_machine)
-            if inner_event:
-                return outer_state.from_inner_event(inner_event)
-        return None
-
     @abstractmethod
     def handle(self, command: Command) -> Optional[Event]:
         raise NotImplementedError
@@ -100,13 +89,9 @@ class StateMachine:
         self.current_state = current_state
 
     def handle(self, command: Command) -> Optional[Event]:
-        if self.definition.id == command.target:
+        if (self.definition.id == command.target  # 现在能找到
+                or isinstance(self.current_state, CompositeState)):  # 或进入内部寻找
             return self.current_state.handle(command, self)
-        else:
-            for stats in self.definition.states:
-                if isinstance(stats, CompositeState):
-                    stats = cast(CompositeState, stats)
-                    return stats.inner_state_machine.handle(command)
 
     def on_event(self, event: Event):
         transitions = self.definition.transitions
@@ -135,10 +120,23 @@ class CompositeState(State):
     def handle(self, command: Command, outer_state_machine: 'StateMachine') -> Optional[Event]:
         action = self.get_action(command.name)
         if action:
-            event = action.handle_inner(command, self)
-            if event:
-                outer_state_machine.on_event(event)
-                return event
+            event = action.handle(command)
+        else:
+            event = self._handle_inner(command)
+        if event:
+            outer_state_machine.on_event(event)
+            return event
+        return None
+
+    def _handle_inner(self, command: Command):
+        inner_current_state = self.inner_state_machine.current_state
+        inner_command = self.to_inner_command(command)
+        if inner_command:
+            inner_event = inner_current_state.handle(inner_command, self.inner_state_machine)
+        else:
+            inner_event = inner_current_state.handle(command, self.inner_state_machine)
+        if inner_event:
+            return self.from_inner_event(inner_event)
         return None
 
     def to_inner_command(self, command: Command) -> Optional[Command]:

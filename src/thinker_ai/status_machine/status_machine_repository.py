@@ -34,14 +34,14 @@ class StateMachineDefinitionRepository:
     @staticmethod
     def _deserialize(json_str: str) -> StateMachineDefinition:
         data = json.loads(json_str)
-        business_id = data.get("business_id", "")
+        id = data.get("id", "")
         states: Dict = {}
         for state_name, actions_data in data.get("states", {}).items():
             actions = {}
             for action_type, action_data in actions_data.items():
                 action_type = action_data['type']
                 actions[action_type] = ActionFactory.create_action(action_type, action_data)
-            state = State(name=state_name, actions=actions)
+            state = State(name=state_name, actions=actions,state_machine_definition_id=id)
             states[state_name] = state
         transitions_list: List[Dict[str, str]] = data.get("transitions")
         transitions: Dict = {}
@@ -54,12 +54,12 @@ class StateMachineDefinitionRepository:
                     states.get(transition_data.get("to"))
                 )
                 transitions.setdefault(event, []).append(transition)
-        return StateMachineDefinition(business_id, states, transitions)
+        return StateMachineDefinition(id, states, transitions)
 
     @staticmethod
     def _serialize(definition: StateMachineDefinition) -> str:
         data = {
-            'business_id': definition.business_id,
+            'id': definition.id,
             'states': {
                 state_name: {
                     action_type: {
@@ -78,7 +78,7 @@ class StateMachineDefinitionRepository:
         return json.dumps(data, ensure_ascii=False)
 
     def save(self, definition: StateMachineDefinition) -> None:
-        name = definition.business_id
+        name = definition.id
         data_str = self._serialize(definition)
         self.persistence.save(name, data_str)
 
@@ -98,7 +98,7 @@ class StateMachineRepository:
     @staticmethod
     def _serialize(state_machine: StateMachine) -> str:
         data = {
-            'instance_id': state_machine.instance_id,
+            'instance_id': state_machine.id,
             'current_state': state_machine.current_state.name,
             'history': [state.name for state in state_machine.history]
         }
@@ -118,9 +118,9 @@ class StateMachineRepository:
 
     def save(self, state_machine: StateMachine):
         data_str = self._serialize(state_machine)
-        self.persistence.save(state_machine.definition.business_id, state_machine.instance_id, data_str)
+        self.persistence.save(state_machine.definition.id, state_machine.id, data_str)
 
-    def load(self, business_id: str, instance_id: str) -> StateMachine:
-        definition = self.definition_repository.load(business_id)
-        data_str = self.persistence.load(business_id, instance_id)
+    def load(self, id: str, instance_id: str) -> StateMachine:
+        definition = self.definition_repository.load(id)
+        data_str = self.persistence.load(id, instance_id)
         return self._deserialize(definition, data_str)

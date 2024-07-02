@@ -1,0 +1,38 @@
+{
+  "definition_id": "simple_test_sm",
+  "id": "simple_test_instance",
+  "states": [
+    {
+      "name": "start",
+      "actions": [
+        {
+          "name": "start_command"
+        }
+      ]
+    },
+    {
+      "name": "middle",
+      "actions": [
+        {
+          "name": "middle_command"
+        }
+      ]
+    },
+    {
+      "name": "end",
+      "actions": []
+    }
+  ],
+  "transitions": [
+    {
+      "event": "start_command_handled",
+      "source": "start",
+      "target": "middle"
+    },
+    {
+      "event": "middle_command_handled",
+      "source": "middle",
+      "target": "end"
+    }
+  ]
+}

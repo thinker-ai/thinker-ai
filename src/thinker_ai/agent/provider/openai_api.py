@@ -24,7 +24,7 @@ from thinker_ai.agent.provider.cost_manager import CostManager
 from thinker_ai.agent.provider.token_counter import get_openrouter_tokens
 from thinker_ai.agent.tools.function_call import FunctionCall
 from thinker_ai.agent.provider.llm_schema import PromptMessage
-from thinker_ai.agent.tools.functions_register import FunctionsRegister
+from thinker_ai.agent.tools.openai_functions_register import FunctionsRegister
 from thinker_ai.common.common import log_and_reraise, decode_image
 from thinker_ai.common.exceptions import handle_exception
 from thinker_ai.common.logs import logger

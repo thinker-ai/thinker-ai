@@ -12,7 +12,7 @@ from openai.types.beta.threads import Message, Text, Run
 from pydantic import BaseModel
 
 from thinker_ai.agent.provider import OpenAILLM
-from thinker_ai.agent.tools.functions_register import FunctionsRegister
+from thinker_ai.agent.tools.openai_functions_register import FunctionsRegister
 
 from thinker_ai.agent.tools.embeddings import get_most_similar_strings
 from thinker_ai.agent.tools.function_call import FunctionCall

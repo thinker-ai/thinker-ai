@@ -1,20 +1,5 @@
 from thinker_ai.agent.roles.di.data_interpreter import DataInterpreter
-from thinker_ai.agent.tools.tool_registry import register_tool
-
-
-@register_tool()
-def magic_function(arg1: str, arg2: int) -> dict:
-    """
-    The magic function that does something.
-
-    Args:
-        arg1 (str): ...
-        arg2 (int): ...
-
-    Returns:
-        dict: ...
-    """
-    return {"arg1": arg1 * 3, "arg2": arg2 * 5}
+from thinker_ai_tests.di.my_custom_tool import magic_function
 
 
 async def main():
@@ -24,5 +9,4 @@ async def main():
 
 if __name__ == "__main__":
     import asyncio
-
     asyncio.run(main())
