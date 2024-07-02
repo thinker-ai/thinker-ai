@@ -1,23 +1,37 @@
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional, Any
-
+from typing import List, Dict, Optional, Any, cast, Set
 
 
 class Event:
-    def __init__(self, name: str, event_id: Optional[str] = None, publisher_id: Optional[str] = None, payload: Optional[Any] = None):
+    def __init__(self, name: str, id: Optional[str] = None, publisher_id: Optional[str] = None,
+                 payload: Optional[Any] = None):
+        self.id = id
         self.name = name
-        self.event_id = event_id
         self.publisher_id = publisher_id
         self.payload = payload
 
 
 class Command:
-    def __init__(self, name: str, command_id: Optional[str] = None, payload: Optional[Any] = None):
+    def __init__(self, name: str,  target:str, id: Optional[str] = None,payload: Optional[Any] = None):
+        self.id = id
         self.name = name
-        self.command_id = command_id
+        self.target = target
         self.payload = payload
 
+
 class Action(ABC):
+    def __init__(self, name: str):
+        self.name = name
+
+    def handle_inner(self, command: Command, outer_state: 'CompositeState') -> Optional[Event]:
+        if command.name.strip() != self.name.strip():
+            return None
+        inner_command = outer_state.to_inner_command(command)
+        inner_event = outer_state.handle(inner_command, outer_state.inner_state_machine)
+        if inner_event:
+            return outer_state.from_inner_event(inner_event)
+        return None
+
     @abstractmethod
     def handle(self, command: Command) -> Optional[Event]:
         raise NotImplementedError
@@ -29,16 +43,22 @@ class Action(ABC):
 
 
 class State:
-    def __init__(self, name: str, actions: Dict[str, Action]):
+    def __init__(self, name: str, actions: Set[Action]):
         self.name = name
-        self.actions: Dict[str, Action] = actions
+        self.actions: Set[Action] = actions
 
-    def handle(self, command: Command, state_machine: 'StateMachine') -> Optional[Event]:
-        action = self.actions.get(command.name)
+    def get_action(self, name: str) -> Optional[Action]:
+        for action in self.actions:
+            if action.name == name:
+                return action
+        return None
+
+    def handle(self, command: Command, outer_state_machine: 'StateMachine') -> Optional[Event]:
+        action = self.get_action(command.name)
         if action:
             event = action.handle(command)
             if event:
-                state_machine.on_event(event)
+                outer_state_machine.on_event(event)
                 return event
         return None
 
@@ -51,35 +71,45 @@ class Transition:
 
 
 class StateMachineDefinition:
-    def __init__(self, business_id: str, states: Dict[str, State], transitions: Dict[str, List[Transition]]):
-        self.business_id = business_id
-        self.states: Dict[str, State] = states
-        self.transitions: Dict[str, List[Transition]] = transitions
+    def __init__(self, id: str, states: Set[State], transitions: Set[Transition]):
+        self.id = id
+        self.states: Set[State] = states
+        self.transitions: Set[Transition] = transitions
 
     def add_state(self, state: State):
-        self.states[state.name] = state
+        self.states.add(state)
 
     def add_transition(self, transition: Transition):
-        self.transitions.setdefault(transition.event, []).append(transition)
+        self.transitions.add(transition)
 
-    def get_state(self, name: str) -> State:
-        return self.states.get(name)
+    def get_state(self, name: str) -> Optional[State]:
+        for stats in self.states:
+            if stats.name == name:
+                return stats
+        return None
 
 
 class StateMachine:
-    def __init__(self, definition: StateMachineDefinition, instance_id:str, current_state:State, history: List[State]):
+    def __init__(self, definition: StateMachineDefinition, id: str, current_state: State,
+                 history: Optional[List[State]] = None):
         self.definition = definition
-        self.history: List[State] = history
-        self.instance_id = instance_id
+        self.history: List[State] = history or []
+        self.id = id
         self.current_state = current_state
 
-    def handle(self, command: Command):
-        return self.current_state.handle(command, self)
+    def handle(self, command: Command)-> Optional[Event]:
+        if self.definition.id == command.target:
+            return self.current_state.handle(command, self)
+        else:
+            for stats in self.definition.states:
+                if isinstance(stats, CompositeState):
+                    stats = cast(CompositeState, stats)
+                    return stats.inner_state_machine.handle(command)
 
     def on_event(self, event: Event):
-        transitions = self.definition.transitions.get(event.name, [])
+        transitions = self.definition.transitions
         for transition in transitions:
-            if transition.source == self.current_state:
+            if transition.event == event.name and transition.source == self.current_state:
                 self.history.append(self.current_state)
                 self.current_state = transition.target
                 return
@@ -89,15 +119,48 @@ class StateMachine:
         return self.history[-1] if self.history else None
 
 
+class CompositeState(State):
+    def __init__(self, name: str, actions: Set[Action],
+                 inner_state_machine: 'StateMachine',
+                 to_inner_command_name_map: dict,
+                 from_inner_event_name_map: dict
+                 ):
+        super().__init__(name, actions)
+        self.inner_state_machine = inner_state_machine
+        self.to_inner_command_name_map = to_inner_command_name_map
+        self.from_inner_event_name_map = from_inner_event_name_map
+
+    def handle(self, command: Command, outer_state_machine: 'StateMachine') -> Optional[Event]:
+        action = self.get_action(command.name)
+        if action:
+            event = action.handle_inner(command, self)
+            if event:
+                outer_state_machine.on_event(event)
+                return event
+        return None
+
+    def to_inner_command(self, command: Command) -> Command:
+        inner_command_name = self.to_inner_command_name_map.get(command.name)
+        if inner_command_name is None:
+            raise ValueError(f"No mapping found for command '{command.name}'")
+        return Command(id=command.id, name=inner_command_name, payload=command.payload)
+
+    def from_inner_event(self, inner_event: Event) -> Event:
+        outer_event_name = self.from_inner_event_name_map.get(inner_event.name)
+        if outer_event_name is None:
+            raise ValueError(f"No mapping found for event '{inner_event.name}'")
+        return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
+
+
 class ActionFactory:
     _registry = {}
 
     @classmethod
-    def register_action(cls, action_type, action_cls):
+    def register_action(cls, action_type: str, action_cls: type):
         cls._registry[action_type] = action_cls
 
     @classmethod
-    def create_action(cls, action_name, data):
+    def create_action(cls, action_name: str, data: Dict) -> Action:
         action_cls = cls._registry.get(action_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for type '{action_name}'")
