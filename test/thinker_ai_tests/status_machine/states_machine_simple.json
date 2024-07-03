@@ -4,6 +4,7 @@
   "states": [
     {
       "name": "start",
+      "type": "start",
       "actions": [
         {
           "name": "start_command"
@@ -12,6 +13,7 @@
     },
     {
       "name": "middle",
+      "type": "middle",
       "actions": [
         {
           "name": "middle_command"
@@ -20,6 +22,7 @@
     },
     {
       "name": "end",
+      "type": "end",
       "actions": []
     }
   ],

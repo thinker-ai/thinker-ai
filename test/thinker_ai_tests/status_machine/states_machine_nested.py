@@ -1,10 +1,12 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Set, Literal
 
 from thinker_ai.status_machine.state_machine import (Command, StateMachineDefinition, Transition,
                                                      State, Action, Event, StateMachine, ActionFactory, CompositeState)
 import json
 import unittest
 import os
+
+StateType = Literal["start", "middle", "end"]
 
 
 class SampleAction(Action):
@@ -38,6 +40,7 @@ def create_action(action_data):
 
 def create_state(state_data):
     actions = set(create_action(action) for action in state_data.get('actions', []))
+    state_type: StateType = state_data['type']
     if 'inner_state_machine' in state_data:
         inner_state_machine = create_state_machine(state_data['inner_state_machine'])
         return CompositeState(
@@ -45,9 +48,10 @@ def create_state(state_data):
             actions=actions,
             inner_state_machine=inner_state_machine,
             to_inner_command_name_map=state_data.get('to_inner_command_name_map', {}),
-            from_inner_event_name_map=state_data.get('from_inner_event_name_map', {})
+            from_inner_event_name_map=state_data.get('from_inner_event_name_map', {}),
+            type=state_type
         )
-    return State(name=state_data['name'], actions=actions)
+    return State(name=state_data['name'], actions=actions, type=state_type)
 
 
 def create_transition(transition_data, states):
@@ -69,7 +73,7 @@ def create_state_machine(state_machine_data):
         transitions=transitions
     )
 
-    start_state = next((state for state in states if (state.name.endswith('start'))), None)
+    start_state = next((state for state in states if state.type == 'start'), None)
 
     if start_state is None:
         raise ValueError(
@@ -111,9 +115,9 @@ class TestNestedStateMachine(unittest.TestCase):
         self.state_machine.handle(command)
 
         # Verify the inner state machine's state
-        outer_state = next(state for state in self.state_machine.definition.states if state.name == "start")
+        outer_state = next(state for state in self.state_machine.definition.states if state.type == "start")
         middle_state_machine = outer_state.inner_state_machine
-        middle_state = next(state for state in middle_state_machine.definition.states if state.name == "middle_start")
+        middle_state = next(state for state in middle_state_machine.definition.states if state.type == "start")
         inner_state_machine = middle_state.inner_state_machine
 
         self.assertEqual(inner_state_machine.current_state.name, "inner_end")
@@ -138,7 +142,7 @@ class TestNestedStateMachine(unittest.TestCase):
 
         # Verify inner state machine transitions
         middle_state = next(
-            state for state in middle_state_machine.definition.states if state.name == "middle_start")
+            state for state in middle_state_machine.definition.states if state.type == "start")
         inner_state_machine = middle_state.inner_state_machine
         self.assertEqual(inner_state_machine.current_state.name, "inner_end")
         self.assertEqual(inner_state_machine.last_state().name, "inner_start")

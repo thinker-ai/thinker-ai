@@ -4,6 +4,7 @@
   "states": [
     {
       "name": "start",
+      "type": "start",
       "actions": [
         {
           "name": "start_command"
@@ -15,6 +16,7 @@
         "states": [
           {
             "name": "middle_start",
+            "type": "start",
             "actions": [
               {
                 "name": "middle_start_command"
@@ -26,6 +28,7 @@
               "states": [
                 {
                   "name": "inner_start",
+                  "type": "start",
                   "actions": [
                     {
                       "name": "inner_start_command"
@@ -34,6 +37,7 @@
                 },
                 {
                   "name": "inner_end",
+                  "type": "end",
                   "actions": []
                 }
               ],
@@ -54,6 +58,7 @@
           },
           {
             "name": "middle_composite",
+            "type": "middle",
             "actions": [
               {
                 "name": "middle_composite_command"
@@ -62,6 +67,7 @@
           },
           {
             "name": "middle_end",
+            "type": "end",
             "actions": []
           }
         ],
@@ -88,6 +94,7 @@
     },
     {
       "name": "outer_composite",
+      "type": "middle",
       "actions": [
         {
           "name": "outer_composite_command"
@@ -99,6 +106,7 @@
         "states": [
           {
             "name": "middle_start",
+            "type": "start",
             "actions": [
               {
                 "name": "middle_start_command"
@@ -110,6 +118,7 @@
               "states": [
                 {
                   "name": "inner_start",
+                  "type": "start",
                   "actions": [
                     {
                       "name": "inner_start_command"
@@ -118,6 +127,7 @@
                 },
                 {
                   "name": "inner_end",
+                  "type": "end",
                   "actions": []
                 }
               ],
@@ -138,6 +148,7 @@
           },
           {
             "name": "middle_composite",
+            "type": "middle",
             "actions": [
               {
                 "name": "middle_composite_command"
@@ -146,6 +157,7 @@
           },
           {
             "name": "middle_end",
+            "type": "end",
             "actions": []
           }
         ],
@@ -171,6 +183,7 @@
     },
     {
       "name": "end",
+      "type": "end",
       "actions": []
     }
   ],

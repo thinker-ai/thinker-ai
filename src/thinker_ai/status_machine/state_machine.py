@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional, Any, cast, Set
+from enum import Enum
+from typing import List, Dict, Optional, Any, cast, Set, Literal
 
 
 class Event:
@@ -33,9 +34,13 @@ class Action(ABC):
         raise NotImplementedError
 
 
+StateType = Literal["start", "middle", "end"]
+
+
 class State:
-    def __init__(self, name: str, actions: Set[Action]):
+    def __init__(self, name: str, actions: Set[Action], type: StateType):
         self.name = name
+        self.type = type
         self.actions: Set[Action] = actions
 
     def get_action(self, name: str) -> Optional[Action]:
@@ -109,10 +114,11 @@ class StateMachine:
 class CompositeState(State):
     def __init__(self, name: str, actions: Set[Action],
                  inner_state_machine: 'StateMachine',
+                 type: StateType,
                  to_inner_command_name_map: dict,
                  from_inner_event_name_map: dict
                  ):
-        super().__init__(name, actions)
+        super().__init__(name, actions,type)
         self.inner_state_machine = inner_state_machine
         self.to_inner_command_name_map = to_inner_command_name_map
         self.from_inner_event_name_map = from_inner_event_name_map

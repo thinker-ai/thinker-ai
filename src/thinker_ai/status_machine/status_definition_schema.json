@@ -22,6 +22,10 @@
           "type": "array",
           "items": { "$ref": "#/definitions/Action" }
         },
+        "type": {
+          "type": "string",
+          "enum": ["start", "middle", "end"]
+        },
         "inner_state_machine": { "$ref": "#/definitions/StateMachine" },
         "to_inner_command_name_map": {
           "type": "object",
@@ -32,7 +36,7 @@
           "additionalProperties": { "type": "string" }
         }
       },
-      "required": ["name", "actions"]
+      "required": ["name", "actions", "type"]
     },
     "Transition": {
       "type": "object",

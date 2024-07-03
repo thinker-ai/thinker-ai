@@ -1,10 +1,12 @@
-from typing import Dict, Optional
+from typing import Dict, Optional, Set, Literal
 
 from thinker_ai.status_machine.state_machine import (Command, StateMachineDefinition, Transition,
                                                      State, Action, Event, StateMachine, ActionFactory, CompositeState)
 import json
 import unittest
 import os
+
+StateType = Literal["start", "middle", "end"]
 
 
 class SampleAction(Action):
@@ -38,6 +40,7 @@ def create_action(action_data):
 
 def create_state(state_data):
     actions = set(create_action(action) for action in state_data.get('actions', []))
+    state_type: StateType = state_data['type']
     if 'inner_state_machine' in state_data:
         inner_state_machine = create_state_machine(state_data['inner_state_machine'])
         return CompositeState(
@@ -45,9 +48,10 @@ def create_state(state_data):
             actions=actions,
             inner_state_machine=inner_state_machine,
             to_inner_command_name_map=state_data.get('to_inner_command_name_map', {}),
-            from_inner_event_name_map=state_data.get('from_inner_event_name_map', {})
+            from_inner_event_name_map=state_data.get('from_inner_event_name_map', {}),
+            type=state_type
         )
-    return State(name=state_data['name'], actions=actions)
+    return State(name=state_data['name'], actions=actions, type=state_type)
 
 
 def create_transition(transition_data, states):
@@ -71,10 +75,9 @@ def create_state_machine(state_machine_data):
     start_state = next((state for state in states if (state.name == 'start' or state.name == 'inner_start')), None)
 
     if start_state is None:
-        raise ValueError(f"Start state not found in state machine with ID: {state_machine_data['id']}")
+        raise ValueError(f"Start state not found in state machine with definition ID: {state_machine_data['definition_id']}")
 
-    instance_id = state_machine_data['id']
-    return StateMachine(definition=definition, id=instance_id, current_state=start_state)
+    return StateMachine(definition=definition, id=state_machine_data['id'], current_state=start_state)
 
 
 def construct_state_machine(file_path):
