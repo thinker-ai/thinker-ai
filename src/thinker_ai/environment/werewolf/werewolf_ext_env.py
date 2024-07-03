@@ -144,7 +144,7 @@ class WerewolfExtEnv(ExtEnv):
 
     def _init_players_state(self, players: list["Role"]):
         for play in players:
-            self.players_state[play.name] = (play.profile, RoleState.ALIVE)
+            self.players_state[play.command] = (play.profile, RoleState.ALIVE)
 
         self.special_role_players = [
             p for p in self.living_players if p not in self.werewolf_players + self.villager_players
@@ -191,9 +191,9 @@ class WerewolfExtEnv(ExtEnv):
         ]
 
         if add_human:
-            logger.info(f"You are assigned {players[assigned_role_idx].name}({players[assigned_role_idx].profile})")
+            logger.info(f"You are assigned {players[assigned_role_idx].command}({players[assigned_role_idx].profile})")
 
-        game_setup = ["Game setup:"] + [f"{player.name}: {player.profile}," for player in players]
+        game_setup = ["Game setup:"] + [f"{player.command}: {player.profile}," for player in players]
         self.game_setup = "\n".join(game_setup)
 
         self._init_players_state(players)  # init players state

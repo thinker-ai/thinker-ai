@@ -101,11 +101,11 @@ class CodeVisitor(ast.NodeVisitor):
         self._visit_function(node)
 
     def _visit_function(self, node):
-        if node.name.startswith("_"):
+        if node.command.startswith("_"):
             return
         function_schemas = self._get_function_schemas(node)
         function_schemas["code"] = ast.get_source_segment(self.source_code, node)
-        self.tool_schemas[node.name] = function_schemas
+        self.tool_schemas[node.command] = function_schemas
 
     def _get_function_schemas(self, node):
         docstring = remove_spaces(ast.get_docstring(node))

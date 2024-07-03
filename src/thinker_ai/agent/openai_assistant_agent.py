@@ -166,7 +166,7 @@ class AssistantAgent(ContextMixin):
             tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
             tool_outputs: List[Dict] = []
             for tool_call in tool_calls:
-                function_call = FunctionCall(name=tool_call.function.name,
+                function_call = FunctionCall(name=tool_call.function.command,
                                              arguments=json.loads(tool_call.function.arguments))
                 print("Function Name:", function_call.name)
                 print("Function Arguments:", function_call.arguments)
@@ -320,7 +320,7 @@ class AssistantAgent(ContextMixin):
     def is_function_registered(self, name: str) -> bool:
         tools = self.assistant.tools
         for tool in tools:
-            if tool.task_type == "function" and tool.function.name == name:
+            if tool.task_type == "function" and tool.function.command == name:
                 return True
         return False
 

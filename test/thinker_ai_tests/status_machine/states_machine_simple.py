@@ -1,13 +1,16 @@
+import os
 import unittest
-
-from thinker_ai.status_machine.state_machine import Command
-from thinker_ai_tests.status_machine.state_machine_utils import construct_state_machine
+from thinker_ai.status_machine.state_machine import Command, ActionFactory
+from thinker_ai.status_machine.state_machine_builder import StateMachineBuilder
+from thinker_ai_tests.status_machine.sample_action import SampleAction
 
 
 class TestSimpleStateMachine(unittest.TestCase):
 
     def setUp(self):
-        self.state_machine = construct_state_machine('states_machine_simple.json')
+        ActionFactory.register_action('SampleAction', SampleAction)
+        self.builder = StateMachineBuilder(base_path=os.path.dirname(__file__))
+        self.state_machine = self.builder.construct_state_machine('states_machine_simple.json')
 
     def tearDown(self):
         self.state_machine = None

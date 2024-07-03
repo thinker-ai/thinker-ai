@@ -1,12 +1,16 @@
+import os
 import unittest
-from thinker_ai.status_machine.state_machine import Command, Action, ActionFactory, Event
-from thinker_ai_tests.status_machine.state_machine_utils import construct_state_machine
+from thinker_ai.status_machine.state_machine import Command, ActionFactory
+from thinker_ai.status_machine.state_machine_builder import StateMachineBuilder
+from thinker_ai_tests.status_machine.sample_action import SampleAction
 
 
 class TestNestedStateMachine(unittest.TestCase):
 
     def setUp(self):
-        self.state_machine = construct_state_machine('states_machine_nested.json')
+        ActionFactory.register_action('SampleAction', SampleAction)
+        self.builder = StateMachineBuilder(base_path= os.path.dirname(__file__))
+        self.state_machine = self.builder.construct_state_machine('states_machine_nested.json')
 
     def tearDown(self):
         self.state_machine = None
@@ -31,9 +35,9 @@ class TestNestedStateMachine(unittest.TestCase):
         self.state_machine.handle(command)
 
         # Verify the inner state machine's state
-        outer_state = next(state for state in self.state_machine.definition.states if state.type == "start")
+        outer_state = next(state for state in self.state_machine.definition.states if state.name == "start")
         middle_state_machine = outer_state.inner_state_machine
-        middle_state = next(state for state in middle_state_machine.definition.states if state.type == "start")
+        middle_state = next(state for state in middle_state_machine.definition.states if state.name == "middle_start")
         inner_state_machine = middle_state.inner_state_machine
 
         self.assertEqual(inner_state_machine.current_state.name, "inner_end")
@@ -58,7 +62,7 @@ class TestNestedStateMachine(unittest.TestCase):
 
         # Verify inner state machine transitions
         middle_state = next(
-            state for state in middle_state_machine.definition.states if state.type == "start")
+            state for state in middle_state_machine.definition.states if state.name == "middle_start")
         inner_state_machine = middle_state.inner_state_machine
         self.assertEqual(inner_state_machine.current_state.name, "inner_end")
         self.assertEqual(inner_state_machine.last_state().name, "inner_start")

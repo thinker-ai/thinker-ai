@@ -20,8 +20,8 @@ class Command:
 
 
 class Action(ABC):
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self, command: str):
+        self.command = command
 
     @abstractmethod
     def handle(self, command: Command) -> Optional[Event]:
@@ -44,7 +44,7 @@ class State:
 
     def get_action(self, name: str) -> Optional[Action]:
         for action in self.actions:
-            if action.name == name:
+            if action.command == name:
                 return action
         return None
 
@@ -166,8 +166,9 @@ class ActionFactory:
         cls._registry[action_type] = action_cls
 
     @classmethod
-    def create_action(cls, action_name: str, data: Dict) -> Action:
-        action_cls = cls._registry.get(action_name)
+    def create_action(cls,action_data) -> Action:
+        name = action_data.get('name')
+        action_cls = cls._registry.get(name)
         if action_cls is None:
-            raise ValueError(f"No Action class registered for type '{action_name}'")
-        return action_cls.from_dict(data)
+            raise ValueError(f"No Action class registered for type '{name}'")
+        return action_cls.from_dict({"command":action_data.get('command')})

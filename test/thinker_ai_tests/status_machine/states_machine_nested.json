@@ -7,7 +7,8 @@
       "type": "start",
       "actions": [
         {
-          "name": "start_command"
+          "name":"SampleAction",
+          "command": "start_command"
         }
       ],
       "inner_state_machine": {
@@ -19,7 +20,8 @@
             "type": "start",
             "actions": [
               {
-                "name": "middle_start_command"
+                "name":"SampleAction",
+                "command": "middle_start_command"
               }
             ],
             "inner_state_machine": {
@@ -31,7 +33,8 @@
                   "type": "start",
                   "actions": [
                     {
-                      "name": "inner_start_command"
+                      "name":"SampleAction",
+                      "command": "inner_start_command"
                     }
                   ]
                 },
@@ -61,7 +64,8 @@
             "type": "middle",
             "actions": [
               {
-                "name": "middle_composite_command"
+                "name":"SampleAction",
+                "command": "middle_composite_command"
               }
             ]
           },
@@ -97,7 +101,8 @@
       "type": "middle",
       "actions": [
         {
-          "name": "outer_composite_command"
+          "name":"SampleAction",
+          "command": "outer_composite_command"
         }
       ],
       "inner_state_machine": {
@@ -109,7 +114,8 @@
             "type": "start",
             "actions": [
               {
-                "name": "middle_start_command"
+                "name":"SampleAction",
+                "command": "middle_start_command"
               }
             ],
             "inner_state_machine": {
@@ -121,7 +127,8 @@
                   "type": "start",
                   "actions": [
                     {
-                      "name": "inner_start_command"
+                      "name":"SampleAction",
+                      "command": "inner_start_command"
                     }
                   ]
                 },
@@ -151,7 +158,8 @@
             "type": "middle",
             "actions": [
               {
-                "name": "middle_composite_command"
+                "name":"SampleAction",
+                "command": "middle_composite_command"
               }
             ]
           },

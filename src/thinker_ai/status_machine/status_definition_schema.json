@@ -8,6 +8,9 @@
       "properties": {
         "name": {
           "type": "string"
+        },
+        "command": {
+          "type": "string"
         }
       },
       "required": ["name"]

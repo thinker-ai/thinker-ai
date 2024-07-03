@@ -70,8 +70,8 @@ class StateMachineDefinitionRepository:
                 for state_name, state in definition.states.items()
             },
             'transitions': [{
-                'from': transition.source.name,
-                'to': transition.target.name,
+                'from': transition.source.command,
+                'to': transition.target.command,
                 'event': transition.event
             } for transitions in definition.transitions.values() for transition in transitions]
         }

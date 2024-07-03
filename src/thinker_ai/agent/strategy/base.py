@@ -106,4 +106,4 @@ class ThoughtTree(RenderTree):
         """Print the updated tree."""
         print("\nUpdated Tree:")
         for pre, _, node in self:
-            print(f"{pre}{node.name}, value: {node.value}, valid_status: {node.valid_status}")
+            print(f"{pre}{node.command}, value: {node.value}, valid_status: {node.valid_status}")

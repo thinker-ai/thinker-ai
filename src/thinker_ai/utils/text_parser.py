@@ -170,8 +170,8 @@ class TextParser:
 
         @validator('*', allow_reuse=True)
         def check_name(v, field):
-            if field.name not in mapping.keys():
-                raise ValueError(f'Unrecognized block: {field.name}')
+            if field.command not in mapping.keys():
+                raise ValueError(f'Unrecognized block: {field.command}')
             return v
 
         @root_validator(pre=True, allow_reuse=True)

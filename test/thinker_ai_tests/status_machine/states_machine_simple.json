@@ -7,7 +7,8 @@
       "type": "start",
       "actions": [
         {
-          "name": "start_command"
+          "command": "start_command",
+          "name":"SampleAction"
         }
       ]
     },
@@ -16,7 +17,8 @@
       "type": "middle",
       "actions": [
         {
-          "name": "middle_command"
+          "command": "middle_command",
+          "name":"SampleAction"
         }
       ]
     },

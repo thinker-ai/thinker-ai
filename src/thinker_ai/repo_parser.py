@@ -464,7 +464,7 @@ class RepoParser(BaseModel):
                 class_methods = [m.name for m in node.body if is_func(m)]
                 file_info.classes.append({"name": node.name, "methods": class_methods})
             elif is_func(node):
-                file_info.functions.append(node.name)
+                file_info.functions.append(node.command)
             elif isinstance(node, (ast.Assign, ast.AnnAssign)):
                 for target in node.targets if isinstance(node, ast.Assign) else [node.target]:
                     if isinstance(target, ast.Name):
@@ -557,14 +557,14 @@ class RepoParser(BaseModel):
         mappings = {
             any_to_str(ast.Import): lambda x: [RepoParser._parse_name(n) for n in x.names],
             any_to_str(ast.Assign): RepoParser._parse_assign,
-            any_to_str(ast.ClassDef): lambda x: x.name,
-            any_to_str(ast.FunctionDef): lambda x: x.name,
+            any_to_str(ast.ClassDef): lambda x: x.command,
+            any_to_str(ast.FunctionDef): lambda x: x.command,
             any_to_str(ast.ImportFrom): lambda x: {
                 "module": x.module,
                 "names": [RepoParser._parse_name(n) for n in x.names],
             },
             any_to_str(ast.If): RepoParser._parse_if,
-            any_to_str(ast.AsyncFunctionDef): lambda x: x.name,
+            any_to_str(ast.AsyncFunctionDef): lambda x: x.command,
             any_to_str(ast.AnnAssign): lambda x: RepoParser._parse_variable(x.target),
         }
         func = mappings.get(any_to_str(node))
@@ -616,8 +616,8 @@ class RepoParser(BaseModel):
             The 'name' value of the AST node.
         """
         if n.asname:
-            return f"{n.name} as {n.asname}"
-        return n.name
+            return f"{n.command} as {n.asname}"
+        return n.command
 
     @staticmethod
     def _parse_if(n):

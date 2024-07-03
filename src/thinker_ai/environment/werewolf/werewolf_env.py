@@ -19,7 +19,7 @@ class WerewolfEnv(WerewolfExtEnv, Environment):
         Add a batch of characters in the current environment
         """
         for role in roles:
-            self.roles[role.name] = role  # use name as key here, due to multi-player can have same profile
+            self.roles[role.command] = role  # use name as key here, due to multi-player can have same profile
 
         for role in roles:  # setup system message with roles
             role.context = self.context

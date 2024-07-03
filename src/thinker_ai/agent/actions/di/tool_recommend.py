@@ -186,7 +186,7 @@ class ToolTagMatcher(ToolMatcher):
         candidate_tools = TOOL_REGISTRY.get_tools_by_tag(self.tool_tag)
         candidate_tool_names = set(self.tools.keys()) & candidate_tools.keys()
         recalled_tools = [candidate_tools[tool_name] for tool_name in candidate_tool_names][:self.recall_top_k]
-        logger.info(f"Recalled tools: \n{[tool.name for tool in recalled_tools]}")
+        logger.info(f"Recalled tools: \n{[tool.command for tool in recalled_tools]}")
         return recalled_tools
 
 
