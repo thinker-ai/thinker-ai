@@ -1,67 +1,53 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "StateMachineDefinition",
-  "type": "object",
   "definitions": {
     "Action": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "command": {
-          "type": "string"
-        }
+        "command": { "type": "string" },
+        "name": { "type": "string" }
       },
-      "required": ["name"]
+      "required": ["command", "name"]
     },
     "State": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
+        "id": { "type": "string" },
+        "name": { "type": "string" },
         "actions": {
           "type": "array",
           "items": { "$ref": "#/definitions/Action" }
         },
-        "type": {
-          "type": "string",
-          "enum": ["start", "middle", "end"]
+        "events": {
+          "type": "array",
+          "items": { "type": "string" }
         },
-        "inner_state_machine": { "$ref": "#/definitions/StateMachine" },
-        "to_inner_command_name_map": {
+        "type": { "type": "string", "enum": ["start", "middle", "end"] },
+        "outer_to_inner_command": {
           "type": "object",
           "additionalProperties": { "type": "string" }
         },
-        "from_inner_event_name_map": {
+        "inner_to_outer_event": {
           "type": "object",
           "additionalProperties": { "type": "string" }
-        }
+        },
+        "inner_state_machine_definition_id": { "type": "string" }
       },
-      "required": ["name", "actions", "type"]
+      "required": ["id", "name", "actions", "events", "type"]
     },
     "Transition": {
       "type": "object",
       "properties": {
-        "event": {
-          "type": "string"
-        },
-        "source": {
-          "type": "string"
-        },
-        "target": {
-          "type": "string"
-        }
+        "event": { "type": "string" },
+        "source": { "type": "string" },
+        "target": { "type": "string" }
       },
       "required": ["event", "source", "target"]
     },
-    "StateMachine": {
+    "StateMachineDefinition": {
       "type": "object",
       "properties": {
-        "id": {
-          "type": "string"
-        },
+        "id": { "type": "string" },
         "states": {
           "type": "array",
           "items": { "$ref": "#/definitions/State" }
@@ -73,37 +59,38 @@
       },
       "required": ["id", "states", "transitions"]
     },
-    "Command": {
+    "StateContext": {
       "type": "object",
       "properties": {
-        "name": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "payload": {
-          "type": "object"
-        },
-        "target": {
-          "type": "string"
+        "id": { "type": "string" },
+        "state_id": { "type": "string" },
+        "inner_state_machine_id": { "type": "string" }
+      },
+      "required": ["id", "state_id"]
+    },
+    "StateMachineContext": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "definition_id": { "type": "string" },
+        "current_context": { "$ref": "#/definitions/StateContext" },
+        "history": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/StateContext" }
         }
       },
-      "required": ["name"]
+      "required": ["id", "definition_id", "current_context", "history"]
     }
   },
+  "type": "object",
   "properties": {
-    "id": {
-      "type": "string"
+    "state_machine_definitions": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/StateMachineDefinition" }
     },
-    "states": {
-      "type": "array",
-      "items": { "$ref": "#/definitions/State" }
-    },
-    "transitions": {
-      "type": "array",
-      "items": { "$ref": "#/definitions/Transition" }
+    "state_machine_contexts": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/definitions/StateMachineContext" }
     }
-  },
-  "required": ["id", "states", "transitions"]
+  }
 }

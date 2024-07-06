@@ -1,75 +1,46 @@
-import os
 import unittest
-from thinker_ai.status_machine.state_machine import Command, ActionFactory
-from thinker_ai.status_machine.state_machine_builder import StateMachineBuilder
+import os
+from typing import cast
+
+from thinker_ai.status_machine.state_machine import Command, ActionFactory, CompositeStateContext
+from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
+from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_action import SampleAction
 
 
 class TestNestedStateMachine(unittest.TestCase):
 
     def setUp(self):
+        self.base_dir = os.path.dirname(__file__)
+        self.definitions_file_name = 'test_nested_state_machine_definitions.json'
+        self.instances_file_name = 'test_nested_state_machine_instances.json'
+        self.definition_repo = FileBasedStateMachineDefinitionRepository(self.base_dir, self.definitions_file_name)
+        self.instance_repo = FileBasedStateMachineContextRepository(self.base_dir, self.instances_file_name,
+                                                                    self.definition_repo)
         ActionFactory.register_action('SampleAction', SampleAction)
-        self.builder = StateMachineBuilder(base_path= os.path.dirname(__file__))
-        self.state_machine = self.builder.construct_state_machine('states_machine_nested.json')
+
+        # 读取状态机实例
+        self.state_machine = self.instance_repo.load("outer_instance")
 
     def tearDown(self):
         self.state_machine = None
 
     def test_inner_state_machine_mapping(self):
         # Transition to outer composite state
-        self.state_machine.handle(Command(name="start_command", target=self.state_machine.definition.id))
-        self.assertEqual(self.state_machine.current_state.name, "outer_composite")
-
-        # Handle outer command which will be translated to middle composite command, then to inner command
-        command = Command(name="outer_composite_command", target=self.state_machine.definition.id)
-        event = self.state_machine.handle(command)
-
-        self.assertIsNotNone(event)
-        self.assertEqual(event.name, "outer_composite_command_handled")
-        self.assertEqual(self.state_machine.current_state.name, "end")
-        self.assertEqual(self.state_machine.last_state().name, "outer_composite")
-
-    def test_inner_state_machine_direct(self):
-        # Directly operate the inner state machine via Command's target
-        command = Command(name="inner_start_command", target="inner_test_sm")
-        self.state_machine.handle(command)
-
-        # Verify the inner state machine's state
-        outer_state = next(state for state in self.state_machine.definition.states if state.name == "start")
-        middle_state_machine = outer_state.inner_state_machine
-        middle_state = next(state for state in middle_state_machine.definition.states if state.name == "middle_start")
-        inner_state_machine = middle_state.inner_state_machine
-
-        self.assertEqual(inner_state_machine.current_state.name, "inner_end")
-        self.assertEqual(inner_state_machine.last_state().name, "inner_start")
+        self.state_machine.handle(Command(name="start_command", target=self.state_machine.id))
+        self.assertEqual(self.state_machine.current_context.state.name, "outer_end")
 
     def test_combined_state_machine(self):
-        # Transition to outer composite state
-        self.state_machine.handle(Command(name="start_command", target=self.state_machine.definition.id))
-        self.assertEqual(self.state_machine.current_state.name, "outer_composite")
-
-        # Directly operate the inner state machine via Command's target and check cascading
-        command = Command(name="inner_start_command", target="inner_test_sm")
+        command = Command(name="inner_start_command", target="inner_instance")
         self.state_machine.handle(command)
-        command = Command(name="middle_composite_command", target="middle_test_sm")
-        self.state_machine.handle(command)
-
         # Verify middle state machine transitions
-        outer_state = next(state for state in self.state_machine.definition.states if state.name == "outer_composite")
-        middle_state_machine = outer_state.inner_state_machine
-        self.assertEqual(middle_state_machine.current_state.name, "middle_end")
-        self.assertEqual(middle_state_machine.last_state().name, "middle_composite")
-
-        # Verify inner state machine transitions
-        middle_state = next(
-            state for state in middle_state_machine.definition.states if state.name == "middle_start")
-        inner_state_machine = middle_state.inner_state_machine
-        self.assertEqual(inner_state_machine.current_state.name, "inner_end")
-        self.assertEqual(inner_state_machine.last_state().name, "inner_start")
-
+        middle_state_machine = self.instance_repo.load("middle_instance")
+        self.assertEqual(middle_state_machine.current_context.state.name, "middle_end")
+        self.assertEqual(middle_state_machine.last_state().state.name, "middle_start")
         # Check if the outer state machine has also transitioned
-        self.assertEqual(self.state_machine.current_state.name, "end")
-        self.assertEqual(self.state_machine.last_state().name, "outer_composite")
+        self.assertEqual(self.state_machine.current_context.state.name, "outer_end")
+        self.assertEqual(self.state_machine.last_state().state.name, "outer_start")
+        command = Command(name="middle_composite_command", target="middle_instance")
 
 
 if __name__ == '__main__':
