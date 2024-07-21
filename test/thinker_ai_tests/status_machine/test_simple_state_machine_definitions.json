@@ -1,7 +1,7 @@
 {
     "test_sm": {
       "id": "test_sm",
-      "states": [
+      "states_def": [
         {
           "id": "state_start",
           "name": "start",

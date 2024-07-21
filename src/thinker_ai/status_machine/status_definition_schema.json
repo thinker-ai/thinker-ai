@@ -9,7 +9,7 @@
       },
       "required": ["command", "name"]
     },
-    "State": {
+    "State_Definition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -22,16 +22,7 @@
           "type": "array",
           "items": { "type": "string" }
         },
-        "type": { "type": "string", "enum": ["start", "middle", "end"] },
-        "outer_to_inner_command": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        "inner_to_outer_event": {
-          "type": "object",
-          "additionalProperties": { "type": "string" }
-        },
-        "inner_state_machine_definition_id": { "type": "string" }
+        "type": { "type": "string", "enum": ["start", "middle", "end"] }
       },
       "required": ["id", "name", "actions", "events", "type"]
     },
@@ -47,50 +38,36 @@
     "StateMachineDefinition": {
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
-        "states": {
+        "states_def": {
           "type": "array",
-          "items": { "$ref": "#/definitions/State" }
+          "items": { "$ref": "#/definitions/State_Definition" }
         },
         "transitions": {
           "type": "array",
           "items": { "$ref": "#/definitions/Transition" }
+        },
+        "outer_state_machine_mapping": {
+          "type": "object",
+          "properties": {
+            "outer_to_inner_command": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            },
+            "inner_to_outer_event": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          },
+          "required": ["outer_to_inner_command", "inner_to_outer_event"]
         }
       },
-      "required": ["id", "states", "transitions"]
-    },
-    "StateContext": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "state_id": { "type": "string" },
-        "inner_state_machine_id": { "type": "string" }
-      },
-      "required": ["id", "state_id"]
-    },
-    "StateMachineContext": {
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "definition_id": { "type": "string" },
-        "current_context": { "$ref": "#/definitions/StateContext" },
-        "history": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/StateContext" }
-        }
-      },
-      "required": ["id", "definition_id", "current_context", "history"]
+      "required": ["states_def", "transitions"],
+      "additionalProperties": false
     }
   },
   "type": "object",
-  "properties": {
-    "state_machine_definitions": {
-      "type": "object",
-      "additionalProperties": { "$ref": "#/definitions/StateMachineDefinition" }
-    },
-    "state_machine_contexts": {
-      "type": "object",
-      "additionalProperties": { "$ref": "#/definitions/StateMachineContext" }
-    }
-  }
+  "patternProperties": {
+    "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/StateMachineDefinition" }
+  },
+  "additionalProperties": false
 }

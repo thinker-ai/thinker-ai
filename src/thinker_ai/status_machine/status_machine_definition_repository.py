@@ -1,9 +1,9 @@
 import json
 import os
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, cast
 
-from thinker_ai.status_machine.state_machine import (ActionFactory, State, Transition, StateMachineDefinition,
-                                                     StateMachineDefinitionRepository, CompositeState)
+from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
+                           StateMachineDefinitionRepository, InnerStateMachineDefinition, CompositeStateDefinition)
 
 
 class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
@@ -28,26 +28,45 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             raise ValueError(f"StateMachineDefinition with id '{id}' not found")
 
         data = self.definitions[id]
-        return self._definition_from_dict(data)
+        return self._definition_from_dict(id, data)
+
+    def _definition_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineDefinition:
+        states = {self._state_from_dict(sd) for sd in data["states_def"]}
+        transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
+        if data.get("outer_state_machine_mapping"):
+            return InnerStateMachineDefinition(
+                id=id,
+                states_def=states,
+                transitions=transitions,
+                outer_to_inner_command=data["outer_state_machine_mapping"]["outer_to_inner_command"],
+                inner_to_outer_event=data["outer_state_machine_mapping"]["inner_to_outer_event"]
+            )
+        return StateMachineDefinition(id=id, states_def=states, transitions=transitions)
 
     @staticmethod
     def _definition_to_dict(definition: StateMachineDefinition) -> Dict[str, Any]:
-        return {
-            "id": definition.id,
-            "states": [FileBasedStateMachineDefinitionRepository._state_definition_to_dict(sd) for sd in definition.states],
-            "transitions": [FileBasedStateMachineDefinitionRepository._transition_to_dict(t) for t in definition.transitions]
+        result = {
+            "states_def": [FileBasedStateMachineDefinitionRepository._state_definition_to_dict(sd) for sd in
+                           definition.states_def],
+            "transitions": [FileBasedStateMachineDefinitionRepository._transition_to_dict(t) for t in
+                            definition.transitions]
         }
+        if isinstance(definition, InnerStateMachineDefinition):
+            result["outer_state_machine_mapping"] = {
+                "outer_to_inner_command": definition.outer_to_inner_command,
+                "inner_to_outer_event": definition.inner_to_outer_event
+            }
+        return result
 
     @staticmethod
-    def _state_definition_to_dict(state: State) -> Dict[str, Any]:
-        actions = [{"name": a.command, "command": a.command} for a in state.actions]
+    def _state_definition_to_dict(state_def: StateDefinition) -> Dict[str, Any]:
+        actions = [{"name": a.command, "command": a.command} for a in state_def.actions]
         return {
-            "id": state.id,
-            "name": state.name,
+            "id": state_def.id,
+            "name": state_def.name,
             "actions": actions,
-            "events": list(state.events),
-            "type": state.type,
-            "inner_state_machine_definition_id": state.inner_state_machine_definition_id if isinstance(state, CompositeState) else None
+            "events": list(state_def.events),
+            "type": state_def.type
         }
 
     @staticmethod
@@ -58,29 +77,25 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             "target": transition.target.id
         }
 
-    def _definition_from_dict(self, data: Dict[str, Any]) -> StateMachineDefinition:
-        states = {self._state_from_dict(sd) for sd in data["states"]}
-        transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
-        return StateMachineDefinition(id=data["id"], states=states, transitions=transitions)
-
-    def _state_from_dict(self, data: Dict[str, Any]) -> State:
+    def _state_from_dict(self, data: Dict[str, Any]) -> StateDefinition:
         actions = {ActionFactory.create_action(a) for a in data["actions"]}
         events = set(data["events"])
-        if data.get("inner_state_machine_definition_id"):
-            return CompositeState(
+        # 检查是否存在对应的子状态机定义
+        if data["id"] in self.definitions:
+            inner_state_machine = cast(InnerStateMachineDefinition, self.load(data["id"]))
+            return CompositeStateDefinition(
                 id=data["id"],
                 name=data["name"],
                 actions=actions,
                 events=events,
                 type=data["type"],
-                outer_to_inner_command=data.get("outer_to_inner_command"),
-                inner_to_outer_event=data.get("inner_to_outer_event"),
-                inner_state_machine_definition_id=data["inner_state_machine_definition_id"]
+                inner_state_machine_definition=inner_state_machine
             )
-        return State(id=data["id"], name=data["name"], actions=actions, result_events=events, type=data["type"])
+        return StateDefinition(id=data["id"], name=data["name"], actions=actions, result_events=events,
+                               type=data["type"])
 
     @staticmethod
-    def _transition_from_dict(data: Dict[str, str], states: Set[State]) -> Transition:
+    def _transition_from_dict(data: Dict[str, str], states: Set[StateDefinition]) -> Transition:
         source = next(sd for sd in states if sd.id == data["source"])
         target = next(sd for sd in states if sd.id == data["target"])
         return Transition(event=data["event"], source=source, target=target)

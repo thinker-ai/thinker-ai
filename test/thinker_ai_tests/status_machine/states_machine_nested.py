@@ -28,19 +28,18 @@ class TestNestedStateMachine(unittest.TestCase):
     def test_inner_state_machine_mapping(self):
         # Transition to outer composite state
         self.state_machine.handle(Command(name="start_command", target=self.state_machine.id))
-        self.assertEqual(self.state_machine.current_context.state.name, "outer_end")
+        self.assertEqual(self.state_machine.current_context.state_def.name, "outer_end")
 
     def test_combined_state_machine(self):
         command = Command(name="inner_start_command", target="inner_instance")
         self.state_machine.handle(command)
         # Verify middle state machine transitions
-        middle_state_machine = self.instance_repo.load("middle_instance")
-        self.assertEqual(middle_state_machine.current_context.state.name, "middle_end")
-        self.assertEqual(middle_state_machine.last_state().state.name, "middle_start")
+        middle_state_machine = self.instance_repo.load("outer_start_instance")
+        self.assertEqual(middle_state_machine.current_context.state_def.name, "middle_end")
+        self.assertEqual(middle_state_machine.last_state().state_def.name, "middle_start")
         # Check if the outer state machine has also transitioned
-        self.assertEqual(self.state_machine.current_context.state.name, "outer_end")
-        self.assertEqual(self.state_machine.last_state().state.name, "outer_start")
-        command = Command(name="middle_composite_command", target="middle_instance")
+        self.assertEqual(self.state_machine.current_context.state_def.name, "outer_end")
+        self.assertEqual(self.state_machine.last_state().state_def.name, "outer_start")
 
 
 if __name__ == '__main__':

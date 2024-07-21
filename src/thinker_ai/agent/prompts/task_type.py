@@ -21,6 +21,20 @@ PLAN_PROMPT = """
     -Do not further decompose the subtasks into more detailed steps. Provide a single level of subtasks only.
 """
 
+STATE_FLOW_PROMPT = """
+    Based on the instruction, write a state flow or modify an existing state flow of what you should do to achieve the goal.
+    If you are modifying an existing state flow, carefully follow the instruction, don't make unnecessary changes. 
+    Give the whole state flow unless instructed to modify only one state of the flow.
+    If you encounter errors on the current state, revise and output the current single state only.
+    Output a list of jsons following the format:
+    ```json
+    {state_flow_def_example}
+    ```
+    Please note the following:
+    -The states in the flow is according to the Single Level of Abstraction (SLOA) principle，each sub state should remain at the same level of abstraction. 
+    -Do not further decompose the sub state into more detailed steps. Provide a single level of sub state only.
+"""
+
 
 EDA_PROMPT = """
         The current task is about exploratory data analysis, please note the following:

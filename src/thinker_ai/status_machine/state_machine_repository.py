@@ -3,7 +3,7 @@ import os
 from typing import Dict, Any
 
 from thinker_ai.status_machine.state_machine import StateMachineContext, StateMachineContextRepository, \
-    StateMachineDefinitionRepository, StateContext, StateContextBuilder, CompositeStateContext
+    StateMachineDefinitionRepository, StateContextBuilder
 
 
 class FileBasedStateMachineContextRepository(StateMachineContextRepository):
@@ -31,54 +31,48 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
             raise ValueError(f"StateMachine instance with id '{id}' not found")
 
         data = self.instances[id]
-        return self._state_machine_from_dict(data)
+        return self._state_machine_from_dict(id, data)
 
     @staticmethod
     def _state_machine_to_dict(state_machine: StateMachineContext) -> Dict[str, Any]:
         current_context_data = {
             "id": state_machine.current_context.id,
-            "state_id": state_machine.current_context.state.id,
+            "state_def_id": state_machine.current_context.state_def.id,
         }
 
         history_data = [
             {
                 "id": context.id,
-                "state_id": context.state.id,
+                "state_def_id": context.state_def.id,
             }
             for context in state_machine.history
         ]
 
-        if isinstance(state_machine.current_context, CompositeStateContext):
-            current_context_data["inner_state_machine_id"] = state_machine.current_context.inner_state_machine_id
-
         return {
-            "id": state_machine.id,
             "definition_id": state_machine.definition_id,
             "current_context": current_context_data,
             "history": history_data
         }
 
-    def _state_machine_from_dict(self, data: Dict[str, Any]) -> StateMachineContext:
+    def _state_machine_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineContext:
         definition = self.state_machine_definition_repository.load(data["definition_id"])
 
         current_context_data = data["current_context"]
         current_state = next(
-            sd for sd in definition.states if sd.id == current_context_data["state_id"]
+            sd for sd in definition.states_def if sd.id == current_context_data["state_def_id"]
         )
         current_state_context = self.state_context_builder.build(current_state,
-                                                                 current_context_data["id"],
-                                                                 current_context_data.get("inner_state_machine_id"))
+                                                                 current_context_data["id"])
 
         history = [self.state_context_builder.build(
-            next(sd for sd in definition.states if sd.id == context_data["state_id"]),
-            context_data.get("id"),
-            context_data.get("inner_state_machine_id"))
+            next(sd for sd in definition.states_def if sd.id == context_data["state_def_id"]),
+            context_data["id"])
             for context_data in data["history"]]
 
         state_machine_context = StateMachineContext(
-            id=data["id"],
+            id=id,
             definition_id=data["definition_id"],
-            current_state_context=current_state_context,
+            current_context=current_state_context,
             state_context_builder=self.state_context_builder,
             history=history,
             state_machine_context_repository=self,

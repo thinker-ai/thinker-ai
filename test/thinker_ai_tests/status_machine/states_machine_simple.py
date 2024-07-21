@@ -26,7 +26,7 @@ class TestSimpleStateMachine(unittest.TestCase):
     def test_simple_state_machine(self):
         # Transition to middle state
         self.state_machine.handle(Command(name="start_command", target=self.state_machine.id))
-        self.assertEqual(self.state_machine.current_context.state.name, "middle")
+        self.assertEqual(self.state_machine.current_context.state_def.name, "middle")
 
         # Transition to end state
         command = Command(name="middle_command", target=self.state_machine.id)
@@ -34,8 +34,8 @@ class TestSimpleStateMachine(unittest.TestCase):
 
         self.assertIsNotNone(event)
         self.assertEqual(event.name, "middle_command_handled")
-        self.assertEqual(self.state_machine.current_context.state.name, "end")
-        self.assertEqual(self.state_machine.last_state().state.name, "middle")
+        self.assertEqual(self.state_machine.current_context.state_def.name, "end")
+        self.assertEqual(self.state_machine.last_state().state_def.name, "middle")
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 {
-  "middle_start": {
-    "states_def": [
+  "inner_sm": {
+    "id": "inner_sm",
+    "states": [
       {
         "id": "inner_start",
         "name": "inner_start",
@@ -27,18 +28,11 @@
         "source": "inner_start",
         "target": "inner_end"
       }
-    ],
-    "outer_state_machine_mapping": {
-      "outer_to_inner_command": {
-        "middle_start_command": "inner_start_command"
-      },
-      "inner_to_outer_event": {
-        "inner_start_command_handled": "middle_start_command_handled"
-      }
-    }
+    ]
   },
-  "outer_start": {
-    "states_def": [
+  "middle_sm": {
+    "id": "middle_sm",
+    "states": [
       {
         "id": "middle_start",
         "name": "middle_start",
@@ -49,7 +43,14 @@
           }
         ],
         "events": ["middle_start_command_handled"],
-        "type": "start"
+        "type": "start",
+        "outer_to_inner_command": {
+          "middle_start_command": "inner_start_command"
+        },
+        "inner_to_outer_event": {
+          "inner_start_command_handled": "middle_start_command_handled"
+        },
+        "inner_state_machine_definition_id": "inner_sm"
       },
       {
         "id": "middle_end",
@@ -65,18 +66,11 @@
         "source": "middle_start",
         "target": "middle_end"
       }
-    ],
-    "outer_state_machine_mapping": {
-      "outer_to_inner_command": {
-        "start_command": "middle_start_command"
-      },
-      "inner_to_outer_event": {
-        "middle_start_command_handled": "start_command_handled"
-      }
-    }
+    ]
   },
   "outer_sm": {
-    "states_def": [
+    "id": "outer_sm",
+    "states": [
       {
         "id": "outer_start",
         "name": "outer_start",
@@ -87,7 +81,14 @@
           }
         ],
         "events": ["start_command_handled"],
-        "type": "start"
+        "type": "start",
+        "outer_to_inner_command": {
+          "start_command": "middle_start_command"
+        },
+        "inner_to_outer_event": {
+          "middle_start_command_handled": "start_command_handled"
+        },
+        "inner_state_machine_definition_id": "middle_sm"
       },
       {
         "id": "outer_end",

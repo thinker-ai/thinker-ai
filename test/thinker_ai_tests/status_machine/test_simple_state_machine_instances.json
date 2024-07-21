@@ -4,8 +4,7 @@
     "definition_id": "test_sm",
     "current_context": {
       "id": "state_start_context",
-      "state_definition_id": "state_start",
-      "state_id": "state_start"
+      "state_def_id": "state_start"
     },
     "history": []
   }

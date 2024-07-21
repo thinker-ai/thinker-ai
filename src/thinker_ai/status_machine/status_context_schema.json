@@ -1,0 +1,30 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {
+    "StateContext": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "state_def_id": { "type": "string" }
+      },
+      "required": ["id", "state_def_id"]
+    },
+    "StateMachineContext": {
+      "type": "object",
+      "properties": {
+        "definition_id": { "type": "string" },
+        "current_context": { "$ref": "#/definitions/StateContext" },
+        "history": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/StateContext" }
+        }
+      },
+      "required": ["definition_id", "current_context", "history"]
+    }
+  },
+  "type": "object",
+  "patternProperties": {
+    "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/StateMachineContext" }
+  },
+  "additionalProperties": false
+}

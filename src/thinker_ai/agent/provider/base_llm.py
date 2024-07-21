@@ -160,7 +160,7 @@ class BaseLLM(ABC):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_random_exponential(min=1, max=60),
-        after=after_log(logger, logger.level("WARNING").command),
+        after=after_log(logger, logger.level("WARNING").no),
         retry=retry_if_exception_type(ConnectionError),
         retry_error_callback=log_and_reraise,
     )

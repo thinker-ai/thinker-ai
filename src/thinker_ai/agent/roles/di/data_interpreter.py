@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import uuid
 from typing import Literal
 
 from pydantic import model_validator
@@ -86,7 +87,7 @@ class DataInterpreter(Role):
         # create initial plan and update it until confirmation
         instruction = self.rc.memory.get()[-1].content  # retreive latest user requirement
         task_tree = TaskTree(
-            id="tree_root",
+            id=str(uuid.uuid4()),
             instruction=instruction,
             use_reflection=self.use_reflection,
             tools=self.tools,

@@ -266,7 +266,7 @@ class OpenAILLM(BaseLLM):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_fixed(1),
-        after=after_log(logger, logger.level('WARNING').command),
+        after=after_log(logger, logger.level('WARNING').no),
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
@@ -488,7 +488,7 @@ class OpenAILLM(BaseLLM):
     @retry(
         wait=wait_random_exponential(min=1, max=60),
         stop=stop_after_attempt(6),
-        after=after_log(logger, logger.level("WARNING").command),
+        after=after_log(logger, logger.level("WARNING").no),
         retry=retry_if_exception_type(APIConnectionError),
         retry_error_callback=log_and_reraise,
     )
