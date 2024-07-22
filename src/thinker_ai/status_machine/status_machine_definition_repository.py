@@ -61,13 +61,17 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     @staticmethod
     def _state_definition_to_dict(state_def: StateDefinition) -> Dict[str, Any]:
         actions = [{"name": a.command, "command": a.command} for a in state_def.actions]
-        return {
+        state_dict = {
             "id": state_def.id,
             "name": state_def.name,
+            "description": state_def.description,
             "actions": actions,
             "events": list(state_def.events),
             "type": state_def.type
         }
+        if isinstance(state_def, CompositeStateDefinition):
+            state_dict["inner_state_machine_definition"] = state_def.inner_state_machine_definition.id
+        return state_dict
 
     @staticmethod
     def _transition_to_dict(transition: Transition) -> Dict[str, str]:
@@ -86,12 +90,17 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             return CompositeStateDefinition(
                 id=data["id"],
                 name=data["name"],
+                description=data.get("description", ""),
                 actions=actions,
                 events=events,
                 type=data["type"],
                 inner_state_machine_definition=inner_state_machine
             )
-        return StateDefinition(id=data["id"], name=data["name"], actions=actions, result_events=events,
+        return StateDefinition(id=data["id"],
+                               name=data["name"],
+                               description=data.get("description", ""),
+                               actions=actions,
+                               result_events=events,
                                type=data["type"])
 
     @staticmethod

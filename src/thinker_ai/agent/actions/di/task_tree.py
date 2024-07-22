@@ -38,7 +38,7 @@ class TaskTree(Task):
     task_map: dict[str, Task] = {}
     current_task_id: Optional[str] = None
     plan_update_max_retry: int = 3
-    type: str = "plan"
+    type: str = "state flow"
 
     def __init__(self, tasks: Optional[List[Task]] = None, **kwargs):
         super().__init__(**kwargs)

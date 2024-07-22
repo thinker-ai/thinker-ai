@@ -26,13 +26,123 @@ STATE_FLOW_PROMPT = """
     If you are modifying an existing state flow, carefully follow the instruction, don't make unnecessary changes. 
     Give the whole state flow unless instructed to modify only one state of the flow.
     If you encounter errors on the current state, revise and output the current single state only.
-    Output a list of jsons following the format:
+    Output json following the format:
     ```json
-    {state_flow_def_example}
+{{
+    "test": {{
+        "states_def": [
+            {{
+                "id": "state_start",
+                "name": "start",
+                "actions": [
+                    {{
+                        "command": "start_command",
+                        "name": "SampleAction"
+                    }}
+                ],
+                "events": ["start_command_handled"],
+                "type": "start"
+            }},
+            {{
+                "id": "state_middle",
+                "name": "middle",
+                "actions": [
+                    {{
+                        "command": "middle_command",
+                        "name": "SampleAction"
+                    }}
+                ],
+                "events": ["middle_command_handled"],
+                "type": "middle"
+            }},
+            {{
+                "id": "state_end",
+                "name": "end",
+                "actions": [],
+                "events": [],
+                "type": "end"
+            }}
+        ],
+        "transitions": [
+            {{
+                "event": "start_command_handled",
+                "source": "state_start",
+                "target": "state_middle"
+            }},
+            {{
+                "event": "middle_command_handled",
+                "source": "state_middle",
+                "target": "state_end"
+            }}
+        ]
+    }}
+}}
+    ```
+    The json schema is:
+    ```json
+{{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "definitions": {{
+    "Action": {{
+      "type": "object",
+      "properties": {{
+        "command": {{ "type": "string" }},
+        "name": {{ "type": "string" }}
+      }},
+      "required": ["command", "name"]
+    }},
+    "State_Definition": {{
+      "type": "object",
+      "properties": {{
+        "id": {{ "type": "string" }},
+        "name": {{ "type": "string" }},
+        "actions": {{
+          "type": "array",
+          "items": {{ "$ref": "#/definitions/Action" }}
+        }},
+        "events": {{
+          "type": "array",
+          "items": {{ "type": "string" }}
+        }},
+        "type": {{ "type": "string", "enum": ["start", "middle", "end"] }}
+      }},
+      "required": ["id", "name", "actions", "events", "type"]
+    }},
+    "Transition": {{
+      "type": "object",
+      "properties": {{
+        "event": {{ "type": "string" }},
+        "source": {{ "type": "string" }},
+        "target": {{ "type": "string" }}
+      }},
+      "required": ["event", "source", "target"]
+    }},
+    "StateMachineDefinition": {{
+      "type": "object",
+      "properties": {{
+        "states_def": {{
+          "type": "array",
+          "items": {{ "$ref": "#/definitions/State_Definition" }}
+        }},
+        "transitions": {{
+          "type": "array",
+          "items": {{ "$ref": "#/definitions/Transition" }}
+        }}
+      }},
+      "required": ["id", "states_def", "transitions"],
+      "additionalProperties": false
+    }}
+  }},
+  "type": "object",
+  "patternProperties": {{
+    "^[a-zA-Z0-9_-]+$": {{ "$ref": "#/definitions/StateMachineDefinition" }}
+  }},
+  "additionalProperties": false
+}}
     ```
     Please note the following:
     -The states in the flow is according to the Single Level of Abstraction (SLOA) principle，each sub state should remain at the same level of abstraction. 
-    -Do not further decompose the sub state into more detailed steps. Provide a single level of sub state only.
+    -Do not further decompose the sub states into more detailed states. Provide a single level of sub states only.
 """
 
 

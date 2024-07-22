@@ -9,7 +9,7 @@ from thinker_ai.agent.prompts.task_type import (
     FEATURE_ENGINEERING_PROMPT,
     IMAGE2WEBPAGE_PROMPT,
     MODEL_EVALUATE_PROMPT,
-    MODEL_TRAIN_PROMPT, PLAN_PROMPT,
+    MODEL_TRAIN_PROMPT, PLAN_PROMPT, STATE_FLOW_PROMPT,
 )
 
 
@@ -68,6 +68,14 @@ class TaskType(Enum):
         desc="Make a plan, decompose the given task according to the Single Level of Abstraction (SLOA) principle",
         guidance=PLAN_PROMPT,
     )
+
+    STATE_FLOW = TaskTypeDef(
+        name="state flow",
+        desc="Make a state flow of an state machine,Decompose a given task into multiple steps according to the "
+             "Single Level of Abstraction (SLOA) principle，these steps are represented by states",
+        guidance=STATE_FLOW_PROMPT,
+    )
+
     EDA = TaskTypeDef(
         name="eda",
         desc="For performing exploratory data analysis",

@@ -47,23 +47,9 @@
         "transitions": {
           "type": "array",
           "items": { "$ref": "#/definitions/Transition" }
-        },
-        "outer_state_machine_mapping": {
-          "type": "object",
-          "properties": {
-            "outer_to_inner_command": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            },
-            "inner_to_outer_event": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            }
-          },
-          "required": ["outer_to_inner_command", "inner_to_outer_event"]
         }
       },
-      "required": ["description","states_def", "transitions"],
+      "required": ["description", "states_def", "transitions"],
       "additionalProperties": false
     }
   },

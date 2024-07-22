@@ -38,9 +38,10 @@ StateType = Literal["start", "middle", "end"]
 
 
 class StateDefinition:
-    def __init__(self, id: str, name: str, actions: Set[Action], result_events: Set[str], type: StateType):
+    def __init__(self, id: str, name: str, description:str, actions: Set[Action], result_events: Set[str], type: StateType):
         self.id = id
         self.name = name
+        self.description = description
         self.type = type
         self.events: Set[str] = result_events
         self.actions: Set[Action] = actions
@@ -227,13 +228,13 @@ class StateMachineContextRepository(ABC):
 
 
 class CompositeStateDefinition(StateDefinition):
-    def __init__(self, id: str, name: str,
+    def __init__(self, id: str, name: str,description: str,
                  actions: Set[Action],
                  events: Set[str],
                  type: StateType,
                  inner_state_machine_definition: InnerStateMachineDefinition
                  ):
-        super().__init__(id, name, actions, events, type)
+        super().__init__(id, name, description,actions, events, type)
         self.inner_state_machine_definition = inner_state_machine_definition
 
     def to_inner_command(self, command: Command, owner_state_context_id: str) -> Optional[Command]:
