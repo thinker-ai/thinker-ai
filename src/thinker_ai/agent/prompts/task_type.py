@@ -1,4 +1,8 @@
 # Prompt for taking on "eda" tasks
+import json
+import os
+from typing import Dict, Any
+
 PLAN_PROMPT = """
     Based on the instruction, write a plan or modify an existing plan of what you should do to achieve the goal.
     If you are modifying an existing plan, carefully follow the instruction, don't make unnecessary changes. Give the whole plan unless instructed to modify only one task of the plan.
@@ -21,6 +25,23 @@ PLAN_PROMPT = """
     -Do not further decompose the subtasks into more detailed steps. Provide a single level of subtasks only.
 """
 
+
+def load_file(base_dir: str, file_name: str) -> str:
+    file_path = os.path.join(base_dir, file_name)
+    if os.path.exists(file_path):
+        with open(file_path, 'r') as file:
+            return file.read()
+    return ""
+
+
+def replace_curly_braces(json_content: str) -> str:
+    return json_content.replace("{", "{{").replace("}", "}}")
+
+
+current_file_dir = os.path.dirname(__file__)
+status_definition_simple = replace_curly_braces(load_file(current_file_dir, "status_definition_simple.json"))
+status_machine_dir = os.path.dirname(os.path.join(current_file_dir, "../../status_machine/"))
+status_definition_schema_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_schema_simple.json"))
 STATE_FLOW_PROMPT = """
     Based on the instruction, write a state flow or modify an existing state flow of what you should do to achieve the goal.
     If you are modifying an existing state flow, carefully follow the instruction, don't make unnecessary changes. 
@@ -28,123 +49,17 @@ STATE_FLOW_PROMPT = """
     If you encounter errors on the current state, revise and output the current single state only.
     Output json following the format:
     ```json
-{{
-    "test": {{
-        "states_def": [
-            {{
-                "id": "state_start",
-                "name": "start",
-                "actions": [
-                    {{
-                        "command": "start_command",
-                        "name": "SampleAction"
-                    }}
-                ],
-                "events": ["start_command_handled"],
-                "type": "start"
-            }},
-            {{
-                "id": "state_middle",
-                "name": "middle",
-                "actions": [
-                    {{
-                        "command": "middle_command",
-                        "name": "SampleAction"
-                    }}
-                ],
-                "events": ["middle_command_handled"],
-                "type": "middle"
-            }},
-            {{
-                "id": "state_end",
-                "name": "end",
-                "actions": [],
-                "events": [],
-                "type": "end"
-            }}
-        ],
-        "transitions": [
-            {{
-                "event": "start_command_handled",
-                "source": "state_start",
-                "target": "state_middle"
-            }},
-            {{
-                "event": "middle_command_handled",
-                "source": "state_middle",
-                "target": "state_end"
-            }}
-        ]
-    }}
-}}
+{status_definition_simple}
     ```
     The json schema is:
     ```json
-{{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "definitions": {{
-    "Action": {{
-      "type": "object",
-      "properties": {{
-        "command": {{ "type": "string" }},
-        "name": {{ "type": "string" }}
-      }},
-      "required": ["command", "name"]
-    }},
-    "State_Definition": {{
-      "type": "object",
-      "properties": {{
-        "id": {{ "type": "string" }},
-        "name": {{ "type": "string" }},
-        "actions": {{
-          "type": "array",
-          "items": {{ "$ref": "#/definitions/Action" }}
-        }},
-        "events": {{
-          "type": "array",
-          "items": {{ "type": "string" }}
-        }},
-        "type": {{ "type": "string", "enum": ["start", "middle", "end"] }}
-      }},
-      "required": ["id", "name", "actions", "events", "type"]
-    }},
-    "Transition": {{
-      "type": "object",
-      "properties": {{
-        "event": {{ "type": "string" }},
-        "source": {{ "type": "string" }},
-        "target": {{ "type": "string" }}
-      }},
-      "required": ["event", "source", "target"]
-    }},
-    "StateMachineDefinition": {{
-      "type": "object",
-      "properties": {{
-        "states_def": {{
-          "type": "array",
-          "items": {{ "$ref": "#/definitions/State_Definition" }}
-        }},
-        "transitions": {{
-          "type": "array",
-          "items": {{ "$ref": "#/definitions/Transition" }}
-        }}
-      }},
-      "required": ["id", "states_def", "transitions"],
-      "additionalProperties": false
-    }}
-  }},
-  "type": "object",
-  "patternProperties": {{
-    "^[a-zA-Z0-9_-]+$": {{ "$ref": "#/definitions/StateMachineDefinition" }}
-  }},
-  "additionalProperties": false
-}}
+{status_definition_schema_simple}
     ```
     Please note the following:
     -The states in the flow is according to the Single Level of Abstraction (SLOA) principle，each sub state should remain at the same level of abstraction. 
     -Do not further decompose the sub states into more detailed states. Provide a single level of sub states only.
-"""
-
+""".format(status_definition_simple=status_definition_simple,
+           status_definition_schema_simple=status_definition_schema_simple)
 
 EDA_PROMPT = """
         The current task is about exploratory data analysis, please note the following:

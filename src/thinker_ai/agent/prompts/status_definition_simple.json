@@ -1,0 +1,53 @@
+{
+    "test_sm": {
+      "description":"",
+      "states_def": [
+        {
+          "id": "state_start",
+          "name": "start",
+          "description":"",
+          "actions": [
+            {
+              "command": "start_command",
+              "name": "SampleAction"
+            }
+          ],
+          "events": ["start_command_handled"],
+          "type": "start"
+        },
+        {
+          "id": "state_middle",
+          "name": "middle",
+          "description":"",
+          "actions": [
+            {
+              "command": "middle_command",
+              "name": "SampleAction"
+            }
+          ],
+          "events": ["middle_command_handled"],
+          "type": "middle"
+        },
+        {
+          "id": "state_end",
+          "name": "end",
+          "description":"",
+          "actions": [],
+          "events": [],
+          "type": "end"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "start_command_handled",
+          "source": "state_start",
+          "target": "state_middle"
+        },
+        {
+          "event": "middle_command_handled",
+          "source": "state_middle",
+          "target": "state_end"
+        }
+      ]
+    }
+}
