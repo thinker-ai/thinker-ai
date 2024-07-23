@@ -3,13 +3,14 @@ import unittest
 from thinker_ai.status_machine.state_machine import Command, ActionFactory
 from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
-from thinker_ai_tests.status_machine.sample_action import SampleAction
+from thinker_ai_tests.status_machine.sample_actions import StartAction,MiddleAction
 
 
 class TestSimpleStateMachine(unittest.TestCase):
 
     def setUp(self):
-        ActionFactory.register_action('SampleAction', SampleAction)
+        ActionFactory.register_action(StartAction.get_full_class_name(), StartAction)
+        ActionFactory.register_action(MiddleAction.get_full_class_name(), MiddleAction)
         self.base_dir = os.path.dirname(__file__)
         self.definition_repo = FileBasedStateMachineDefinitionRepository(self.base_dir,
                                                                          'test_simple_state_machine_definitions.json')
@@ -26,7 +27,7 @@ class TestSimpleStateMachine(unittest.TestCase):
     def test_simple_state_machine(self):
         # Transition to middle state
         self.state_machine.handle(Command(name="start_command", target=self.state_machine.id))
-        self.assertEqual(self.state_machine.current_context.state_def.name, "middle")
+        self.assertEqual(self.state_machine.current_state_context.state_def.name, "middle")
 
         # Transition to end state
         command = Command(name="middle_command", target=self.state_machine.id)
@@ -34,7 +35,7 @@ class TestSimpleStateMachine(unittest.TestCase):
 
         self.assertIsNotNone(event)
         self.assertEqual(event.name, "middle_command_handled")
-        self.assertEqual(self.state_machine.current_context.state_def.name, "end")
+        self.assertEqual(self.state_machine.current_state_context.state_def.name, "end")
         self.assertEqual(self.state_machine.last_state().state_def.name, "middle")
 
 

@@ -1,3 +1,4 @@
+import importlib
 import uuid
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, Literal, cast
@@ -21,28 +22,62 @@ class Command:
 
 
 class Action(ABC):
-    def __init__(self, command: str):
-        self.command = command
+    def __init__(self, on_command: str):
+        self.on_command = on_command
 
     @abstractmethod
-    def handle(self, command: Command, state_context: "StateContext", **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> Optional[Event]:
         raise NotImplementedError
 
     @classmethod
+    def from_class_name(cls, class_name: str) -> 'Action':
+        module_name, class_name = class_name.rsplit('.', 1)
+        action_class = getattr(importlib.import_module(module_name), class_name)
+        return action_class()
+
+    @classmethod
+    def get_full_class_name(cls):
+        return f"{cls.__module__}.{cls.__qualname__}"
+
+
+class CompositeAction(Action):
+    def __init__(self, on_command: str):
+        super().__init__(on_command)
+
     @abstractmethod
-    def from_dict(cls, data: Dict) -> 'Action':
+    def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
+        # 子类实现该方法，分解为多个inner_command并根据需要调用该方法self._handle_single_inner_command,最后通过to_outer_event返回结果
         raise NotImplementedError
 
+    def _handle_single_inner_command(self, inner_command: Command, owner_state_context: "CompositeStateContext",
+                                     **kwargs) -> Optional[Event]:
+        inner_state_machine_context = owner_state_context.get_inner_state_machine_context()
+        inner_current_state_context = inner_state_machine_context.current_state_context
+        inner_event = inner_current_state_context.handle(inner_command, inner_state_machine_context, **kwargs)
+        return inner_event
 
-StateType = Literal["start", "middle", "end"]
+    def to_outer_event(self, inner_event: Event, owner_state_context: "CompositeStateContext") -> Optional[Event]:
+        if inner_event:
+            inner_current_state_context = owner_state_context.get_inner_state_machine_context().current_state_context
+            return owner_state_context.get_state_def().to_outer_event(inner_event, inner_current_state_context)
+        return None
+
+    @classmethod
+    def get_full_class_name(cls):
+        return f"{cls.__module__}.{cls.__qualname__}"
+
+
+StatePhase = Literal["start", "middle", "end"]
 
 
 class StateDefinition:
-    def __init__(self, id: str, name: str, description:str, actions: Set[Action], result_events: Set[str], type: StateType):
+    def __init__(self, id: str, name: str, description: str, task_type: str, actions: Set[Action],
+                 result_events: Set[str], phase: StatePhase):
         self.id = id
         self.name = name
         self.description = description
-        self.type = type
+        self.task_type = task_type
+        self.phase = phase
         self.events: Set[str] = result_events
         self.actions: Set[Action] = actions
 
@@ -64,9 +99,9 @@ class StateContext:
     def set_state_def(self, value: StateDefinition):
         self.state_def = value
 
-    def get_action(self, command: str) -> Optional[Action]:
+    def get_action(self, on_command: str) -> Optional[Action]:
         for action in self.state_def.actions:
-            if action.command == command:
+            if action.on_command == on_command:
                 return action
         return None
 
@@ -114,29 +149,22 @@ class StateMachineDefinition:
 
     def get_start_state_def(self) -> Optional[StateDefinition]:
         for state in self.states_def:
-            if state.type == 'start':
+            if state.phase == 'start':
                 return state
         return None
 
 
 class InnerStateMachineDefinition(StateMachineDefinition):
     def __init__(self, id: str, states_def: Set[StateDefinition], transitions: Set[Transition],
-                 outer_to_inner_command: Optional[Dict[str, str]] = None,
-                 inner_to_outer_event: Optional[Dict[str, str]] = None
+                 inner_state_to_outer_event: Optional[Dict[str, str]] = None
                  ):
         super().__init__(id, states_def, transitions)
-        self.outer_to_inner_command = outer_to_inner_command if outer_to_inner_command is not None else {}
-        self.inner_to_outer_event = inner_to_outer_event if inner_to_outer_event is not None else {}
+        self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
 
-    def to_inner_command(self, command: Command, owner_state_context_id: str) -> Optional[Command]:
-        inner_command_name = self.outer_to_inner_command.get(command.name)
-        if inner_command_name is None:
+    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
+        if state_context.state_def.phase != "end":
             return None
-        return Command(id=command.id, name=inner_command_name, payload=command.payload,
-                       target=owner_state_context_id)
-
-    def from_inner_event(self, inner_event: Event) -> Optional[Event]:
-        outer_event_name = self.inner_to_outer_event.get(inner_event.name)
+        outer_event_name = self.inner_state_to_outer_event.get(state_context.state_def.name)
         if outer_event_name is None:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
@@ -182,30 +210,32 @@ class StateMachineContext:
                  history: Optional[List[StateContext]] = None):
         self.id = id
         self.state_context_builder = state_context_builder
-        self.definition_id = definition_id
-        self.current_context: StateContext = current_context
+        self.state_machine_def_id = definition_id
+        self.current_state_context: StateContext = current_context
         self.history: List[StateContext] = history or []
         self.state_machine_context_repository: StateMachineContextRepository = state_machine_context_repository
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> Optional[Event]:
-        if self.id == command.target or isinstance(self.current_context, CompositeStateContext):
-            return self.current_context.handle(command, self, **kwargs)
+        if self.id == command.target or isinstance(self.current_state_context, CompositeStateContext):
+            return self.current_state_context.handle(command, self, **kwargs)
 
     def on_event(self, event: Event):
         if not self.state_machine_definition_repository:
             raise ValueError("Repositories are not set")
-        state_machine_definition = self.state_machine_definition_repository.load(
-            self.definition_id)
+        state_machine_definition = self.get_state_machine_def()
         transitions = state_machine_definition.transitions
         for transition in transitions:
-            if transition.event == event.name and transition.source.name == self.current_context.state_def.name:
-                self.history.append(self.current_context)
-                self.current_context = self.get_state_context(transition.target)
+            if transition.event == event.name and transition.source.name == self.current_state_context.state_def.name:
+                self.history.append(self.current_state_context)
+                self.current_state_context = self.get_state_context(transition.target)
                 self.state_machine_context_repository.save(self)
                 return
         raise ValueError(
-            f"No transition from state '{self.current_context.state_def.name}' with event '{event.name}'")
+            f"No transition from state '{self.current_state_context.state_def.name}' with event '{event.name}'")
+
+    def get_state_machine_def(self) -> StateMachineDefinition:
+        return self.state_machine_definition_repository.load(self.state_machine_def_id)
 
     def last_state(self) -> Optional[StateContext]:
         return self.history[-1] if self.history else None
@@ -228,20 +258,17 @@ class StateMachineContextRepository(ABC):
 
 
 class CompositeStateDefinition(StateDefinition):
-    def __init__(self, id: str, name: str,description: str,
+    def __init__(self, id: str, name: str, description: str, task_type: str,
                  actions: Set[Action],
                  events: Set[str],
-                 type: StateType,
+                 phase: StatePhase,
                  inner_state_machine_definition: InnerStateMachineDefinition
                  ):
-        super().__init__(id, name, description,actions, events, type)
+        super().__init__(id, name, description, task_type, actions, events, phase)
         self.inner_state_machine_definition = inner_state_machine_definition
 
-    def to_inner_command(self, command: Command, owner_state_context_id: str) -> Optional[Command]:
-        return self.inner_state_machine_definition.to_inner_command(command, owner_state_context_id)
-
-    def from_inner_event(self, inner_event: Event) -> Optional[Event]:
-        return self.inner_state_machine_definition.from_inner_event(inner_event)
+    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
+        return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
 
 
 class CompositeStateContext(StateContext):
@@ -259,12 +286,10 @@ class CompositeStateContext(StateContext):
         action = self.get_action(command.name)
         if action:
             event = action.handle(command, self, **kwargs)
-        else:
-            event = self._handle_inner(command, **kwargs)
-        if event:
-            self.assert_event(event)
-            outer_state_machine.on_event(event)
-        return event
+            if event:
+                self.assert_event(event)
+                outer_state_machine.on_event(event)
+            return event
 
     def get_state_def(self) -> CompositeStateDefinition:
         return cast(CompositeStateDefinition, self.state_def)
@@ -289,18 +314,10 @@ class CompositeStateContext(StateContext):
             self.state_machine_context_repository.save(inner_state_machine_context)
         return inner_state_machine_context
 
-    def _handle_inner(self, command: Command, **kwargs):
-        inner_state_machine_context = self.get_inner_state_machine_context()
-        inner_current_state_context = inner_state_machine_context.current_context
-        inner_command = self.get_state_def().to_inner_command(command, self.id)
-        if inner_command:
-            # 外部间接调用内部命令
-            inner_event = inner_current_state_context.handle(inner_command, inner_state_machine_context, **kwargs)
-        else:
-            # 外部直接调用内部命令
-            inner_event = inner_current_state_context.handle(command, inner_state_machine_context, **kwargs)
-        if inner_event:
-            return self.get_state_def().from_inner_event(inner_event)
+    def get_action(self, on_command: str) -> Optional[CompositeAction]:
+        for action in self.state_def.actions:
+            if action.on_command == on_command:
+                return cast(CompositeAction, action)
         return None
 
 
@@ -308,13 +325,12 @@ class ActionFactory:
     _registry = {}
 
     @classmethod
-    def register_action(cls, action_type: str, action_cls: type):
-        cls._registry[action_type] = action_cls
+    def register_action(cls, register_key: str, action_cls: type):
+        cls._registry[register_key] = action_cls
 
     @classmethod
-    def create_action(cls, action_data) -> Optional[Action]:
-        name = action_data.get('name')
-        action_cls = cls._registry.get(name)
+    def create_action(cls, action_class_name) -> Optional[Action]:
+        action_cls: Action = cls._registry.get(action_class_name)
         if action_cls is None:
-            raise ValueError(f"No Action class registered for type '{name}'")
-        return action_cls.from_dict({"command": action_data.get('command', '')})
+            raise ValueError(f"No Action class registered for class '{action_class_name}'")
+        return action_cls.from_class_name(action_class_name)

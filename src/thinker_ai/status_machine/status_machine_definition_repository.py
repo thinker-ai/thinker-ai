@@ -3,7 +3,8 @@ import os
 from typing import Dict, Any, Set, cast
 
 from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
-                           StateMachineDefinitionRepository, InnerStateMachineDefinition, CompositeStateDefinition)
+                                                     StateMachineDefinitionRepository, InnerStateMachineDefinition,
+                                                     CompositeStateDefinition)
 
 
 class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
@@ -33,13 +34,12 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     def _definition_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineDefinition:
         states = {self._state_from_dict(sd) for sd in data["states_def"]}
         transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
-        if data.get("outer_state_machine_mapping"):
+        if data.get("inner_state_to_outer_event"):
             return InnerStateMachineDefinition(
                 id=id,
                 states_def=states,
                 transitions=transitions,
-                outer_to_inner_command=data["outer_state_machine_mapping"]["outer_to_inner_command"],
-                inner_to_outer_event=data["outer_state_machine_mapping"]["inner_to_outer_event"]
+                inner_state_to_outer_event=data["inner_state_to_outer_event"]
             )
         return StateMachineDefinition(id=id, states_def=states, transitions=transitions)
 
@@ -52,25 +52,24 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                             definition.transitions]
         }
         if isinstance(definition, InnerStateMachineDefinition):
-            result["outer_state_machine_mapping"] = {
-                "outer_to_inner_command": definition.outer_to_inner_command,
-                "inner_to_outer_event": definition.inner_to_outer_event
-            }
+            result["inner_state_to_outer_event"] = definition.inner_state_to_outer_event
         return result
 
     @staticmethod
     def _state_definition_to_dict(state_def: StateDefinition) -> Dict[str, Any]:
-        actions = [{"name": a.command, "command": a.command} for a in state_def.actions]
+        actions = [{"on_command": a.on_command,"register_key":a.get_full_class_name()} for a in state_def.actions]
         state_dict = {
             "id": state_def.id,
             "name": state_def.name,
             "description": state_def.description,
+            "task_type": state_def.task_type,
             "actions": actions,
             "events": list(state_def.events),
-            "type": state_def.type
+            "phase": state_def.phase
         }
-        if isinstance(state_def, CompositeStateDefinition):
-            state_dict["inner_state_machine_definition"] = state_def.inner_state_machine_definition.id
+        # state_def包含的inner_state_machine_definition信息处于它的下级state_dict中，所以不设置到本级的state_dict中
+        # if isinstance(state_def, CompositeStateDefinition):
+        #     state_dict["inner_state_machine_definition"] = state_def.inner_state_machine_definition.id
         return state_dict
 
     @staticmethod
@@ -91,17 +90,19 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                 id=data["id"],
                 name=data["name"],
                 description=data.get("description", ""),
+                task_type = data.get("task_type", ""),
                 actions=actions,
                 events=events,
-                type=data["type"],
+                phase=data["phase"],
                 inner_state_machine_definition=inner_state_machine
             )
         return StateDefinition(id=data["id"],
                                name=data["name"],
                                description=data.get("description", ""),
+                               task_type=data.get("task_type", ""),
                                actions=actions,
                                result_events=events,
-                               type=data["type"])
+                               phase=data["phase"])
 
     @staticmethod
     def _transition_from_dict(data: Dict[str, str], states: Set[StateDefinition]) -> Transition:

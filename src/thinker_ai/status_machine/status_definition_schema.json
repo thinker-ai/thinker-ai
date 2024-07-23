@@ -1,31 +1,24 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "Action": {
-      "type": "object",
-      "properties": {
-        "command": { "type": "string" },
-        "name": { "type": "string" }
-      },
-      "required": ["command", "name"]
-    },
     "State_Definition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
+        "task_type": { "type": "string" },
         "actions": {
           "type": "array",
-          "items": { "$ref": "#/definitions/Action" }
+          "items":{ "type": "string" }
         },
         "events": {
           "type": "array",
           "items": { "type": "string" }
         },
-        "type": { "type": "string", "enum": ["start", "middle", "end"] }
+        "phase": { "type": "string", "enum": ["start", "middle", "end"] }
       },
-      "required": ["id", "name", "actions", "events", "type"]
+      "required": ["id", "name", "description", "phase"]
     },
     "Transition": {
       "type": "object",
@@ -48,21 +41,11 @@
           "type": "array",
           "items": { "$ref": "#/definitions/Transition" }
         },
-        "outer_state_machine_mapping": {
+        "inner_state_to_outer_event": {
           "type": "object",
-          "properties": {
-            "outer_to_inner_command": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            },
-            "inner_to_outer_event": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            }
-          },
-          "required": ["outer_to_inner_command", "inner_to_outer_event"]
-        }
-      },
+          "additionalProperties": { "type": "string" }
+         }
+        },
       "required": ["description","states_def", "transitions"],
       "additionalProperties": false
     }

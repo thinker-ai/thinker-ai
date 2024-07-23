@@ -5,36 +5,33 @@
         {
           "id": "state_start",
           "name": "start",
-          "description":"",
+          "description":"what you should do in this state, one short phrase or sentence",
+          "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
-            {
-              "command": "start_command",
-              "name": "SampleAction"
-            }
+            "thinker_ai_tests.status_machine.sample_actions.StartAction"
           ],
           "events": ["start_command_handled"],
-          "type": "start"
+          "phase": "start"
         },
         {
           "id": "state_middle",
           "name": "middle",
-          "description":"",
+          "description":"what you should do in this state, one short phrase or sentence",
+          "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
-            {
-              "command": "middle_command",
-              "name": "SampleAction"
-            }
+            "thinker_ai_tests.status_machine.sample_actions.MiddleAction"
           ],
           "events": ["middle_command_handled"],
-          "type": "middle"
+          "phase": "middle"
         },
         {
           "id": "state_end",
           "name": "end",
-          "description":"",
+          "description":"what you should do in this state, one short phrase or sentence",
+          "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [],
           "events": [],
-          "type": "end"
+          "phase": "end"
         }
       ],
       "transitions": [

@@ -1,0 +1,62 @@
+{
+    "state_machine_id": {
+      "description":"what you should do in this state machine, one short phrase or sentence",
+      "states_def": [
+        {
+          "id": "first_state_uuid_id",
+          "name": "first_state_name",
+          "description":"what you should do in this state, one short phrase or sentence",
+          "task_type":"task type of this state to do, should be one of Available Task Types",
+          "actions": [
+            "the_full_class_name_of_the_action"
+          ],
+          "events": ["first_result_one_event"],
+          "phase": "start"
+        },
+        {
+          "id": "second_state_uuid_id",
+          "name": "second_state_name",
+          "description":"what you should do in this state, one short phrase or sentence",
+          "task_type":"task type of this state to do, should be one of Available Task Types",
+          "actions": [
+            "the_full_class_name_of_the_action"
+          ],
+          "events": ["second_result_one_event","second_result_two_event"],
+          "phase": "middle"
+        },
+        {
+          "id": "success_state_uuid_id",
+          "name": "success_state_name",
+          "description":"description of this state, one short phrase or sentence",
+          "phase": "end"
+        },
+        {
+          "id": "fail_state_uuid_id",
+          "name": "fail_state_name",
+          "description":"description of this state, one short phrase or sentence",
+          "phase": "end"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "first_result_one_event",
+          "source": "first_state_name",
+          "target": "second_state_name"
+        },
+        {
+          "event": "second_result_one_event",
+          "source": "second_state_name",
+          "target": "success_state_name"
+        },
+        {
+          "event": "second_result_two_event",
+          "source": "second_state_name",
+          "target": "fail_state_name"
+        }
+      ],
+      "inner_state_to_outer_event": {
+          "success_state_name": "outer_event_one",
+          "fail_state_name": "outer_event_two"
+      }
+   }
+}

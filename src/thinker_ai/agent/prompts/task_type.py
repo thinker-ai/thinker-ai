@@ -1,7 +1,5 @@
 # Prompt for taking on "eda" tasks
-import json
 import os
-from typing import Dict, Any
 
 PLAN_PROMPT = """
     Based on the instruction, write a plan or modify an existing plan of what you should do to achieve the goal.
@@ -39,9 +37,9 @@ def replace_curly_braces(json_content: str) -> str:
 
 
 current_file_dir = os.path.dirname(__file__)
-status_definition_simple = replace_curly_braces(load_file(current_file_dir, "status_definition_simple.json"))
 status_machine_dir = os.path.dirname(os.path.join(current_file_dir, "../../status_machine/"))
-status_definition_schema_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_schema_simple.json"))
+status_definition_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_example.json"))
+status_definition_schema_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_schema.json"))
 STATE_FLOW_PROMPT = """
     Based on the instruction, write a state flow or modify an existing state flow of what you should do to achieve the goal.
     If you are modifying an existing state flow, carefully follow the instruction, don't make unnecessary changes. 

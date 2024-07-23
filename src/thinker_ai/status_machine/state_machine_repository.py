@@ -36,8 +36,8 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
     @staticmethod
     def _state_machine_to_dict(state_machine: StateMachineContext) -> Dict[str, Any]:
         current_context_data = {
-            "id": state_machine.current_context.id,
-            "state_def_id": state_machine.current_context.state_def.id,
+            "id": state_machine.current_state_context.id,
+            "state_def_id": state_machine.current_state_context.state_def.id,
         }
 
         history_data = [
@@ -49,7 +49,7 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
         ]
 
         return {
-            "definition_id": state_machine.definition_id,
+            "definition_id": state_machine.state_machine_def_id,
             "current_context": current_context_data,
             "history": history_data
         }
