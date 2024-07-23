@@ -44,9 +44,8 @@ class MiddleStartAction(CompositeAction):
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
             inner_command = Command(name="inner_start_command", target="inner_instance")
-            inner_event = self._handle_single_inner_command(inner_command,owner_state_context)
-            if inner_event is not None:
-                return self.to_outer_event(inner_event, owner_state_context)
+            inner_event = self._handle_inner(inner_command, owner_state_context)
+            return self.to_outer_event(inner_event, owner_state_context)
         return None
 
 
@@ -56,8 +55,7 @@ class OuterStartAction(CompositeAction):
 
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
-            middle_command = Command(name="middle_start_command", target="middle_instance")
-            middle_event = self._handle_single_inner_command(middle_command,owner_state_context)
-            if middle_event is not None:
-                return self.to_outer_event(middle_event, owner_state_context)
+            inner_command = Command(name="middle_start_command", target="middle_instance")
+            inner_event = self._handle_inner(inner_command, owner_state_context)
+            return self.to_outer_event(inner_event, owner_state_context)
         return None

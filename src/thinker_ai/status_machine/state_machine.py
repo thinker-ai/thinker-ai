@@ -49,8 +49,8 @@ class CompositeAction(Action):
         # 子类实现该方法，分解为多个inner_command并根据需要调用该方法self._handle_single_inner_command,最后通过to_outer_event返回结果
         raise NotImplementedError
 
-    def _handle_single_inner_command(self, inner_command: Command, owner_state_context: "CompositeStateContext",
-                                     **kwargs) -> Optional[Event]:
+    def _handle_inner(self, inner_command: Command, owner_state_context: "CompositeStateContext",
+                      **kwargs) -> Optional[Event]:
         inner_state_machine_context = owner_state_context.get_inner_state_machine_context()
         inner_current_state_context = inner_state_machine_context.current_state_context
         inner_event = inner_current_state_context.handle(inner_command, inner_state_machine_context, **kwargs)
