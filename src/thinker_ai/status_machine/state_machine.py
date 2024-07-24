@@ -326,8 +326,8 @@ class ActionFactory:
     _registry = {}
 
     @classmethod
-    def register_action(cls, register_key: str, action_cls: type):
-        cls._registry[register_key] = action_cls
+    def register_action(cls, action_class_name: str, action_cls: type):
+        cls._registry[action_class_name] = action_cls
 
     @classmethod
     def create_action(cls, action_class_name) -> Optional[Action]:
