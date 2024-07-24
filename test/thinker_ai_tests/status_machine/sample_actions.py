@@ -6,8 +6,8 @@ from thinker_ai.status_machine.state_machine import (Action, Command, Event, Com
 
 class StartAction(Action):
 
-    def __init__(self):
-        super().__init__("start_command")
+    def __init__(self,on_command:str):
+        super().__init__(on_command)
 
     def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
@@ -17,8 +17,8 @@ class StartAction(Action):
 
 class MiddleAction(Action):
 
-    def __init__(self):
-        super().__init__("middle_command")
+    def __init__(self,on_command:str):
+        super().__init__(on_command)
 
     def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
@@ -28,8 +28,8 @@ class MiddleAction(Action):
 
 class InnerStartAction(Action):
 
-    def __init__(self):
-        super().__init__("inner_start_command")
+    def __init__(self,on_command:str):
+        super().__init__(on_command)
 
     def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
@@ -38,8 +38,8 @@ class InnerStartAction(Action):
 
 
 class MiddleStartAction(CompositeAction):
-    def __init__(self):
-        super().__init__("middle_start_command")
+    def __init__(self,on_command:str):
+        super().__init__(on_command)
 
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
@@ -49,8 +49,8 @@ class MiddleStartAction(CompositeAction):
 
 
 class OuterStartAction(CompositeAction):
-    def __init__(self):
-        super().__init__("outer_start_command")
+    def __init__(self,on_command:str):
+        super().__init__(on_command)
 
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
         if command.name == self.on_command:
@@ -58,5 +58,4 @@ class OuterStartAction(CompositeAction):
             event = owner_state_context.handle_inner(inner_command)
             if event:
                 return event
-
         return None

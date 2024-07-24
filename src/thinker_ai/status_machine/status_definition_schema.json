@@ -12,7 +12,10 @@
         "task_type": { "type": "string" },
         "actions": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
         },
         "events": {
           "type": "array",

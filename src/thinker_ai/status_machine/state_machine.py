@@ -94,12 +94,6 @@ class BaseStateContext:
     def get_full_class_name(cls):
         return f"{cls.__module__}.{cls.__qualname__}"
 
-    def get(self, key: str) -> Optional[Any]:
-        raise NotImplementedError
-
-    def set(self, key: str, value: Any):
-        raise NotImplementedError
-
     def get_state_def(self) -> BaseStateDefinition:
         return self.state_def
 
@@ -122,7 +116,7 @@ class StateContext(BaseStateContext):
         self.state_def = value
 
     def get_action(self, on_command: str) -> Optional[Action]:
-        for action in self.state_def.actions:
+        for action in self.get_state_def().actions:
             if action.on_command == on_command:
                 return action
         return None
@@ -391,8 +385,10 @@ class ActionFactory:
         cls._registry[action_class_name] = action_cls
 
     @classmethod
-    def create_action(cls, action_class_name) -> Optional[Action]:
+    def create_action(cls, action) -> Optional[Action]:
+        on_command = next(iter(action))
+        action_class_name = action[on_command]
         action_cls: Action = cls._registry.get(action_class_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
-        return action_cls.from_class_name(action_class_name)
+        return action_cls.from_class_name(on_command=on_command,class_name=action_class_name)

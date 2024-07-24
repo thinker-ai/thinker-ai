@@ -5,7 +5,6 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "class_name": { "type": "string" },
         "state_def_id": { "type": "string" }
       },
       "required": ["id", "state_def_id"]
@@ -17,7 +16,6 @@
         "current_state_context": { "$ref": "#/definitions/StateContext" },
         "history": {
           "type": "array",
-          "class_name": { "type": "string" },
           "items": { "$ref": "#/definitions/StateContext" }
         }
       },

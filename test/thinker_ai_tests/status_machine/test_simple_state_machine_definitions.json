@@ -1,5 +1,5 @@
 {
-  "test_sm": {
+  "test_state_machine": {
     "description": "",
     "states_def": [
       {
@@ -10,19 +10,18 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          "thinker_ai_tests.status_machine.sample_actions.StartAction"
+          {"start_command":"thinker_ai_tests.status_machine.sample_actions.StartAction"}
         ],
         "events": ["start_command_handled"]
       },
       {
         "id": "state_middle",
         "name": "middle",
-        "is_start":false,
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          "thinker_ai_tests.status_machine.sample_actions.MiddleAction"
+          {"middle_command":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"}
         ],
         "events": ["middle_command_handled"]
       },
