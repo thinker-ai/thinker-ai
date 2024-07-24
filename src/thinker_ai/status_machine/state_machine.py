@@ -141,11 +141,13 @@ class StateContext(BaseStateContext):
                 self.assert_event(event)
                 outer_state_machine.on_event(event)
             return event
-        return None
+        else:
+            raise Exception(
+                f"Illegal command {command.name} for state {self.state_def.name}")
 
 
 class Transition:
-    def __init__(self, event: str, source: StateDefinition, target: StateDefinition):
+    def __init__(self, event: str, source: BaseStateDefinition, target: BaseStateDefinition):
         self.event = event
         self.source = source
         self.target = target
@@ -225,8 +227,7 @@ class StateContextBuilder:
 
     def build(self, state_def: BaseStateDefinition,
               id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
-        # 注意：判断的顺序不可改变
-        if isinstance(state_def, CompositeStateDefinition):
+        if type(state_def) is CompositeStateDefinition:
             class_name = state_def.state_context_class_name
             if not class_name:
                 class_name = "thinker_ai.status_machine.state_machine.CompositeStateDefinition"
@@ -237,14 +238,14 @@ class StateContextBuilder:
                                                          state_machine_repository=self.state_machine_context_repository,
                                                          state_machine_definition_repository=self.state_machine_definition_repository
                                                          )
-        elif isinstance(state_def, StateDefinition):
+        elif type(state_def) is StateDefinition:
             class_name = state_def.state_context_class_name
             if not class_name:
                 class_name = "thinker_ai.status_machine.state_machine.StateContext"
             return StateContext.from_class_name(id=id,
                                                 class_name=class_name,
                                                 state_def=state_def)
-        else:
+        elif type(state_def) is BaseStateDefinition:
             class_name = state_def.state_context_class_name
             if not class_name:
                 class_name = "thinker_ai.status_machine.state_machine.BaseStateContext"
@@ -276,7 +277,7 @@ class StateMachine:
             return self.current_state_context.handle(command, self, **kwargs)
         else:
             raise Exception(
-                f"Current state {self.current_state_context.state_def.name} does not support command:{command.name}")
+                f"Illegal command {command.name} for state {self.current_state_context.state_def.name}")
 
     def on_event(self, event: Event):
         if not self.state_machine_definition_repository:

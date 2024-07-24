@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Dict, Any, Set, cast, Union
+from typing import Dict, Any, Set, cast
 
 from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
                                                      StateMachineDefinitionRepository, InnerStateMachineDefinition,
@@ -121,7 +121,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                                is_start=data.get("is_start"))
 
     @staticmethod
-    def _transition_from_dict(data: Dict[str, str], states: Set[StateDefinition]) -> Transition:
+    def _transition_from_dict(data: Dict[str, str], states: Set[BaseStateDefinition]) -> Transition:
         source = next(sd for sd in states if sd.id == data["source"])
         target = next(sd for sd in states if sd.id == data["target"])
         return Transition(event=data["event"], source=source, target=target)

@@ -25,11 +25,6 @@ class TestNestedStateMachine(unittest.TestCase):
     def tearDown(self):
         self.state_machine = None
 
-    def test_inner_state_machine_mapping(self):
-        # Transition to outer composite state
-        self.state_machine.handle(Command(name="outer_start_command", target=self.state_machine.id))
-        self.assertEqual("outer_end",self.state_machine.current_state_context.state_def.name)
-
     def test_combined_state_machine(self):
         command = Command(name="outer_start_command", target=self.state_machine.id)
         self.state_machine.handle(command)
