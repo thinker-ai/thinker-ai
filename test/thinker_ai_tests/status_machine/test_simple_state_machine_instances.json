@@ -1,11 +1,15 @@
 {
   "simple_instance": {
-    "id": "simple_instance",
     "state_machine_def_id": "test_sm",
     "current_state_context": {
-      "id": "state_start_context",
-      "state_def_id": "state_start"
+      "id": "c1e02848-0c01-4e25-9d84-2fd894fe1d32",
+      "state_def_id": "state_middle"
     },
-    "history": []
+    "history": [
+      {
+        "id": "state_start_context",
+        "state_def_id": "state_start"
+      }
+    ]
   }
 }

@@ -76,7 +76,8 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             return {
                 "id": state_def.id,
                 "name": state_def.name,
-                "description": state_def.description
+                "description": state_def.description,
+                "state_context_class_name": state_def.state_context_class_name
             }
 
     @staticmethod
@@ -91,7 +92,9 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
         if not data.get("actions"):
             return EndStateDefinition(id=data["id"],
                                       name=data["name"],
-                                      description=data.get("description", ""))
+                                      description=data.get("description", ""),
+                                      state_context_class_name=data.get("state_context_class_name")
+                                      )
         actions = {ActionFactory.create_action(a) for a in data["actions"]}
         events = set(data["events"])
         # 检查是否存在对应的子状态机定义

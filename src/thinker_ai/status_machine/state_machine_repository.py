@@ -71,7 +71,7 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
 
         state_machine = StateMachine(
             id=id,
-            definition_id=data["definition_id"],
+            state_machine_def_id=data["state_machine_def_id"],
             current_state_context=current_state_context,
             state_context_builder=self.state_context_builder,
             history=history,

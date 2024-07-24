@@ -19,16 +19,17 @@
           "items": { "type": "string" }
         }
       },
-      "required": ["id", "name", "description","task_type","actions","events"]
+      "required": ["id", "name", "description","task_type","actions","events","state_context_class_name"]
     },
     "EndStateDefinition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "description": { "type": "string" }
+        "description": { "type": "string" },
+        "state_context_class_name": { "type": "string" }
       },
-      "required": ["id", "name", "description"]
+      "required": ["id", "name", "description","state_context_class_name"]
     },
     "State_Definition": {
       "oneOf": [

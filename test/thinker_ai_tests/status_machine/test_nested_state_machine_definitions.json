@@ -17,7 +17,8 @@
       {
         "id": "inner_end",
         "name": "inner_end",
-        "description": "what you should do in this state, one short phrase or sentence"
+        "description": "what you should do in this state, one short phrase or sentence",
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
       }
     ],
     "transitions": [
@@ -38,7 +39,7 @@
         "id": "middle_start",
         "name": "middle_start",
         "is_start":true,
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
@@ -49,7 +50,8 @@
       {
         "id": "middle_end",
         "name": "middle_end",
-        "description": "what you should do in this state, one short phrase or sentence"
+        "description": "what you should do in this state, one short phrase or sentence",
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
       }
     ],
     "transitions": [
@@ -70,7 +72,7 @@
         "id": "outer_start",
         "name": "outer_start",
         "is_start":true,
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
@@ -81,7 +83,8 @@
       {
         "id": "outer_end",
         "name": "outer_end",
-        "description": "what you should do in this state, one short phrase or sentence"
+        "description": "what you should do in this state, one short phrase or sentence",
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
       }
     ],
     "transitions": [

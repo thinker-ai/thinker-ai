@@ -21,7 +21,7 @@
           "items": { "$ref": "#/definitions/StateContext" }
         }
       },
-      "required": ["definition_id", "current_state_context", "history"]
+      "required": ["state_machine_def_id", "current_state_context", "history"]
     }
   },
   "type": "object",
