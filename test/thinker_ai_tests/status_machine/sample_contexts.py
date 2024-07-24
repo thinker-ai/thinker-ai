@@ -1,10 +1,10 @@
 from thinker_ai.status_machine.state_machine import StateContext, CompositeStateContext, CompositeStateDefinition, \
-    StateContextBuilder, StateMachineDefinitionRepository, StateMachineRepository, EndStateContext, StateDefinition, \
-    EndStateDefinition
+    StateContextBuilder, StateMachineDefinitionRepository, StateMachineRepository, BaseStateContext, StateDefinition, \
+    BaseStateDefinition
 
 
-class EndSampleContext(EndStateContext):
-    def __init__(self, id: str, state_def: EndStateDefinition):
+class EndSampleContext(BaseStateContext):
+    def __init__(self, id: str, state_def: BaseStateDefinition):
         super().__init__(id, state_def)
 
 

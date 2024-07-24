@@ -59,25 +59,7 @@ class CompositeAction(Action):
         raise NotImplementedError
 
 
-class StateDefinition:
-    def __init__(self, id: str,
-                 name: str,
-                 description: str,
-                 task_type: str,
-                 state_context_class_name: str,
-                 actions: Set[Action],
-                 result_events: Set[str], is_start: bool = False):
-        self.id = id
-        self.name = name
-        self.description = description
-        self.task_type = task_type
-        self.state_context_class_name = state_context_class_name
-        self.is_start = is_start
-        self.events: Set[str] = result_events
-        self.actions: Set[Action] = actions
-
-
-class EndStateDefinition:
+class BaseStateDefinition:
     def __init__(self, id: str,
                  name: str,
                  description: str,
@@ -89,13 +71,23 @@ class EndStateDefinition:
         self.state_context_class_name = state_context_class_name
 
 
-class EndStateContext:
-    def __init__(self, id: str, state_def: EndStateDefinition):
+class StateDefinition(BaseStateDefinition):
+    def __init__(self, id: str, name: str, description: str, task_type: str, state_context_class_name: str,
+                 actions: Set[Action], result_events: Set[str], is_start: bool = False):
+        super().__init__(id, name, description, state_context_class_name)
+        self.task_type = task_type
+        self.is_start = is_start
+        self.events: Set[str] = result_events
+        self.actions: Set[Action] = actions
+
+
+class BaseStateContext:
+    def __init__(self, id: str, state_def: BaseStateDefinition):
         self.id = id
         self.state_def = state_def
 
     @classmethod
-    def from_class_name(cls, class_name: str, **kwargs) -> 'EndStateContext':
+    def from_class_name(cls, class_name: str, **kwargs) -> 'BaseStateContext':
         return from_class_name(cls, class_name, **kwargs)
 
     @classmethod
@@ -108,31 +100,20 @@ class EndStateContext:
     def set(self, key: str, value: Any):
         raise NotImplementedError
 
-    def get_state_def(self) -> EndStateDefinition:
+    def get_state_def(self) -> BaseStateDefinition:
         return self.state_def
 
-    def set_state_def(self, value: EndStateDefinition):
+    def set_state_def(self, value: BaseStateDefinition):
         self.state_def = value
 
 
-class StateContext:
+class StateContext(BaseStateContext):
     def __init__(self, id: str, state_def: StateDefinition):
-        self.id = id
-        self.state_def = state_def
+        super().__init__(id, state_def)
 
     @classmethod
     def from_class_name(cls, class_name: str, **kwargs) -> 'StateContext':
         return from_class_name(cls, class_name, **kwargs)
-
-    @classmethod
-    def get_full_class_name(cls):
-        return f"{cls.__module__}.{cls.__qualname__}"
-
-    def get(self, key: str) -> Optional[Any]:
-        raise NotImplementedError
-
-    def set(self, key: str, value: Any):
-        raise NotImplementedError
 
     def get_state_def(self) -> StateDefinition:
         return self.state_def
@@ -203,12 +184,27 @@ class InnerStateMachineDefinition(StateMachineDefinition):
         self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
 
     def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
-        if not isinstance(state_context.state_def, EndStateDefinition):
+        if not isinstance(state_context.state_def, BaseStateDefinition):
             return None
         outer_event_name = self.inner_state_to_outer_event.get(state_context.state_def.name)
         if outer_event_name is None:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
+
+
+class CompositeStateDefinition(StateDefinition):
+    def __init__(self, id: str, name: str, description: str, task_type: str,
+                 state_context_class_name: str,
+                 actions: Set[Action],
+                 events: Set[str],
+                 inner_state_machine_definition: InnerStateMachineDefinition,
+                 is_start
+                 ):
+        super().__init__(id, name, description, task_type, state_context_class_name, actions, events, is_start)
+        self.inner_state_machine_definition = inner_state_machine_definition
+
+    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
+        return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
 
 
 class StateMachineDefinitionRepository(ABC):
@@ -227,20 +223,13 @@ class StateContextBuilder:
         self.state_machine_context_repository = state_machine_context_repository
         self.state_machine_definition_repository = state_machine_definition_repository
 
-    def build(self, state_def: Union[StateDefinition, EndStateDefinition],
-              id: Optional[str] = str(uuid.uuid4())) -> Union[StateContext, EndStateContext]:
-
-        if isinstance(state_def, EndStateDefinition):
+    def build(self, state_def: Union[StateDefinition, BaseStateDefinition],
+              id: Optional[str] = str(uuid.uuid4())) -> Union[StateContext, BaseStateContext]:
+        # 注意：判断的顺序不可改变
+        if isinstance(state_def, CompositeStateDefinition):
             class_name = state_def.state_context_class_name
             if not class_name:
-                class_name="thinker_ai.status_machine.state_machine.EndStateContext"
-            return EndStateContext.from_class_name(id=id,
-                                                   class_name=class_name,
-                                                   state_def=state_def)
-        elif isinstance(state_def, CompositeStateDefinition):
-            class_name = state_def.state_context_class_name
-            if not class_name:
-                class_name="thinker_ai.status_machine.state_machine.CompositeStateDefinition"
+                class_name = "thinker_ai.status_machine.state_machine.CompositeStateDefinition"
             return CompositeStateContext.from_class_name(id=id,
                                                          class_name=class_name,
                                                          composite_state_def=state_def,
@@ -248,14 +237,20 @@ class StateContextBuilder:
                                                          state_machine_repository=self.state_machine_context_repository,
                                                          state_machine_definition_repository=self.state_machine_definition_repository
                                                          )
-
-        else:
+        elif isinstance(state_def, StateDefinition):
             class_name = state_def.state_context_class_name
             if not class_name:
-                class_name="thinker_ai.status_machine.state_machine.StateContext"
+                class_name = "thinker_ai.status_machine.state_machine.StateContext"
             return StateContext.from_class_name(id=id,
                                                 class_name=class_name,
                                                 state_def=state_def)
+        else:
+            class_name = state_def.state_context_class_name
+            if not class_name:
+                class_name = "thinker_ai.status_machine.state_machine.BaseStateContext"
+            return BaseStateContext.from_class_name(id=id,
+                                                    class_name=class_name,
+                                                    state_def=state_def)
 
 
 class StateMachine:
@@ -318,21 +313,6 @@ class StateMachineRepository(ABC):
     @abstractmethod
     def save(self, state_machine_context: StateMachine):
         raise NotImplementedError
-
-
-class CompositeStateDefinition(StateDefinition):
-    def __init__(self, id: str, name: str, description: str, task_type: str,
-                 state_context_class_name: str,
-                 actions: Set[Action],
-                 events: Set[str],
-                 inner_state_machine_definition: InnerStateMachineDefinition,
-                 is_start
-                 ):
-        super().__init__(id, name, description, task_type, state_context_class_name, actions, events, is_start)
-        self.inner_state_machine_definition = inner_state_machine_definition
-
-    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
-        return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
 
 
 class CompositeStateContext(StateContext):

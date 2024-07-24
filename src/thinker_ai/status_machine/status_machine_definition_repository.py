@@ -4,7 +4,7 @@ from typing import Dict, Any, Set, cast, Union
 
 from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
                                                      StateMachineDefinitionRepository, InnerStateMachineDefinition,
-                                                     CompositeStateDefinition, EndStateDefinition)
+                                                     CompositeStateDefinition, BaseStateDefinition)
 
 
 class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
@@ -56,7 +56,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
         return result
 
     @staticmethod
-    def _state_definition_to_dict(state_def: Union[StateDefinition, EndStateDefinition]) -> Dict[str, Any]:
+    def _state_definition_to_dict(state_def: Union[StateDefinition, BaseStateDefinition]) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
             actions = [{"on_command": a.on_command, "register_key": a.get_full_class_name()} for a in state_def.actions]
             return {
@@ -72,7 +72,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             # state_def包含的inner_state_machine_definition信息处于它的下级state_dict中，所以不设置到本级的state_dict中
             # if isinstance(state_def, CompositeStateDefinition):
             #     state_dict["inner_state_machine_definition"] = state_def.inner_state_machine_definition.id
-        elif isinstance(state_def, EndStateDefinition):
+        elif isinstance(state_def, BaseStateDefinition):
             return {
                 "id": state_def.id,
                 "name": state_def.name,
@@ -88,13 +88,13 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             "target": transition.target.id
         }
 
-    def _state_from_dict(self, data: Dict[str, Any]) -> Union[StateDefinition, EndStateDefinition]:
+    def _state_from_dict(self, data: Dict[str, Any]) -> Union[StateDefinition, BaseStateDefinition]:
         if not data.get("actions"):
-            return EndStateDefinition(id=data["id"],
-                                      name=data["name"],
-                                      description=data.get("description", ""),
-                                      state_context_class_name=data.get("state_context_class_name")
-                                      )
+            return BaseStateDefinition(id=data["id"],
+                                       name=data["name"],
+                                       description=data.get("description", ""),
+                                       state_context_class_name=data.get("state_context_class_name")
+                                       )
         actions = {ActionFactory.create_action(a) for a in data["actions"]}
         events = set(data["events"])
         # 检查是否存在对应的子状态机定义

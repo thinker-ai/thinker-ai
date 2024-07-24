@@ -2,40 +2,25 @@
   "outer_instance": {
     "state_machine_def_id": "outer_sm",
     "current_state_context": {
-      "id": "d948d009-2583-49d2-bd53-8d9caf16e529",
-      "state_def_id": "outer_end"
+      "id": "outer_start_instance",
+      "state_def_id": "outer_start"
     },
-    "history": [
-      {
-        "id": "outer_start_instance",
-        "state_def_id": "outer_start"
-      }
-    ]
+    "history": []
   },
   "outer_start_instance": {
     "state_machine_def_id": "outer_start",
     "current_state_context": {
-      "id": "d948d009-2583-49d2-bd53-8d9caf16e529",
-      "state_def_id": "middle_end"
+      "id": "middle_start_instance",
+      "state_def_id": "middle_start"
     },
-    "history": [
-      {
-        "id": "middle_start_instance",
-        "state_def_id": "middle_start"
-      }
-    ]
+    "history": []
   },
   "middle_start_instance": {
     "state_machine_def_id": "middle_start",
     "current_state_context": {
-      "id": "d948d009-2583-49d2-bd53-8d9caf16e529",
-      "state_def_id": "inner_end"
+      "id": "inner_start_instance",
+      "state_def_id": "inner_start"
     },
-    "history": [
-      {
-        "id": "inner_start_instance",
-        "state_def_id": "inner_start"
-      }
-    ]
+    "history": []
   }
 }
