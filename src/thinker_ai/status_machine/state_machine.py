@@ -1,7 +1,7 @@
 import importlib
 import uuid
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type, Union
+from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
 
 T = TypeVar('T')
 
@@ -152,9 +152,9 @@ class Transition:
 
 
 class StateMachineDefinition:
-    def __init__(self, id: str, states_def: Set[StateDefinition], transitions: Set[Transition]):
+    def __init__(self, id: str, states_def: Set[BaseStateDefinition], transitions: Set[Transition]):
         self.id = id
-        self.states_def: Set[StateDefinition] = states_def
+        self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
 
     def add_state_def(self, state_def: StateDefinition):
@@ -163,7 +163,7 @@ class StateMachineDefinition:
     def add_transition(self, transition: Transition):
         self.transitions.add(transition)
 
-    def get_state_def(self, name: str) -> Optional[StateDefinition]:
+    def get_state_def(self, name: str) -> Optional[BaseStateDefinition]:
         for state in self.states_def:
             if state.name == name:
                 return state
@@ -171,20 +171,20 @@ class StateMachineDefinition:
 
     def get_start_state_def(self) -> Optional[StateDefinition]:
         for state in self.states_def:
-            if state.is_start:
+            if isinstance(state,StateDefinition) and state.is_start:
                 return state
         return None
 
 
 class InnerStateMachineDefinition(StateMachineDefinition):
-    def __init__(self, id: str, states_def: Set[StateDefinition], transitions: Set[Transition],
+    def __init__(self, id: str, states_def: Set[BaseStateDefinition], transitions: Set[Transition],
                  inner_state_to_outer_event: Optional[Dict[str, str]] = None
                  ):
         super().__init__(id, states_def, transitions)
         self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
 
-    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
-        if not isinstance(state_context.state_def, BaseStateDefinition):
+    def to_outer_event(self, inner_event: Event, state_context: BaseStateContext) -> Optional[Event]:
+        if type(state_context.state_def) is not BaseStateDefinition:
             return None
         outer_event_name = self.inner_state_to_outer_event.get(state_context.state_def.name)
         if outer_event_name is None:
@@ -223,8 +223,8 @@ class StateContextBuilder:
         self.state_machine_context_repository = state_machine_context_repository
         self.state_machine_definition_repository = state_machine_definition_repository
 
-    def build(self, state_def: Union[StateDefinition, BaseStateDefinition],
-              id: Optional[str] = str(uuid.uuid4())) -> Union[StateContext, BaseStateContext]:
+    def build(self, state_def: BaseStateDefinition,
+              id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
         # 注意：判断的顺序不可改变
         if isinstance(state_def, CompositeStateDefinition):
             class_name = state_def.state_context_class_name
@@ -256,22 +256,24 @@ class StateContextBuilder:
 class StateMachine:
     def __init__(self, id: str,
                  state_machine_def_id: str,
-                 current_state_context: StateContext,
+                 current_state_context: BaseStateContext,
                  state_context_builder: StateContextBuilder,
                  state_machine_repository: "StateMachineRepository",
                  state_machine_definition_repository: StateMachineDefinitionRepository,
-                 history: Optional[List[StateContext]] = None):
+                 history: Optional[List[BaseStateContext]] = None):
         self.id = id
         self.state_context_builder = state_context_builder
         self.state_machine_def_id = state_machine_def_id
-        self.current_state_context: StateContext = current_state_context
-        self.history: List[StateContext] = history or []
+        self.current_state_context: BaseStateContext = current_state_context
+        self.history: List[BaseStateContext] = history or []
         self.state_machine_repository: StateMachineRepository = state_machine_repository
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> Optional[Event]:
-        if self.id == command.target:
+        if self.id == command.target and isinstance(self.current_state_context,StateContext):
             return self.current_state_context.handle(command, self, **kwargs)
+        else:
+            raise Exception(f"Current state {self.current_state_context.state_def.name} does not support command:{command.name}")
 
     def on_event(self, event: Event):
         if not self.state_machine_definition_repository:
@@ -293,7 +295,7 @@ class StateMachine:
     def last_state(self) -> Optional[StateContext]:
         return self.history[-1] if self.history else None
 
-    def get_state_context(self, target: StateDefinition) -> StateContext:
+    def get_state_context(self, target: BaseStateDefinition) -> BaseStateContext:
         state_context = next((sc for sc in self.history if sc.state_def.name == target.name), None)
         if not state_context:
             state_context = self.state_context_builder.build(target)

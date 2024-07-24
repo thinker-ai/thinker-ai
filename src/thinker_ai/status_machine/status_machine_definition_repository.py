@@ -56,7 +56,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
         return result
 
     @staticmethod
-    def _state_definition_to_dict(state_def: Union[StateDefinition, BaseStateDefinition]) -> Dict[str, Any]:
+    def _state_definition_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
             actions = [{"on_command": a.on_command, "register_key": a.get_full_class_name()} for a in state_def.actions]
             return {
@@ -88,7 +88,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             "target": transition.target.id
         }
 
-    def _state_from_dict(self, data: Dict[str, Any]) -> Union[StateDefinition, BaseStateDefinition]:
+    def _state_from_dict(self, data: Dict[str, Any]) -> BaseStateDefinition:
         if not data.get("actions"):
             return BaseStateDefinition(id=data["id"],
                                        name=data["name"],
