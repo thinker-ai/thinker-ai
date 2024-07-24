@@ -171,7 +171,7 @@ class StateMachineDefinition:
 
     def get_start_state_def(self) -> Optional[StateDefinition]:
         for state in self.states_def:
-            if isinstance(state,StateDefinition) and state.is_start:
+            if isinstance(state, StateDefinition) and state.is_start:
                 return state
         return None
 
@@ -270,10 +270,13 @@ class StateMachine:
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> Optional[Event]:
-        if self.id == command.target and isinstance(self.current_state_context,StateContext):
+        if self.id != command.target:
+            raise Exception(f"the state context {self.id} do not the command  target {command.target}")
+        if isinstance(self.current_state_context, StateContext):
             return self.current_state_context.handle(command, self, **kwargs)
         else:
-            raise Exception(f"Current state {self.current_state_context.state_def.name} does not support command:{command.name}")
+            raise Exception(
+                f"Current state {self.current_state_context.state_def.name} does not support command:{command.name}")
 
     def on_event(self, event: Event):
         if not self.state_machine_definition_repository:
