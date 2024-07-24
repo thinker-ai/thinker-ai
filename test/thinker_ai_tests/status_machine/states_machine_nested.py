@@ -31,7 +31,7 @@ class TestNestedStateMachine(unittest.TestCase):
         self.assertEqual(self.state_machine.current_state_context.state_def.name, "outer_end")
 
     def test_combined_state_machine(self):
-        command = Command(name="outer_start_command", target="outer_instance")
+        command = Command(name="outer_start_command", target="outer_start_instance")
         self.state_machine.handle(command)
         # Verify middle state machine transitions
         middle_state_machine = self.instance_repo.load("outer_start_instance")

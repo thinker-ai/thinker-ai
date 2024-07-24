@@ -2,11 +2,11 @@ import json
 import os
 from typing import Dict, Any
 
-from thinker_ai.status_machine.state_machine import StateMachineContext, StateMachineContextRepository, \
+from thinker_ai.status_machine.state_machine import StateMachine, StateMachineRepository, \
     StateMachineDefinitionRepository, StateContextBuilder
 
 
-class FileBasedStateMachineContextRepository(StateMachineContextRepository):
+class FileBasedStateMachineContextRepository(StateMachineRepository):
     def __init__(self, base_dir: str, file_name: str,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
         self.base_dir = base_dir
@@ -21,12 +21,12 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
                 return json.load(file)
         return {}
 
-    def save(self, state_machine_context: StateMachineContext):
+    def save(self, state_machine_context: StateMachine):
         self.instances[state_machine_context.id] = self._state_machine_to_dict(state_machine_context)
         with open(self.file_path, 'w') as file:
             json.dump(self.instances, file, indent=2)
 
-    def load(self, id: str) -> StateMachineContext:
+    def load(self, id: str) -> StateMachine:
         if id not in self.instances:
             raise ValueError(f"StateMachine instance with id '{id}' not found")
 
@@ -34,7 +34,7 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
         return self._state_machine_from_dict(id, data)
 
     @staticmethod
-    def _state_machine_to_dict(state_machine: StateMachineContext) -> Dict[str, Any]:
+    def _state_machine_to_dict(state_machine: StateMachine) -> Dict[str, Any]:
         current_context_data = {
             "id": state_machine.current_state_context.id,
             "state_def_id": state_machine.current_state_context.state_def.id,
@@ -54,7 +54,7 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
             "history": history_data
         }
 
-    def _state_machine_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineContext:
+    def _state_machine_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachine:
         definition = self.state_machine_definition_repository.load(data["definition_id"])
 
         current_context_data = data["current_context"]
@@ -69,13 +69,13 @@ class FileBasedStateMachineContextRepository(StateMachineContextRepository):
             context_data["id"])
             for context_data in data["history"]]
 
-        state_machine_context = StateMachineContext(
+        state_machine_context = StateMachine(
             id=id,
             definition_id=data["definition_id"],
             current_context=current_state_context,
             state_context_builder=self.state_context_builder,
             history=history,
-            state_machine_context_repository=self,
+            state_machine_repository=self,
             state_machine_definition_repository=self.state_machine_definition_repository
         )
         return state_machine_context

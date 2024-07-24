@@ -1,24 +1,39 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
-    "State_Definition": {
+    "StandardStateDefinition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
+        "is_start":{ "type": "boolean" },
         "description": { "type": "string" },
         "task_type": { "type": "string" },
         "actions": {
           "type": "array",
-          "items":{ "type": "string" }
+          "items": { "type": "string" }
         },
         "events": {
           "type": "array",
           "items": { "type": "string" }
-        },
-        "phase": { "type": "string", "enum": ["start", "middle", "end"] }
+        }
       },
-      "required": ["id", "name", "description", "phase"]
+      "required": ["id", "name", "description","task_type","actions","events"]
+    },
+    "EndStateDefinition": {
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["id", "name", "description"]
+    },
+    "State_Definition": {
+      "oneOf": [
+        { "$ref": "#/definitions/StandardStateDefinition" },
+        { "$ref": "#/definitions/EndStateDefinition" }
+      ]
     },
     "Transition": {
       "type": "object",
@@ -44,9 +59,9 @@
         "inner_state_to_outer_event": {
           "type": "object",
           "additionalProperties": { "type": "string" }
-         }
-        },
-      "required": ["description","states_def", "transitions"],
+        }
+      },
+      "required": ["description", "states_def", "transitions"],
       "additionalProperties": false
     }
   },
