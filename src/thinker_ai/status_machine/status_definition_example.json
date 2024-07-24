@@ -3,60 +3,60 @@
       "description":"what you should do in this state machine, one short phrase or sentence",
       "states_def": [
         {
-          "id": "a_state_uuid_id",
-          "name": "a_state_name",
+          "id": "uuid_of_state_id",
+          "name": "start_state_name",
           "is_start":true,
           "state_context_class_name": "the_full_class_name_of_the_state_context_class_name",
           "description":"what you should do in this state, one short phrase or sentence",
           "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
-            {"command_name":"the_full_class_name_of_the_action"}
+            {"start_command_name":"the_full_class_name_of_the_action"}
           ],
-          "events": ["an_event_name"]
+          "events": ["start_command_handled_event_name"]
         },
         {
-          "id": "second_state_uuid_id",
-          "name": "second_state_name",
+          "id": "uuid_of_state_id",
+          "name": "middle_state_name",
           "is_start":false,
           "state_context_class_name": "the_full_class_name_of_the_state_context_class_name",
           "description":"what you should do in this state, one short phrase or sentence",
           "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
-            {"command_name":"the_full_class_name_of_the_action"}
+            {"middle_command_name":"the_full_class_name_of_the_action"}
           ],
-          "events": ["second_result_one_event","second_result_two_event"]
+          "events": ["middle_command_handled_event_name_1","middle_command_handled_event_name_2"]
         },
         {
-          "id": "success_state_uuid_id",
-          "name": "success_state_name",
+          "id": "uuid_of_state_id_1",
+          "name": "end_state_name_1",
           "description":"description of this state, one short phrase or sentence"
         },
         {
-          "id": "fail_state_uuid_id",
-          "name": "fail_state_name",
+          "id": "uuid_of_state_id_2",
+          "name": "end_state_name_2",
           "description":"description of this state, one short phrase or sentence"
         }
       ],
       "transitions": [
         {
-          "event": "first_result_one_event",
-          "source": "first_state_name",
-          "target": "second_state_name"
+          "event": "start_command_handled_event_name",
+          "source": "start_state_name",
+          "target": "middle_state_name"
         },
         {
-          "event": "second_result_one_event",
-          "source": "second_state_name",
-          "target": "success_state_name"
+          "event": "middle_command_handled_event_name_1",
+          "source": "middle_state_name",
+          "target": "end_state_name_1"
         },
         {
-          "event": "second_result_two_event",
-          "source": "second_state_name",
-          "target": "fail_state_name"
+          "event": "middle_command_handled_event_name_2",
+          "source": "middle_state_name",
+          "target": "end_state_name_2"
         }
       ],
       "inner_state_to_outer_event": {
-          "success_state_name": "outer_event_one",
-          "fail_state_name": "outer_event_two"
+          "end_state_name_1": "outer_event_1",
+          "end_state_name_2": "outer_event_2"
       }
    }
 }
