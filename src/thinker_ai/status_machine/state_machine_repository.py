@@ -35,7 +35,7 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
 
     @staticmethod
     def _state_machine_to_dict(state_machine: StateMachine) -> Dict[str, Any]:
-        current_context_data = {
+        current_state_context = {
             "id": state_machine.current_state_context.id,
             "state_def_id": state_machine.current_state_context.state_def.id,
         }
@@ -49,33 +49,33 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
         ]
 
         return {
-            "definition_id": state_machine.state_machine_def_id,
-            "current_context": current_context_data,
+            "state_machine_def_id": state_machine.state_machine_def_id,
+            "current_state_context": current_state_context,
             "history": history_data
         }
 
     def _state_machine_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachine:
-        definition = self.state_machine_definition_repository.load(data["definition_id"])
+        state_machine_def = self.state_machine_definition_repository.load(data["state_machine_def_id"])
 
-        current_context_data = data["current_context"]
+        current_state_context = data["current_state_context"]
         current_state = next(
-            sd for sd in definition.states_def if sd.id == current_context_data["state_def_id"]
+            sd for sd in state_machine_def.states_def if sd.id == current_state_context["state_def_id"]
         )
-        current_state_context = self.state_context_builder.build(current_state,
-                                                                 current_context_data["id"])
+        current_state_context = self.state_context_builder.build(state_def=current_state,
+                                                                 id=current_state_context["id"])
 
         history = [self.state_context_builder.build(
-            next(sd for sd in definition.states_def if sd.id == context_data["state_def_id"]),
-            context_data["id"])
+            state_def=next(sd for sd in state_machine_def.states_def if sd.id == context_data["state_def_id"]),
+            id=context_data["id"])
             for context_data in data["history"]]
 
-        state_machine_context = StateMachine(
+        state_machine = StateMachine(
             id=id,
             definition_id=data["definition_id"],
-            current_context=current_state_context,
+            current_state_context=current_state_context,
             state_context_builder=self.state_context_builder,
             history=history,
             state_machine_repository=self,
             state_machine_definition_repository=self.state_machine_definition_repository
         )
-        return state_machine_context
+        return state_machine

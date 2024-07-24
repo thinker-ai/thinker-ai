@@ -6,6 +6,7 @@
         "id": "inner_start",
         "name": "inner_start",
         "is_start":true,
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
@@ -37,6 +38,7 @@
         "id": "middle_start",
         "name": "middle_start",
         "is_start":true,
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
@@ -68,6 +70,7 @@
         "id": "outer_start",
         "name": "outer_start",
         "is_start":true,
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [

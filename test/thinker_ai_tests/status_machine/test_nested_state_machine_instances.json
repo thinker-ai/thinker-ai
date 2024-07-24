@@ -1,23 +1,23 @@
 {
   "outer_instance": {
-    "definition_id": "outer_sm",
-    "current_context": {
+    "state_machine_def_id": "outer_sm",
+    "current_state_context": {
       "id": "outer_start_instance",
       "state_def_id": "outer_start"
     },
     "history": []
   },
   "outer_start_instance": {
-    "definition_id": "outer_start",
-    "current_context": {
+    "state_machine_def_id": "outer_start",
+    "current_state_context": {
       "id": "middle_start_instance",
       "state_def_id": "middle_start"
     },
     "history": []
   },
   "middle_start_instance": {
-    "definition_id": "middle_start",
-    "current_context": {
+    "state_machine_def_id": "middle_start",
+    "current_state_context": {
       "id": "inner_start_instance",
       "state_def_id": "inner_start"
     },

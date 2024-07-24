@@ -1,8 +1,8 @@
 {
   "simple_instance": {
     "id": "simple_instance",
-    "definition_id": "test_sm",
-    "current_context": {
+    "state_machine_def_id": "test_sm",
+    "current_state_context": {
       "id": "state_start_context",
       "state_def_id": "state_start"
     },

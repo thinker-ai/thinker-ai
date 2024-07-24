@@ -6,6 +6,7 @@
         "id": "state_start",
         "name": "start",
         "is_start":true,
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
@@ -17,6 +18,7 @@
         "id": "state_middle",
         "name": "middle",
         "is_start":false,
+        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [

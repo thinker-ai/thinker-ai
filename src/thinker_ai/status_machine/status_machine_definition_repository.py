@@ -63,6 +63,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                 "id": state_def.id,
                 "name": state_def.name,
                 "description": state_def.description,
+                "state_context_class_name": state_def.state_context_class_name,
                 "task_type": state_def.task_type,
                 "actions": actions,
                 "events": list(state_def.events),
@@ -99,6 +100,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             return CompositeStateDefinition(
                 id=data["id"],
                 name=data["name"],
+                state_context_class_name=data["state_context_class_name"],
                 description=data.get("description", ""),
                 task_type=data.get("task_type", ""),
                 actions=actions,
@@ -108,6 +110,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             )
         return StateDefinition(id=data["id"],
                                name=data["name"],
+                               state_context_class_name=data["state_context_class_name"],
                                description=data.get("description", ""),
                                task_type=data.get("task_type", ""),
                                actions=actions,

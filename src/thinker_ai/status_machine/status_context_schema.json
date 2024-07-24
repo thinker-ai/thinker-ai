@@ -5,6 +5,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "class_name": { "type": "string" },
         "state_def_id": { "type": "string" }
       },
       "required": ["id", "state_def_id"]
@@ -12,14 +13,15 @@
     "StateMachineContext": {
       "type": "object",
       "properties": {
-        "definition_id": { "type": "string" },
-        "current_context": { "$ref": "#/definitions/StateContext" },
+        "state_machine_def_id": { "type": "string" },
+        "current_state_context": { "$ref": "#/definitions/StateContext" },
         "history": {
           "type": "array",
+          "class_name": { "type": "string" },
           "items": { "$ref": "#/definitions/StateContext" }
         }
       },
-      "required": ["definition_id", "current_context", "history"]
+      "required": ["definition_id", "current_state_context", "history"]
     }
   },
   "type": "object",

@@ -1,8 +1,18 @@
 import importlib
 import uuid
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional, Any, Set, Literal, cast
+from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
 
+T = TypeVar('T')
+
+
+def from_class_name(cls: Type[T], class_name: str, **kwargs: Any) -> T:
+    module_name, class_name = class_name.rsplit('.', 1)
+    context_class = getattr(importlib.import_module(module_name), class_name)
+    instance = context_class(**kwargs)
+    if not isinstance(instance, cls):
+        raise TypeError(f"Class {class_name} is not a subclass of {cls.__name__}")
+    return instance
 
 class Event:
     def __init__(self, name: str, id: Optional[str] = str(uuid.uuid4()), publisher_id: Optional[str] = None,
@@ -30,10 +40,8 @@ class Action(ABC):
         raise NotImplementedError
 
     @classmethod
-    def from_class_name(cls, class_name: str) -> 'Action':
-        module_name, class_name = class_name.rsplit('.', 1)
-        action_class = getattr(importlib.import_module(module_name), class_name)
-        return action_class()
+    def from_class_name(cls, class_name: str,**kwargs) -> 'Action':
+        return from_class_name(cls, class_name,**kwargs)
 
     @classmethod
     def get_full_class_name(cls):
@@ -51,12 +59,18 @@ class CompositeAction(Action):
 
 
 class StateDefinition:
-    def __init__(self, id: str, name: str, description: str, task_type: str, actions: Set[Action],
+    def __init__(self, id: str,
+                 name: str,
+                 description: str,
+                 task_type: str,
+                 state_context_class_name: str,
+                 actions: Set[Action],
                  result_events: Set[str], is_start: bool = False):
         self.id = id
         self.name = name
         self.description = description
         self.task_type = task_type
+        self.state_context_class_name = state_context_class_name
         self.is_start = is_start
         self.events: Set[str] = result_events
         self.actions: Set[Action] = actions
@@ -73,6 +87,14 @@ class StateContext:
     def __init__(self, id: str, state_def: StateDefinition):
         self.id = id
         self.state_def = state_def
+
+    @classmethod
+    def from_class_name(cls, class_name: str, **kwargs) -> 'StateContext':
+        return from_class_name(cls, class_name,**kwargs)
+
+    @classmethod
+    def get_full_class_name(cls):
+        return f"{cls.__module__}.{cls.__qualname__}"
 
     def get(self, key: str) -> Optional[Any]:
         raise NotImplementedError
@@ -174,24 +196,25 @@ class StateContextBuilder:
         self.state_machine_context_repository = state_machine_context_repository
         self.state_machine_definition_repository = state_machine_definition_repository
 
-    def build(self, state_def: StateDefinition, id: Optional[str] = None) -> StateContext:
-        if id is None:
-            id = str(uuid.uuid4())
+    def build(self, state_def: StateDefinition, id: Optional[str] = str(uuid.uuid4())) -> StateContext:
         if not isinstance(state_def, CompositeStateDefinition):
-            return StateContext(id, state_def)
+            return StateContext.from_class_name(id=id,
+                                                class_name=state_def.state_context_class_name,
+                                                state_def=state_def)
         else:
-            return CompositeStateContext(id=id,
-                                         composite_state_def=state_def,
-                                         state_context_builder=self,
-                                         state_machine_repository=self.state_machine_context_repository,
-                                         state_machine_definition_repository=self.state_machine_definition_repository
-                                         )
+            return CompositeStateContext.from_class_name(id=id,
+                                                         class_name=state_def.state_context_class_name,
+                                                         composite_state_def=state_def,
+                                                         state_context_builder=self,
+                                                         state_machine_repository=self.state_machine_context_repository,
+                                                         state_machine_definition_repository=self.state_machine_definition_repository
+                                                         )
 
 
 class StateMachine:
     def __init__(self, id: str,
                  definition_id: str,
-                 current_context: StateContext,
+                 current_state_context: StateContext,
                  state_context_builder: StateContextBuilder,
                  state_machine_repository: "StateMachineRepository",
                  state_machine_definition_repository: StateMachineDefinitionRepository,
@@ -199,7 +222,7 @@ class StateMachine:
         self.id = id
         self.state_context_builder = state_context_builder
         self.state_machine_def_id = definition_id
-        self.current_state_context: StateContext = current_context
+        self.current_state_context: StateContext = current_state_context
         self.history: List[StateContext] = history or []
         self.state_machine_repository: StateMachineRepository = state_machine_repository
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
@@ -251,12 +274,13 @@ class StateMachineRepository(ABC):
 
 class CompositeStateDefinition(StateDefinition):
     def __init__(self, id: str, name: str, description: str, task_type: str,
+                 state_context_class_name: str,
                  actions: Set[Action],
                  events: Set[str],
                  inner_state_machine_definition: InnerStateMachineDefinition,
                  is_start
                  ):
-        super().__init__(id, name, description, task_type, actions, events, is_start)
+        super().__init__(id, name, description, task_type,state_context_class_name,actions, events, is_start)
         self.inner_state_machine_definition = inner_state_machine_definition
 
     def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
@@ -273,6 +297,10 @@ class CompositeStateContext(StateContext):
         self.state_context_builder = state_context_builder
         self.state_machine_repository = state_machine_repository
         self.state_machine_definition_repository = state_machine_definition_repository
+
+    @classmethod
+    def from_class_name(cls, class_name: str, **kwargs) -> 'CompositeStateContext':
+        return from_class_name(cls, class_name,**kwargs)
 
     def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> Optional[Event]:
         if self.id == command.target:
@@ -301,7 +329,7 @@ class CompositeStateContext(StateContext):
                 self.get_state_def().id)
             my_state_machine = StateMachine(id=self.id,
                                             definition_id=self.get_state_def().id,
-                                            current_context=self.state_context_builder.build(
+                                            current_state_context=self.state_context_builder.build(
                                                 state_machine_definition.get_start_state_def()),
                                             state_context_builder=self.state_context_builder,
                                             state_machine_repository=self.state_machine_repository,
