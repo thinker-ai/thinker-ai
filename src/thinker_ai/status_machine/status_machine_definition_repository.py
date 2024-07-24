@@ -58,7 +58,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     @staticmethod
     def _state_definition_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
-            actions = [{"on_command": a.on_command, "register_key": a.get_full_class_name()} for a in state_def.actions]
+            actions = [{a.on_command: a.get_full_class_name()} for a in state_def.actions]
             return {
                 "id": state_def.id,
                 "name": state_def.name,
