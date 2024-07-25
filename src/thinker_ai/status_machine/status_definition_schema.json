@@ -9,7 +9,7 @@
       },
       "required": ["on_command", "class_name"]
     },
-    "StandardStateDefinition": {
+    "StateDefinition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -29,7 +29,7 @@
       },
       "required": ["id", "name", "description","task_type","actions","events","state_context_class_name"]
     },
-    "EndStateDefinition": {
+    "BaseStateDefinition": {
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -41,8 +41,8 @@
     },
     "State_Definition": {
       "oneOf": [
-        { "$ref": "#/definitions/StandardStateDefinition" },
-        { "$ref": "#/definitions/EndStateDefinition" }
+        { "$ref": "#/definitions/StateDefinition" },
+        { "$ref": "#/definitions/BaseStateDefinition" }
       ]
     },
     "Transition": {
