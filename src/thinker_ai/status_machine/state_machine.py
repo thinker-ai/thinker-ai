@@ -73,12 +73,18 @@ class BaseStateDefinition:
 
 class StateDefinition(BaseStateDefinition):
     def __init__(self, id: str, name: str, description: str, task_type: str, state_context_class_name: str,
-                 actions: Set[Action], result_events: Set[str], is_start: bool = False):
+                 actions: Set[Action], result_events: Set[str], is_start: bool = False,
+                 inner_state_machine_definition: "StateMachineDefinition" = None):
         super().__init__(id, name, description, state_context_class_name)
         self.task_type = task_type
         self.is_start = is_start
         self.events: Set[str] = result_events
         self.actions: Set[Action] = actions
+        self.inner_state_machine_definition = inner_state_machine_definition
+
+    def to_outer_event(self, inner_event: Event, state_context: "StateContext") -> Optional[Event]:
+        if self.inner_state_machine_definition not in self.events:
+            return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
 
 
 class BaseStateContext:
@@ -148,10 +154,14 @@ class Transition:
 
 
 class StateMachineDefinition:
-    def __init__(self, id: str, states_def: Set[BaseStateDefinition], transitions: Set[Transition]):
+    def __init__(self, id: str,
+                 states_def: Set[BaseStateDefinition],
+                 transitions: Set[Transition],
+                 inner_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.id = id
         self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
+        self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
 
     def add_state_def(self, state_def: StateDefinition):
         self.states_def.add(state_def)
@@ -171,14 +181,6 @@ class StateMachineDefinition:
                 return state
         return None
 
-
-class InnerStateMachineDefinition(StateMachineDefinition):
-    def __init__(self, id: str, states_def: Set[BaseStateDefinition], transitions: Set[Transition],
-                 inner_state_to_outer_event: Optional[Dict[str, str]] = None
-                 ):
-        super().__init__(id, states_def, transitions)
-        self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
-
     def to_outer_event(self, inner_event: Event, state_context: BaseStateContext) -> Optional[Event]:
         if type(state_context.state_def) is not BaseStateDefinition:
             return None
@@ -186,21 +188,6 @@ class InnerStateMachineDefinition(StateMachineDefinition):
         if outer_event_name is None:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
-
-
-class CompositeStateDefinition(StateDefinition):
-    def __init__(self, id: str, name: str, description: str, task_type: str,
-                 state_context_class_name: str,
-                 actions: Set[Action],
-                 events: Set[str],
-                 inner_state_machine_definition: InnerStateMachineDefinition,
-                 is_start
-                 ):
-        super().__init__(id, name, description, task_type, state_context_class_name, actions, events, is_start)
-        self.inner_state_machine_definition = inner_state_machine_definition
-
-    def to_outer_event(self, inner_event: Event, state_context: StateContext) -> Optional[Event]:
-        return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
 
 
 class StateMachineDefinitionRepository(ABC):
@@ -221,24 +208,23 @@ class StateContextBuilder:
 
     def build(self, state_def: BaseStateDefinition,
               id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
-        if type(state_def) is CompositeStateDefinition:
+        if type(state_def) is StateDefinition:
+            state_def=cast(StateDefinition, state_def)
             class_name = state_def.state_context_class_name
             if not class_name:
-                class_name = "thinker_ai.status_machine.state_machine.CompositeStateDefinition"
-            return CompositeStateContext.from_class_name(id=id,
-                                                         class_name=class_name,
-                                                         composite_state_def=state_def,
-                                                         state_context_builder=self,
-                                                         state_machine_repository=self.state_machine_context_repository,
-                                                         state_machine_definition_repository=self.state_machine_definition_repository
-                                                         )
-        elif type(state_def) is StateDefinition:
-            class_name = state_def.state_context_class_name
-            if not class_name:
-                class_name = "thinker_ai.status_machine.state_machine.StateContext"
-            return StateContext.from_class_name(id=id,
-                                                class_name=class_name,
-                                                state_def=state_def)
+                class_name = "thinker_ai.status_machine.state_machine.StateDefinition"
+            if state_def.inner_state_machine_definition:
+                return CompositeStateContext.from_class_name(id=id,
+                                                             class_name=class_name,
+                                                             state_def=state_def,
+                                                             state_context_builder=self,
+                                                             state_machine_repository=self.state_machine_context_repository,
+                                                             state_machine_definition_repository=self.state_machine_definition_repository
+                                                             )
+            else:
+                return StateContext.from_class_name(id=id,
+                                                    class_name=class_name,
+                                                    state_def=state_def)
         elif type(state_def) is BaseStateDefinition:
             class_name = state_def.state_context_class_name
             if not class_name:
@@ -301,7 +287,7 @@ class StateMachine:
 
     def to_outer_event(self, inner_event) -> Optional[Event]:
         state_machine_def = self.get_state_machine_def()
-        if isinstance(state_machine_def, InnerStateMachineDefinition):
+        if state_machine_def.inner_state_to_outer_event:
             return state_machine_def.to_outer_event(inner_event, self.current_state_context)
 
 
@@ -317,11 +303,11 @@ class StateMachineRepository(ABC):
 
 class CompositeStateContext(StateContext):
     def __init__(self, id: str,
-                 composite_state_def: CompositeStateDefinition,
+                 state_def: StateDefinition,
                  state_context_builder: StateContextBuilder,
                  state_machine_repository: StateMachineRepository,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
-        super().__init__(id, composite_state_def)
+        super().__init__(id, state_def)
         self.state_context_builder = state_context_builder
         self.state_machine_repository = state_machine_repository
         self.state_machine_definition_repository = state_machine_definition_repository
@@ -343,10 +329,10 @@ class CompositeStateContext(StateContext):
         inner_event = self.get_state_machine().handle(inner_command, **kwargs)
         return self.to_outer_event(inner_event)
 
-    def get_state_def(self) -> CompositeStateDefinition:
-        return cast(CompositeStateDefinition, self.state_def)
+    def get_state_def(self) -> StateDefinition:
+        return cast(StateDefinition, self.state_def)
 
-    def set_state_def(self, value: CompositeStateDefinition):
+    def set_state_def(self, value: StateDefinition):
         self.state_def = value
 
     def get_state_machine(self) -> StateMachine:
@@ -391,4 +377,4 @@ class ActionFactory:
         action_cls: Action = cls._registry.get(action_class_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
-        return action_cls.from_class_name(on_command=on_command,class_name=action_class_name)
+        return action_cls.from_class_name(on_command=on_command, class_name=action_class_name)
