@@ -6,8 +6,8 @@
           "id": "uuid_of_state_id",
           "name": "start_state_name",
           "is_start":true,
-          "state_context_class_name": "the full class name of the state context that extends StateContext class",
-          "description":"what you should do in this state, one short phrase or sentence",
+          "state_context_class_name": "the full class name of the state context that extends StateContex or CompositeStateContext class",
+          "description":"what you should do in this state context, one short phrase or sentence",
           "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
             {
@@ -21,8 +21,8 @@
           "id": "uuid_of_state_id",
           "name": "middle_state_name",
           "is_start":false,
-          "state_context_class_name": "the full class name of the state context that extends StateContext class",
-          "description":"what you should do in this state, one short phrase or sentence",
+          "state_context_class_name": "the full class name of the state context that extends StateContex or CompositeStateContext class",
+          "description":"what you should do in this state context, one short phrase or sentence",
           "task_type":"task type of the state_context_class to do, should be one of Available Task Types",
           "actions": [
             {
@@ -35,13 +35,13 @@
         {
           "id": "uuid_of_state_id_1",
           "name": "end_state_name_1",
-          "description":"description of this state, one short phrase or sentence",
+          "description":"description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name of the state context that extends BaseStateContext class"
         },
         {
           "id": "uuid_of_state_id_2",
           "name": "end_state_name_2",
-          "description":"description of this state, one short phrase or sentence",
+          "description":"description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name of the state context that extends BaseStateContext class"
         }
       ],
