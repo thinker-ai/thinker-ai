@@ -1,6 +1,14 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "definitions": {
+     "Action": {
+      "type": "object",
+      "properties": {
+        "on_command": { "type": "string" },
+        "class_name": { "type": "string" }
+      },
+      "required": ["on_command", "class_name"]
+    },
     "StandardStateDefinition": {
       "type": "object",
       "properties": {
@@ -12,10 +20,7 @@
         "task_type": { "type": "string" },
         "actions": {
           "type": "array",
-          "items": {
-            "type": "object",
-            "additionalProperties": { "type": "string" }
-          }
+          "items": { "$ref": "#/definitions/Action" }
         },
         "events": {
           "type": "array",

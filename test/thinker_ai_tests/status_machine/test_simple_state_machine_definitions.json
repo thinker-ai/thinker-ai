@@ -10,7 +10,10 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          {"start_command":"thinker_ai_tests.status_machine.sample_actions.StartAction"}
+            {
+              "on_command":"start_command",
+              "class_name":"thinker_ai_tests.status_machine.sample_actions.StartAction"
+            }
         ],
         "events": ["start_command_handled"]
       },
@@ -21,7 +24,10 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          {"middle_command":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"}
+            {
+              "on_command":"middle_command",
+              "class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"
+            }
         ],
         "events": ["middle_command_handled"]
       },

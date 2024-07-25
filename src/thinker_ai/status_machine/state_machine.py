@@ -386,8 +386,8 @@ class ActionFactory:
 
     @classmethod
     def create_action(cls, action) -> Optional[Action]:
-        on_command = next(iter(action))
-        action_class_name = action[on_command]
+        on_command = action["on_command"]
+        action_class_name = action["class_name"]
         action_cls: Action = cls._registry.get(action_class_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")

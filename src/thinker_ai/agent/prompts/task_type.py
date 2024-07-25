@@ -55,6 +55,8 @@ STATE_FLOW_PROMPT = """
     ```
     Please note the following:
     -The states in the flow is according to the Single Level of Abstraction (SLOA) principle，each sub state should remain at the same level of abstraction. 
+    -The state flow has at least one 'end state' witch has only four properties:
+        id、name、description、state_context_class_name
     -Do not further decompose the sub states into more detailed states. Provide a single level of sub states only.
 """.format(status_definition_simple=status_definition_simple,
            status_definition_schema_simple=status_definition_schema_simple)

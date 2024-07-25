@@ -10,7 +10,10 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          {"inner_start_command":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"}
+            {
+              "on_command":"inner_start_command",
+              "class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+            }
         ],
         "events": ["inner_start_command_handled"]
       },
@@ -43,7 +46,10 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          {"middle_start_command":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"}
+            {
+              "on_command":"middle_start_command",
+              "class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
+            }
         ],
         "events": ["middle_start_command_handled"]
       },
@@ -76,7 +82,10 @@
         "description": "what you should do in this state, one short phrase or sentence",
         "task_type": "task type of this state to do, should be one of Available Task Types",
         "actions": [
-          {"outer_start_command":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"}
+          {
+            "on_command":"outer_start_command",
+            "class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
+          }
         ],
         "events": ["outer_start_command_handled"]
       },
