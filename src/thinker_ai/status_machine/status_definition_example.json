@@ -29,12 +29,14 @@
         {
           "id": "uuid_of_state_id_1",
           "name": "end_state_name_1",
-          "description":"description of this state, one short phrase or sentence"
+          "description":"description of this state, one short phrase or sentence",
+          "state_context_class_name": "the_full_class_name_of_the_state_context_class_name"
         },
         {
           "id": "uuid_of_state_id_2",
           "name": "end_state_name_2",
-          "description":"description of this state, one short phrase or sentence"
+          "description":"description of this state, one short phrase or sentence",
+          "state_context_class_name": "the_full_class_name_of_the_state_context_class_name"
         }
       ],
       "transitions": [
@@ -53,10 +55,6 @@
           "source": "middle_state_name",
           "target": "end_state_name_2"
         }
-      ],
-      "inner_state_to_outer_event": {
-          "end_state_name_1": "outer_event_1",
-          "end_state_name_2": "outer_event_2"
-      }
+      ]
    }
 }
