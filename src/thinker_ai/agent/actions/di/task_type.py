@@ -1,7 +1,5 @@
 # Prompt for taking on "eda" tasks
 import os
-
-from thinker_ai.app_context import AppContext
 from thinker_ai.common.common import replace_curly_braces
 
 PLAN_PROMPT = """
@@ -36,7 +34,7 @@ def load_file(base_dir: str, file_name: str) -> str:
 
 
 current_file_dir = os.path.dirname(__file__)
-status_machine_dir = os.path.dirname(os.path.join(current_file_dir, "../../status_machine/"))
+status_machine_dir = os.path.dirname(os.path.join(current_file_dir, "../../../status_machine/"))
 status_definition_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_example.json"))
 status_definition_schema_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_schema.json"))
 STATE_FLOW_PROMPT = """

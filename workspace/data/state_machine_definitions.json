@@ -6,13 +6,13 @@
         "id": "1",
         "name": "data_analysis",
         "is_start": true,
-        "state_context_class_name": "DataAnalysisStateContext",
+        "state_context_class_name": "titanic_survival_prediction.data_analysis.contexts.DataAnalysisContext",
         "description": "Perform exploratory data analysis",
         "task_type": "eda",
         "actions": [
           {
             "on_command": "perform_eda",
-            "full_class_name": "PerformEDAAction"
+            "full_class_name": "titanic_survival_prediction.data_analysis.actions.PerformEDAAction"
           }
         ],
         "events": [
@@ -23,13 +23,13 @@
         "id": "2",
         "name": "data_preprocessing",
         "is_start": false,
-        "state_context_class_name": "DataPreprocessingStateContext",
+        "state_context_class_name": "titanic_survival_prediction.data_preprocessing.contexts.DataPreprocessingContext",
         "description": "Preprocess the dataset",
         "task_type": "data preprocessing",
         "actions": [
           {
             "on_command": "preprocess_data",
-            "full_class_name": "PreprocessDataAction"
+            "full_class_name": "titanic_survival_prediction.data_preprocessing.actions.PreprocessDataAction"
           }
         ],
         "events": [
@@ -40,13 +40,13 @@
         "id": "3",
         "name": "feature_engineering",
         "is_start": false,
-        "state_context_class_name": "FeatureEngineeringStateContext",
+        "state_context_class_name": "titanic_survival_prediction.feature_engineering.contexts.FeatureEngineeringContext",
         "description": "Create new features for the dataset",
         "task_type": "feature engineering",
         "actions": [
           {
             "on_command": "engineer_features",
-            "full_class_name": "EngineerFeaturesAction"
+            "full_class_name": "titanic_survival_prediction.feature_engineering.actions.EngineerFeaturesAction"
           }
         ],
         "events": [
@@ -57,13 +57,13 @@
         "id": "4",
         "name": "model_training",
         "is_start": false,
-        "state_context_class_name": "ModelTrainingStateContext",
+        "state_context_class_name": "titanic_survival_prediction.model_training.contexts.ModelTrainingContext",
         "description": "Train the machine learning model",
         "task_type": "model train",
         "actions": [
           {
             "on_command": "train_model",
-            "full_class_name": "TrainModelAction"
+            "full_class_name": "titanic_survival_prediction.model_training.actions.TrainModelAction"
           }
         ],
         "events": [
@@ -74,13 +74,13 @@
         "id": "5",
         "name": "model_evaluation",
         "is_start": false,
-        "state_context_class_name": "ModelEvaluationStateContext",
+        "state_context_class_name": "titanic_survival_prediction.model_evaluation.contexts.ModelEvaluationContext",
         "description": "Evaluate the trained model",
         "task_type": "model evaluate",
         "actions": [
           {
             "on_command": "evaluate_model",
-            "full_class_name": "EvaluateModelAction"
+            "full_class_name": "titanic_survival_prediction.model_evaluation.actions.EvaluateModelAction"
           }
         ],
         "events": [
@@ -91,7 +91,7 @@
         "id": "6",
         "name": "end_state",
         "description": "End state of the state machine",
-        "state_context_class_name": "EndStateContext"
+        "state_context_class_name": "titanic_survival_prediction.end_state.contexts.EndStateContext"
       }
     ],
     "transitions": [

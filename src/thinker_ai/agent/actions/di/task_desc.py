@@ -3,7 +3,7 @@ from typing import Optional, Any
 
 from pydantic import BaseModel
 
-from thinker_ai.agent.prompts.task_type import (
+from thinker_ai.agent.actions.di.task_type import (
     DATA_PREPROCESS_PROMPT,
     EDA_PROMPT,
     FEATURE_ENGINEERING_PROMPT,
