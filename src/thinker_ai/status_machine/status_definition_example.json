@@ -11,8 +11,8 @@
           "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
             {
-              "on_command":"name of the on_command parameter of the handle method",
-              "class_name":"class name implements the Action interface"
+              "on_command":"on_command parameter of the handle method of Action interface",
+              "full_class_name":"class name implements the Action interface"
             }
           ],
           "events": ["start_command_handled_event_name"]
@@ -26,8 +26,8 @@
           "task_type":"task type of the state_context_class to do, should be one of Available Task Types",
           "actions": [
             {
-              "on_command":"name of the on_command parameter of the handle method",
-              "class_name":"class name implements the Action interface"
+              "on_command":"on_command parameter of the handle method of Action interface",
+              "full_class_name":"class name implements the Action interface"
             }
           ],
           "events": ["middle_command_handled_event_name_1","middle_command_handled_event_name_2"]
@@ -61,6 +61,10 @@
           "source": "middle_state_name",
           "target": "end_state_name_2"
         }
-      ]
+      ],
+     "inner_end_state_to_outer_event": {
+         "end_state_name_1": "outer_start_command_handled_1",
+         "end_state_name_2": "outer_start_command_handled_2"
+     }
    }
 }

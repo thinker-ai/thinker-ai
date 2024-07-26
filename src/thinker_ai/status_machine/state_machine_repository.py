@@ -17,9 +17,15 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
 
     def _load_instances(self) -> Dict[str, Any]:
         if os.path.exists(self.file_path):
-            with open(self.file_path, 'r') as file:
-                return json.load(file)
+            try:
+                with open(self.file_path, 'r') as file:
+                    return json.load(file)
+            except Exception:
+                return {}
         return {}
+
+    def get_json_text(self) -> str:
+        return json.dumps(self.instances, indent=2, ensure_ascii=False)
 
     def save(self, state_machine_context: StateMachine):
         self.instances[state_machine_context.id] = self._state_machine_to_dict(state_machine_context)

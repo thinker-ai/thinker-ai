@@ -690,3 +690,7 @@ def run_async(coro):
     except Exception as e:
         print(f"Error running async function: {e}")
         raise
+
+
+def replace_curly_braces(json_content: str) -> str:
+    return json_content.replace("{", "{{").replace("}", "}}")

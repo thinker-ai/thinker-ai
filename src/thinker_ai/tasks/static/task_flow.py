@@ -2,11 +2,11 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from thinker_ai.context import Context
+from thinker_ai.app_context import AppContext
 
 
 class TaskFlow(BaseModel):
-    def __init__(self, id: str, name: str, owner_id: str, context: Context, work_schema_schema_id: str, **data: Any):
+    def __init__(self, id: str, name: str, owner_id: str, context: AppContext, work_schema_schema_id: str, **data: Any):
         super().__init__(**data)
         self.id = id
         self.name = name

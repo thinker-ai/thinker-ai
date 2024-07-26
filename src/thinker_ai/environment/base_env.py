@@ -8,7 +8,7 @@ from gymnasium.core import ActType, ObsType
 from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
 from thinker_ai.common.val_class import get_function_schema
-from thinker_ai.context import Context
+from thinker_ai.app_context import AppContext
 from thinker_ai.environment.api.env_api import (
     EnvAPIAbstract,
     ReadAPIRegistry,
@@ -129,7 +129,7 @@ class Environment(ExtEnv):
     roles: dict[str, SerializeAsAny["Role"]] = Field(default_factory=dict, validate_default=True)
     member_addrs: Dict["Role", Set] = Field(default_factory=dict, exclude=True)
     history: str = ""  # For debug
-    context: Context = Field(default_factory=Context, exclude=True)
+    context: AppContext = Field(default_factory=AppContext, exclude=True)
 
     def reset(
         self,

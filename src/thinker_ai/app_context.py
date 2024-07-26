@@ -53,7 +53,7 @@ class AttrDict(BaseModel):
             self.__delattr__(key)
 
 
-class Context(BaseModel):
+class AppContext(BaseModel):
     """Env context for ThinkerAI"""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)

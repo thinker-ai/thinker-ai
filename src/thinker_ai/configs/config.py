@@ -13,6 +13,7 @@ from thinker_ai.configs.redis_config import RedisConfig
 from thinker_ai.configs.s3_config import S3Config
 from thinker_ai.configs.search_config import SearchConfig
 from thinker_ai.configs.workspace_config import WorkspaceConfig
+from thinker_ai.status_machine.config import StateMachineConfig
 from thinker_ai.utils.yaml_model import YamlModel
 
 
@@ -39,7 +40,7 @@ class Config(CLIParams, YamlModel):
 
     # Key Parameters
     llm: LLMConfig
-
+    state_machine:StateMachineConfig=StateMachineConfig()
     # RAG Embedding
     embedding: EmbeddingConfig = EmbeddingConfig()
 

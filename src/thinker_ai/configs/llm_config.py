@@ -60,7 +60,7 @@ class LLMConfig(YamlModel):
     max_token: int = 4096
     max_budget: Optional[float] = 3.0
     auto_max_tokens: bool = False
-    temperature:Optional[float] = 0.0
+    temperature: Optional[float] = 0.0
     top_p: float = 1.0
     top_k: int = 0
     repetition_penalty: float = 1.0
@@ -85,7 +85,8 @@ class LLMConfig(YamlModel):
     # Cost Control
     calc_usage: bool = True
     # For RateLimiter
-    rpm:Optional[int] = 10
+    rpm: Optional[int] = 10
+
     @field_validator("api_key")
     @classmethod
     def check_llm_key(cls, v):

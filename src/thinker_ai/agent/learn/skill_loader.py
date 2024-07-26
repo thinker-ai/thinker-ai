@@ -5,7 +5,7 @@ import yaml
 from pydantic import BaseModel, Field
 
 from thinker_ai.common.common import aread
-from thinker_ai.context import Context
+from thinker_ai.app_context import AppContext
 
 
 class Example(BaseModel):
@@ -64,14 +64,14 @@ class SkillsDeclaration(BaseModel):
         skill_data = yaml.safe_load(data)
         return SkillsDeclaration(**skill_data)
 
-    def get_skill_list(self, entity_name: str = "Assistant", context: Context = None) -> Dict:
+    def get_skill_list(self, entity_name: str = "Assistant", context: AppContext = None) -> Dict:
         """Return the skill name based on the skill description."""
         entity = self.entities.get(entity_name)
         if not entity:
             return {}
 
         # List of skills that the agent chooses to activate.
-        ctx = context or Context()
+        ctx = context or AppContext()
         agent_skills = ctx.kwargs.agent_skills
         if not agent_skills:
             return {}

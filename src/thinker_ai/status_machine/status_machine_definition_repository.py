@@ -14,14 +14,24 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
 
     def _load_definitions(self) -> Dict[str, Any]:
         if os.path.exists(self.file_path):
-            with open(self.file_path, 'r') as file:
-                return json.load(file)
+            try:
+                with open(self.file_path, 'r') as file:
+                    return json.load(file)
+            except Exception:
+                return {}
         return {}
 
-    def save(self, definition: StateMachineDefinition):
-        self.definitions[definition.id] = self._definition_to_dict(definition)
-        with open(self.file_path, 'w') as file:
-            json.dump(self.definitions, file, indent=2)
+    def load_json_text(self) -> str:
+        return json.dumps(self.definitions, indent=2, ensure_ascii=False)
+
+    def save_json_text(self,json_text):
+        definitions = json.loads(json_text)
+        self.save(definitions)
+
+    def save(self, definitions: dict):
+        self.definitions=definitions
+        with open(self.file_path, 'w', encoding='utf-8') as file:
+            json.dump(self.definitions, file, indent=2, ensure_ascii=False)
 
     def load(self, id: str) -> StateMachineDefinition:
         if id not in self.definitions:
@@ -37,7 +47,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             id=id,
             states_def=states,
             transitions=transitions,
-            inner_state_to_outer_event=data.get("inner_state_to_outer_event")
+            inner_end_state_to_outer_event=data.get("inner_end_state_to_outer_event")
         )
 
     @staticmethod
@@ -48,8 +58,8 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             "transitions": [FileBasedStateMachineDefinitionRepository._transition_to_dict(t) for t in
                             definition.transitions],
         }
-        if definition.inner_state_to_outer_event:
-            result["inner_state_to_outer_event"] = definition.inner_state_to_outer_event
+        if definition.inner_end_state_to_outer_event:
+            result["inner_end_state_to_outer_event"] = definition.inner_end_state_to_outer_event
         return result
 
     @staticmethod

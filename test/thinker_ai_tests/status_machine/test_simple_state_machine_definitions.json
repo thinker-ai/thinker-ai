@@ -12,7 +12,7 @@
         "actions": [
             {
               "on_command":"start_command",
-              "class_name":"thinker_ai_tests.status_machine.sample_actions.StartAction"
+              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.StartAction"
             }
         ],
         "events": ["start_command_handled"]
@@ -26,7 +26,7 @@
         "actions": [
             {
               "on_command":"middle_command",
-              "class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"
+              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"
             }
         ],
         "events": ["middle_command_handled"]

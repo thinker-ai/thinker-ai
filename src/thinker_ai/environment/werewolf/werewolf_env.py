@@ -22,7 +22,7 @@ class WerewolfEnv(WerewolfExtEnv, Environment):
             self.roles[role.command] = role  # use name as key here, due to multi-player can have same profile
 
         for role in roles:  # setup system message with roles
-            role.context = self.context
+            role.app_context = self.context
             role.set_env(self)
 
     def publish_message(self, message: Message, add_timestamp: bool = True):

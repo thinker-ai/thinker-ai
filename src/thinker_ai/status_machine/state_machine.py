@@ -6,12 +6,12 @@ from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
 T = TypeVar('T')
 
 
-def from_class_name(cls: Type[T], class_name: str, **kwargs: Any) -> T:
-    module_name, class_name = class_name.rsplit('.', 1)
-    context_class = getattr(importlib.import_module(module_name), class_name)
+def from_class_name(cls: Type[T], full_class_name: str, **kwargs: Any) -> T:
+    module_name, full_class_name = full_class_name.rsplit('.', 1)
+    context_class = getattr(importlib.import_module(module_name), full_class_name)
     instance = context_class(**kwargs)
     if not isinstance(instance, cls):
-        raise TypeError(f"Class {class_name} is not a subclass of {cls.__name__}")
+        raise TypeError(f"Class {full_class_name} is not a subclass of {cls.__name__}")
     return instance
 
 
@@ -41,8 +41,8 @@ class Action(ABC):
         raise NotImplementedError
 
     @classmethod
-    def from_class_name(cls, class_name: str, **kwargs) -> 'Action':
-        return from_class_name(cls, class_name, **kwargs)
+    def from_class_name(cls, full_class_name: str, **kwargs) -> 'Action':
+        return from_class_name(cls, full_class_name, **kwargs)
 
     @classmethod
     def get_full_class_name(cls):
@@ -93,8 +93,8 @@ class BaseStateContext:
         self.state_def = state_def
 
     @classmethod
-    def from_class_name(cls, class_name: str, **kwargs) -> 'BaseStateContext':
-        return from_class_name(cls, class_name, **kwargs)
+    def from_class_name(cls, full_class_name: str, **kwargs) -> 'BaseStateContext':
+        return from_class_name(cls, full_class_name, **kwargs)
 
     @classmethod
     def get_full_class_name(cls):
@@ -112,8 +112,8 @@ class StateContext(BaseStateContext):
         super().__init__(id, state_def)
 
     @classmethod
-    def from_class_name(cls, class_name: str, **kwargs) -> 'StateContext':
-        return from_class_name(cls, class_name, **kwargs)
+    def from_class_name(cls, full_class_name: str, **kwargs) -> 'StateContext':
+        return from_class_name(cls, full_class_name, **kwargs)
 
     def get_state_def(self) -> StateDefinition:
         return self.state_def
@@ -157,11 +157,11 @@ class StateMachineDefinition:
     def __init__(self, id: str,
                  states_def: Set[BaseStateDefinition],
                  transitions: Set[Transition],
-                 inner_state_to_outer_event: Optional[Dict[str, str]] = None):
+                 inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.id = id
         self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
-        self.inner_state_to_outer_event = inner_state_to_outer_event if inner_state_to_outer_event is not None else {}
+        self.inner_end_state_to_outer_event = inner_end_state_to_outer_event if inner_end_state_to_outer_event is not None else {}
 
     def add_state_def(self, state_def: StateDefinition):
         self.states_def.add(state_def)
@@ -184,7 +184,7 @@ class StateMachineDefinition:
     def to_outer_event(self, inner_event: Event, state_context: BaseStateContext) -> Optional[Event]:
         if type(state_context.state_def) is not BaseStateDefinition:
             return None
-        outer_event_name = self.inner_state_to_outer_event.get(state_context.state_def.name)
+        outer_event_name = self.inner_end_state_to_outer_event.get(state_context.state_def.name)
         if outer_event_name is None:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
@@ -210,12 +210,12 @@ class StateContextBuilder:
               id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
         if type(state_def) is StateDefinition:
             state_def=cast(StateDefinition, state_def)
-            class_name = state_def.state_context_class_name
-            if not class_name:
-                class_name = "thinker_ai.status_machine.state_machine.StateDefinition"
+            full_class_name = state_def.state_context_class_name
+            if not full_class_name:
+                full_class_name = "thinker_ai.status_machine.state_machine.StateDefinition"
             if state_def.inner_state_machine_definition:
                 return CompositeStateContext.from_class_name(id=id,
-                                                             class_name=class_name,
+                                                             full_class_name=full_class_name,
                                                              state_def=state_def,
                                                              state_context_builder=self,
                                                              state_machine_repository=self.state_machine_context_repository,
@@ -223,14 +223,14 @@ class StateContextBuilder:
                                                              )
             else:
                 return StateContext.from_class_name(id=id,
-                                                    class_name=class_name,
+                                                    full_class_name=full_class_name,
                                                     state_def=state_def)
         elif type(state_def) is BaseStateDefinition:
-            class_name = state_def.state_context_class_name
-            if not class_name:
-                class_name = "thinker_ai.status_machine.state_machine.BaseStateContext"
+            full_class_name = state_def.state_context_class_name
+            if not full_class_name:
+                full_class_name = "thinker_ai.status_machine.state_machine.BaseStateContext"
             return BaseStateContext.from_class_name(id=id,
-                                                    class_name=class_name,
+                                                    full_class_name=full_class_name,
                                                     state_def=state_def)
 
 
@@ -287,7 +287,7 @@ class StateMachine:
 
     def to_outer_event(self, inner_event) -> Optional[Event]:
         state_machine_def = self.get_state_machine_def()
-        if state_machine_def.inner_state_to_outer_event:
+        if state_machine_def.inner_end_state_to_outer_event:
             return state_machine_def.to_outer_event(inner_event, self.current_state_context)
 
 
@@ -313,8 +313,8 @@ class CompositeStateContext(StateContext):
         self.state_machine_definition_repository = state_machine_definition_repository
 
     @classmethod
-    def from_class_name(cls, class_name: str, **kwargs) -> 'CompositeStateContext':
-        return from_class_name(cls, class_name, **kwargs)
+    def from_class_name(cls, full_class_name: str, **kwargs) -> 'CompositeStateContext':
+        return from_class_name(cls, full_class_name, **kwargs)
 
     def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> Optional[Event]:
         action = self.get_action(command.name)
@@ -373,8 +373,8 @@ class ActionFactory:
     @classmethod
     def create_action(cls, action) -> Optional[Action]:
         on_command = action["on_command"]
-        action_class_name = action["class_name"]
+        action_class_name = action["full_class_name"]
         action_cls: Action = cls._registry.get(action_class_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
-        return action_cls.from_class_name(on_command=on_command, class_name=action_class_name)
+        return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)

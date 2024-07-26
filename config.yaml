@@ -3,6 +3,10 @@ PUPPETEER_CONFIG: "./puppeteer-config.q"
 MMDC: "/Users/wangli/.npm-global/bin/mmdc"
 model_size_threshold : "500 * 1024 * 1024"
 PYTORCH_ENABLE_MPS_FALLBACK: "user_1"
+state_machine:
+  definition : "state_machine_definitions.json"
+  instance : "state_machine_instances.json"
+
 
 llm:
   base_url: "https://api.openai.com/v1"

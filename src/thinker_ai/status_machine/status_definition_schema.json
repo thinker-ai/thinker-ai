@@ -5,9 +5,9 @@
       "type": "object",
       "properties": {
         "on_command": { "type": "string" },
-        "class_name": { "type": "string" }
+        "full_class_name": { "type": "string" }
       },
-      "required": ["on_command", "class_name"]
+      "required": ["on_command", "full_class_name"]
     },
     "StateDefinition": {
       "type": "object",
@@ -66,7 +66,7 @@
           "type": "array",
           "items": { "$ref": "#/definitions/Transition" }
         },
-        "inner_state_to_outer_event": {
+        "inner_end_state_to_outer_event": {
           "type": "object",
           "additionalProperties": { "type": "string" }
         }

@@ -1,14 +1,20 @@
 from __future__ import annotations
 
+import os
 from copy import deepcopy
 
 from overrides import overrides
 
 import json
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
 from thinker_ai.agent.actions.di.task_desc import TaskType, TaskDesc, PlanStatus
+from thinker_ai.common.common import replace_curly_braces
+from thinker_ai.configs.config import config
+from thinker_ai.configs.const import PROJECT_ROOT
+from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
+from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \
     TaskResult
@@ -40,9 +46,11 @@ class TaskTree(Task):
     plan_update_max_retry: int = 3
     type: str = "state flow"
 
-    def __init__(self, tasks: Optional[List[Task]] = None, **kwargs):
+    def __init__(self,
+                 tasks: Optional[List[Task]] = None, **kwargs):
         super().__init__(**kwargs)
         self.add_tasks(tasks)
+
 
     async def execute_plan(self, plan_update_max_retry: Optional[int] = None,
                            task_execute_max_retry: Optional[int] = None):
@@ -383,7 +391,13 @@ def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, 
 
 
 class WritePlan(Action):
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+
     async def run(self, task_tree: TaskTree) -> str:
+        definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path/"data"), config.state_machine.definition)
+        instance_repo = FileBasedStateMachineContextRepository(str(config.workspace.path/"data"), config.state_machine.instance,definition_repo)
         PROMPT_TEMPLATE: str = """
         # Instruction:
         {instruction}
@@ -392,7 +406,14 @@ class WritePlan(Action):
         # Available Task Types:
         {task_type_desc}
         # Guidance:
-        the sub_task's parent id is '{parent_id}'
+        the exist status definition is
+        ```json
+         {exist_status_definition}
+        ```
+        the exist status instance is
+        ```json
+         {exist_status_instance}
+        ```
         {guidance}
         """
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
@@ -401,10 +422,13 @@ class WritePlan(Action):
             context="\n".join([str(ct) for ct in exec_logger.get()]),
             parent_id=task_tree.id,
             task_type_desc=task_type_desc,
+            exist_status_definition=replace_curly_braces(definition_repo.load_json_text()),
+            exist_status_instance=replace_curly_braces(instance_repo.get_json_text()),
             guidance=TaskType.get_type(task_tree.type).guidance
         )
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)
+        definition_repo.save_json_text(rsp)
         return rsp
 
 

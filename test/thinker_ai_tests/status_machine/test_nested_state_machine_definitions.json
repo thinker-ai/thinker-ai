@@ -12,7 +12,7 @@
         "actions": [
             {
               "on_command":"inner_start_command",
-              "class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
             }
         ],
         "events": ["inner_start_command_handled"]
@@ -31,7 +31,7 @@
         "target": "inner_end"
       }
     ],
-    "inner_state_to_outer_event": {
+    "inner_end_state_to_outer_event": {
       "inner_end": "middle_start_command_handled"
     }
   },
@@ -48,7 +48,7 @@
         "actions": [
             {
               "on_command":"middle_start_command",
-              "class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
+              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
             }
         ],
         "events": ["middle_start_command_handled"]
@@ -67,7 +67,7 @@
         "target": "middle_end"
       }
     ],
-    "inner_state_to_outer_event": {
+    "inner_end_state_to_outer_event": {
       "middle_end": "outer_start_command_handled"
     }
   },
@@ -84,7 +84,7 @@
         "actions": [
           {
             "on_command":"outer_start_command",
-            "class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
+            "full_class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
           }
         ],
         "events": ["outer_start_command_handled"]
