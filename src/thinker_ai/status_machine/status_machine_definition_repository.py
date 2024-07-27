@@ -2,6 +2,7 @@ import json
 import os
 from typing import Dict, Any, Set
 
+from thinker_ai.status_machine.task_desc import TaskType
 from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
                                                      StateMachineDefinitionRepository, BaseStateDefinition)
 
@@ -39,12 +40,12 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
         with open(self.file_path, 'w', encoding='utf-8') as file:
             json.dump(self.definitions, file, indent=2, ensure_ascii=False)
 
+    def get_state_machine_ids(self):
+            return self.definitions.keys()
     def load(self, id: str) -> StateMachineDefinition:
-        if id not in self.definitions:
-            raise ValueError(f"StateMachineDefinition with id '{id}' not found")
-
-        data = self.definitions[id]
-        return self._definition_from_dict(id, data)
+        data = self.definitions.get(id)
+        if data:
+            return self._definition_from_dict(id, data)
 
     def _definition_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineDefinition:
         states = {self._state_from_dict(sd) for sd in data["states_def"]}
@@ -80,7 +81,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                 "name": state_def.name,
                 "description": state_def.description,
                 "state_context_class_name": state_def.state_context_class_name,
-                "task_type": state_def.task_type,
+                "task_type": state_def.task_type.name,
                 "actions": actions,
                 "events": list(state_def.events),
                 "is_start": state_def.is_start
@@ -111,7 +112,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                 name=data["name"],
                 state_context_class_name=data["state_context_class_name"],
                 description=data.get("description", ""),
-                task_type=data.get("task_type", ""),
+                task_type=TaskType.get_type(data.get("task_type", "")),
                 actions={ActionFactory.create_action(a) for a in data["actions"]},
                 result_events=set(data["events"]),
                 inner_state_machine_definition=self.load(data["id"]) if data["id"] in self.definitions else None,

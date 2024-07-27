@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.agent.actions.di.task_desc import TaskDesc, PlanStatus
+from thinker_ai.status_machine.task_desc import TaskDesc, PlanStatus
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.agent.prompts.di.write_analysis_code import (
     DEBUG_REFLECTION_EXAMPLE,

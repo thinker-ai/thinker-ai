@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Tuple, Dict, Any
 
-from thinker_ai.agent.actions.di.task_desc import TaskType, TaskDesc
+from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, TaskTypeDef
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.common.logs import logger
@@ -70,8 +70,9 @@ class TaskResult(BaseModel):
 
 class Task(BaseModel):
     id: str
+    name:str
     instruction: str
-    type: str = "other"
+    type:TaskTypeDef = TaskType.OTHER
     dependent_task_ids: Optional[List[str]] = None
     parent_id: Optional[str] = None
     use_reflection: bool = False
@@ -89,7 +90,7 @@ class Task(BaseModel):
             "id": self.id,
             "dependent_task_ids": self.dependent_task_ids or [],
             "instruction": self.instruction,
-            "type": self.type,
+            "type": self.type.name,
         }
         return TaskDesc(map=map)
 
@@ -116,7 +117,7 @@ class Task(BaseModel):
         return {
             'id': self.id,
             'parent_id': self.parent_id,
-            'type': self.type,
+            'type': self.type.name,
             'instruction': self.instruction,
             'dependent_task_ids': self.dependent_task_ids,
             'use_reflection': self.use_reflection,
@@ -135,7 +136,7 @@ class Task(BaseModel):
         instance = cls(
             id=data.get('id'),
             parent_id=data.get('parent_id'),
-            type=data.get('type'),
+            type=TaskType.get_type(data.get('type')),
             instruction=data.get('instruction'),
             dependent_task_ids=data.get('dependent_task_ids'),
             use_reflection=bool(data.get('use_reflection', False)),

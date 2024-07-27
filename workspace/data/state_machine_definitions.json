@@ -1,18 +1,19 @@
 {
-  "titanic_survival_prediction": {
+  "titanic_survival_state_machine": {
+    "name": "titanic_survival",
     "description": "Predict passenger survival outcome on the Titanic dataset",
     "states_def": [
       {
-        "id": "1",
-        "name": "data_analysis",
+        "id": "eda_state",
+        "name": "Exploratory Data Analysis",
         "is_start": true,
-        "state_context_class_name": "titanic_survival_prediction.data_analysis.contexts.DataAnalysisContext",
-        "description": "Perform exploratory data analysis",
+        "state_context_class_name": "titanic_survival.ExploratoryDataAnalysis.contexts.EDAStateContext",
+        "description": "Perform exploratory data analysis on the Titanic dataset",
         "task_type": "eda",
         "actions": [
           {
             "on_command": "perform_eda",
-            "full_class_name": "titanic_survival_prediction.data_analysis.actions.PerformEDAAction"
+            "full_class_name": "titanic_survival.ExploratoryDataAnalysis.actions.PerformEDAAction"
           }
         ],
         "events": [
@@ -20,16 +21,16 @@
         ]
       },
       {
-        "id": "2",
-        "name": "data_preprocessing",
+        "id": "data_preprocessing_state",
+        "name": "Data Preprocessing",
         "is_start": false,
-        "state_context_class_name": "titanic_survival_prediction.data_preprocessing.contexts.DataPreprocessingContext",
-        "description": "Preprocess the dataset",
+        "state_context_class_name": "titanic_survival.DataPreprocessing.contexts.DataPreprocessingStateContext",
+        "description": "Preprocess the Titanic dataset",
         "task_type": "data preprocessing",
         "actions": [
           {
             "on_command": "preprocess_data",
-            "full_class_name": "titanic_survival_prediction.data_preprocessing.actions.PreprocessDataAction"
+            "full_class_name": "titanic_survival.DataPreprocessing.actions.PreprocessDataAction"
           }
         ],
         "events": [
@@ -37,16 +38,16 @@
         ]
       },
       {
-        "id": "3",
-        "name": "feature_engineering",
+        "id": "feature_engineering_state",
+        "name": "Feature Engineering",
         "is_start": false,
-        "state_context_class_name": "titanic_survival_prediction.feature_engineering.contexts.FeatureEngineeringContext",
-        "description": "Create new features for the dataset",
+        "state_context_class_name": "titanic_survival.FeatureEngineering.contexts.FeatureEngineeringStateContext",
+        "description": "Perform feature engineering on the Titanic dataset",
         "task_type": "feature engineering",
         "actions": [
           {
             "on_command": "engineer_features",
-            "full_class_name": "titanic_survival_prediction.feature_engineering.actions.EngineerFeaturesAction"
+            "full_class_name": "titanic_survival.FeatureEngineering.actions.EngineerFeaturesAction"
           }
         ],
         "events": [
@@ -54,16 +55,16 @@
         ]
       },
       {
-        "id": "4",
-        "name": "model_training",
+        "id": "model_training_state",
+        "name": "Model Training",
         "is_start": false,
-        "state_context_class_name": "titanic_survival_prediction.model_training.contexts.ModelTrainingContext",
-        "description": "Train the model",
+        "state_context_class_name": "titanic_survival.ModelTraining.contexts.ModelTrainingStateContext",
+        "description": "Train a model to predict survival on the Titanic dataset",
         "task_type": "model train",
         "actions": [
           {
             "on_command": "train_model",
-            "full_class_name": "titanic_survival_prediction.model_training.actions.TrainModelAction"
+            "full_class_name": "titanic_survival.ModelTraining.actions.TrainModelAction"
           }
         ],
         "events": [
@@ -71,16 +72,16 @@
         ]
       },
       {
-        "id": "5",
-        "name": "model_evaluation",
+        "id": "model_evaluation_state",
+        "name": "Model Evaluation",
         "is_start": false,
-        "state_context_class_name": "titanic_survival_prediction.model_evaluation.contexts.ModelEvaluationContext",
-        "description": "Evaluate the model",
+        "state_context_class_name": "titanic_survival.ModelEvaluation.contexts.ModelEvaluationStateContext",
+        "description": "Evaluate the trained model on the evaluation dataset",
         "task_type": "model evaluate",
         "actions": [
           {
             "on_command": "evaluate_model",
-            "full_class_name": "titanic_survival_prediction.model_evaluation.actions.EvaluateModelAction"
+            "full_class_name": "titanic_survival.ModelEvaluation.actions.EvaluateModelAction"
           }
         ],
         "events": [
@@ -88,37 +89,37 @@
         ]
       },
       {
-        "id": "6",
-        "name": "end_state",
-        "description": "End state of the state machine",
-        "state_context_class_name": "titanic_survival_prediction.end_state.contexts.EndStateContext"
+        "id": "end_state",
+        "name": "End State",
+        "description": "End of the state machine",
+        "state_context_class_name": "titanic_survival.EndState.contexts.EndStateContext"
       }
     ],
     "transitions": [
       {
         "event": "eda_completed",
-        "source": "data_analysis",
-        "target": "data_preprocessing"
+        "source": "Exploratory Data Analysis",
+        "target": "Data Preprocessing"
       },
       {
         "event": "data_preprocessing_completed",
-        "source": "data_preprocessing",
-        "target": "feature_engineering"
+        "source": "Data Preprocessing",
+        "target": "Feature Engineering"
       },
       {
         "event": "feature_engineering_completed",
-        "source": "feature_engineering",
-        "target": "model_training"
+        "source": "Feature Engineering",
+        "target": "Model Training"
       },
       {
         "event": "model_training_completed",
-        "source": "model_training",
-        "target": "model_evaluation"
+        "source": "Model Training",
+        "target": "Model Evaluation"
       },
       {
         "event": "model_evaluation_completed",
-        "source": "model_evaluation",
-        "target": "end_state"
+        "source": "Model Evaluation",
+        "target": "End State"
       }
     ]
   }

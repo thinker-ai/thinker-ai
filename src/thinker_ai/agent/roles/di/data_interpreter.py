@@ -85,10 +85,12 @@ class DataInterpreter(Role):
     async def _plan_and_act(self) -> Message:
         """first plan, then execute an action sequence, i.e. _think (of a plan) -> _act -> _act -> ... Use llm to come up with the plan dynamically."""
         # create initial plan and update it until confirmation
-        instruction = self.rc.memory.get()[-1].content  # retreive latest user requirement
+        content = self.rc.memory.get()[-1].content  # retreive latest user requirement
+        requirement = json.loads(content)
         task_tree = TaskTree(
             id=str(uuid.uuid4()),
-            instruction=instruction,
+            name=requirement["name"],
+            instruction=requirement["instruction"],
             use_reflection=self.use_reflection,
             tools=self.tools,
             auto_run=self.auto_run,

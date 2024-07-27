@@ -6,11 +6,10 @@ from thinker_ai.agent.actions.di.task_tree import (
     WritePlan,
     precheck_update_plan_from_rsp,
 )
-from thinker_ai.agent.provider.schema import Message
 
 
 def test_precheck_update_plan_from_rsp():
-    plan = TaskTree(goal="")
+    plan = TaskTree(name="",goal="")
     plan.add_tasks([Task(task_id="1")])
     rsp = '[{"task_id": "2"}]'
     success, _ = precheck_update_plan_from_rsp(rsp, plan)
@@ -24,7 +23,7 @@ def test_precheck_update_plan_from_rsp():
 
 @pytest.mark.asyncio
 async def test_write_plan():
-    plan = TaskTree(goal="Run data analysis on sklearn Iris dataset, include a plot", role="user")
+    plan = TaskTree(name ="analysis_dataset",goal="Run data analysis on sklearn Iris dataset, include a plot", role="user")
     rsp = await WritePlan().run(
         task_tree=plan
     )

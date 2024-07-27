@@ -3,7 +3,7 @@ import uuid
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
 
-from sortedcontainers import SortedList, SortedSet
+from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 
 T = TypeVar('T')
 
@@ -74,7 +74,7 @@ class BaseStateDefinition:
 
 
 class StateDefinition(BaseStateDefinition):
-    def __init__(self, id: str, name: str, description: str, task_type: str, state_context_class_name: str,
+    def __init__(self, id: str, name: str, description: str, task_type: TaskTypeDef, state_context_class_name: str,
                  actions: Set[Action], result_events: Set[str], is_start: bool = False,
                  inner_state_machine_definition: "StateMachineDefinition" = None):
         super().__init__(id, name, description, state_context_class_name)
@@ -157,12 +157,12 @@ class Transition:
 
 class StateMachineDefinition:
     def __init__(self, id: str,
-                 name:str,
+                 name: str,
                  states_def: Set[BaseStateDefinition],
                  transitions: Set[Transition],
                  inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.id = id
-        self.name=name
+        self.name = name
         self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
         self.inner_end_state_to_outer_event = inner_end_state_to_outer_event if inner_end_state_to_outer_event is not None else {}
@@ -200,12 +200,13 @@ class StateMachineDefinitionRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save(self,definition: StateMachineDefinition):
+    def save(self, definition: StateMachineDefinition):
         raise NotImplementedError
 
     @abstractmethod
-    def save_json(self,id:str,definition: dict):
+    def save_json(self, id: str, definition: dict):
         raise NotImplementedError
+
 
 class StateContextBuilder:
     def __init__(self, state_machine_context_repository: "StateMachineRepository",
@@ -216,7 +217,7 @@ class StateContextBuilder:
     def build(self, state_def: BaseStateDefinition,
               id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
         if type(state_def) is StateDefinition:
-            state_def=cast(StateDefinition, state_def)
+            state_def = cast(StateDefinition, state_def)
             full_class_name = state_def.state_context_class_name
             if not full_class_name:
                 full_class_name = "thinker_ai.status_machine.state_machine.StateDefinition"
@@ -308,8 +309,9 @@ class StateMachineRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save_json(self,id:str,instance: dict):
+    def save_json(self, id: str, instance: dict):
         raise NotImplementedError
+
 
 class CompositeStateContext(StateContext):
     def __init__(self, id: str,
@@ -390,7 +392,8 @@ class ActionFactory:
         return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)
 
 
-def get_state_execute_order(state_machine_def: StateMachineDefinition, sorted_states_def: Optional[List[str]] = None) -> List[str]:
+def get_state_execute_order(state_machine_def: StateMachineDefinition,
+                            sorted_states_def: Optional[List[BaseStateDefinition]] = None) -> List[BaseStateDefinition]:
     if sorted_states_def is None:
         sorted_states_def = []
 
@@ -398,11 +401,10 @@ def get_state_execute_order(state_machine_def: StateMachineDefinition, sorted_st
     stack = []
 
     def visit(state: BaseStateDefinition, current_state_machine_def: StateMachineDefinition):
-        state_id_str = f"{current_state_machine_def.id}.{state.id}"
-        if state_id_str in visited:
+        if state.name in visited:
             return
-        stack.append(state_id_str)
-        visited.add(state_id_str)
+        stack.append(state)
+        visited.add(state.name)
         for transition in current_state_machine_def.transitions:
             if transition.source == state:
                 visit(transition.target, current_state_machine_def)
@@ -419,3 +421,12 @@ def get_state_execute_order(state_machine_def: StateMachineDefinition, sorted_st
     sorted_states_def.extend(stack)  # Reverse the stack to get the correct order
 
     return sorted_states_def
+
+
+def next_state_machine_to_create(root_def: StateMachineDefinition, old_state_machine_ids: Set) -> StateDefinition:
+    sorted_states_def = get_state_execute_order(root_def)
+    for states_def in sorted_states_def:
+        if (states_def.id not in old_state_machine_ids
+                and isinstance(states_def, StateDefinition)
+                and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.name):
+            return states_def
