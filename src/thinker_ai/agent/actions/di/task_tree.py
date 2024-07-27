@@ -12,7 +12,6 @@ from thinker_ai.agent.actions import Action
 from thinker_ai.agent.actions.di.task_desc import TaskType, TaskDesc, PlanStatus
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
-from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
@@ -50,7 +49,6 @@ class TaskTree(Task):
                  tasks: Optional[List[Task]] = None, **kwargs):
         super().__init__(**kwargs)
         self.add_tasks(tasks)
-
 
     async def execute_plan(self, plan_update_max_retry: Optional[int] = None,
                            task_execute_max_retry: Optional[int] = None):
@@ -396,8 +394,10 @@ class WritePlan(Action):
         super().__init__(**data)
 
     async def run(self, task_tree: TaskTree) -> str:
-        definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path/"data"), config.state_machine.definition)
-        instance_repo = FileBasedStateMachineContextRepository(str(config.workspace.path/"data"), config.state_machine.instance,definition_repo)
+        definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path / "data"),
+                                                                    config.state_machine.definition)
+        instance_repo = FileBasedStateMachineContextRepository(str(config.workspace.path / "data"),
+                                                               config.state_machine.instance, definition_repo)
         PROMPT_TEMPLATE: str = """
         # Instruction:
         {instruction}
@@ -414,8 +414,13 @@ class WritePlan(Action):
         ```json
          {exist_status_instance}
         ```
+        the next state machine to be created is {next_id_to_be_created}
         {guidance}
         """
+        state_machine_defs = list(definition_repo.definitions.definitions.items())
+        next_id_to_be_created="root"
+        if state_machine_defs:
+            next_id_to_be_created=self.next_state_machine_to_be_created(state_machine_defs)
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
             instruction=task_tree.instruction,
@@ -424,13 +429,13 @@ class WritePlan(Action):
             task_type_desc=task_type_desc,
             exist_status_definition=replace_curly_braces(definition_repo.load_json_text()),
             exist_status_instance=replace_curly_braces(instance_repo.get_json_text()),
-            guidance=TaskType.get_type(task_tree.type).guidance
+            guidance=TaskType.get_type(task_tree.type).guidance,
+            next_id_to_be_created=next_id_to_be_created
         )
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)
         definition_repo.save_json_text(rsp)
         return rsp
-
 
 class CheckData(Action):
     async def run(self, code_written: dict[str, str]) -> str:

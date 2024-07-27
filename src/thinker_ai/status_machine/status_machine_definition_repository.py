@@ -3,7 +3,7 @@ import os
 from typing import Dict, Any, Set
 
 from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
-                                                     StateMachineDefinitionRepository,BaseStateDefinition)
+                                                     StateMachineDefinitionRepository, BaseStateDefinition)
 
 
 class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
@@ -24,12 +24,18 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     def load_json_text(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)
 
-    def save_json_text(self,json_text):
-        definitions = json.loads(json_text)
-        self.save(definitions)
+    def save_json_text(self, json_text):
+        definitions: dict = json.loads(json_text)
+        id, definition = list(definitions.items())[0]
+        self.save_json(id, definition)
 
-    def save(self, definitions: dict):
-        self.definitions=definitions
+    def save(self, definition: StateMachineDefinition):
+        self.definitions[definition.id] = self._definition_to_dict(definition)
+        with open(self.file_path, 'w', encoding='utf-8') as file:
+            json.dump(self.definitions, file, indent=2, ensure_ascii=False)
+
+    def save_json(self, id: str, definition: dict):
+        self.definitions[id] = definition
         with open(self.file_path, 'w', encoding='utf-8') as file:
             json.dump(self.definitions, file, indent=2, ensure_ascii=False)
 
@@ -45,6 +51,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
         transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
         return StateMachineDefinition(
             id=id,
+            name=data["name"],
             states_def=states,
             transitions=transitions,
             inner_end_state_to_outer_event=data.get("inner_end_state_to_outer_event")
@@ -53,6 +60,8 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     @staticmethod
     def _definition_to_dict(definition: StateMachineDefinition) -> Dict[str, Any]:
         result = {
+            "id": definition.id,
+            "name":definition.name,
             "states_def": [FileBasedStateMachineDefinitionRepository._state_definition_to_dict(sd) for sd in
                            definition.states_def],
             "transitions": [FileBasedStateMachineDefinitionRepository._transition_to_dict(t) for t in
@@ -105,7 +114,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                 task_type=data.get("task_type", ""),
                 actions={ActionFactory.create_action(a) for a in data["actions"]},
                 result_events=set(data["events"]),
-                inner_state_machine_definition=self.load(data["id"]) if  data["id"] in self.definitions else None,
+                inner_state_machine_definition=self.load(data["id"]) if data["id"] in self.definitions else None,
                 is_start=data.get("is_start")
             )
         else:

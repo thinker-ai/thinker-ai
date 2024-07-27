@@ -3,6 +3,8 @@ import uuid
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
 
+from sortedcontainers import SortedList, SortedSet
+
 T = TypeVar('T')
 
 
@@ -155,10 +157,12 @@ class Transition:
 
 class StateMachineDefinition:
     def __init__(self, id: str,
+                 name:str,
                  states_def: Set[BaseStateDefinition],
                  transitions: Set[Transition],
                  inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.id = id
+        self.name=name
         self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
         self.inner_end_state_to_outer_event = inner_end_state_to_outer_event if inner_end_state_to_outer_event is not None else {}
@@ -196,9 +200,12 @@ class StateMachineDefinitionRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, definition: StateMachineDefinition):
+    def save(self,definition: StateMachineDefinition):
         raise NotImplementedError
 
+    @abstractmethod
+    def save_json(self,id:str,definition: dict):
+        raise NotImplementedError
 
 class StateContextBuilder:
     def __init__(self, state_machine_context_repository: "StateMachineRepository",
@@ -300,6 +307,9 @@ class StateMachineRepository(ABC):
     def save(self, state_machine_context: StateMachine):
         raise NotImplementedError
 
+    @abstractmethod
+    def save_json(self,id:str,instance: dict):
+        raise NotImplementedError
 
 class CompositeStateContext(StateContext):
     def __init__(self, id: str,
@@ -378,3 +388,20 @@ class ActionFactory:
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
         return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)
+
+#
+# def get_state_execute_order(state_machine_def:StateMachineDefinition,sorted_states_def:SortedSet=None)->SortedList[BaseStateDefinition]:
+#     if not sorted_states_def:
+#         sorted_states_def=SortedList()
+#     current_state_def_name = state_machine_def.name+"."+state_machine_def.get_start_state_def().name
+#     sorted_states_def.add(current_state_def_name)
+#     transitions = state_machine_def.transitions
+#     for transition in transitions:
+#         if (state_machine_def.name+"."+transition.source.name==current_state_def_name
+#                 and state_machine_def.name+"."+transition.target.name not in sorted_states_def):
+#             current_state_def_name=state_machine_def.name+"."+transition.target.name
+#             sorted_states_def.add(current_state_def_name)
+#         else:
+#
+#     return sorted_states_def
+

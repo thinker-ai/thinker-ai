@@ -38,10 +38,10 @@ status_machine_dir = os.path.dirname(os.path.join(current_file_dir, "../../../st
 status_definition_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_example.json"))
 status_definition_schema_simple = replace_curly_braces(load_file(status_machine_dir, "status_definition_schema.json"))
 STATE_FLOW_PROMPT = """
-Based on the instruction, design a state machine from scratch, or update an existing state machine, you have to 
-decompose the state according to the instruction, each decomposition only generates a state machine,  each of which,
- should be able to be mapped to an Available Task Type, if it can not be mapped, it means that there is a coarse 
- strength of the state, the state is expressed as the name of the sub-state machine, for the next decomposition 
+Based on the instruction, design a state machine.If no state machine already exists, create the root state machine, 
+otherwise update a specified state machine, or create a child state machine for the specified state,in the state machine, 
+ each state should be able to be mapped to an Available Task Type, if it can not be mapped, it means that there is a 
+ coarse strength of the state, the state is expressed as the name of the sub-state machine, for the next decomposition 
  Preparing for sub-state machines!
  Output json following the format:
     ```json
@@ -57,7 +57,7 @@ decompose the state according to the instruction, each decomposition only genera
     -The state flow has at least one 'end state' witch has only four properties:id、name、description、state_context_class_name
     -The key of the generated json root is the id of the state machine.
     -Generate only one state machine at a time based on the prompt
-    -If you want to generate a child state machine based on the state of a parent state machine, make sure that the key of the child state machine itself matches the state_def id of the parent state machine.
+    -If the prompt want to generate a child state machine based on the state of a parent state machine, make sure that the key of the child state machine itself matches the state_def id of the parent state machine,and the name of the child state machine itself matches the state_def name of the parent state machine.
     -If a state machine is not a child state machine,the inner_end_state_to_outer_event attribute should not exist, otherwise use it to map the end state of the child state machine to a legitimate event in the current state of the parent state machine.
     -When reprogramming the exist status definition associated with the exist status instance, you have to look carefully at the current and historical states, and can only modify the state of state_def_id that is not in the current and historical states,and don't make unnecessary changes. 
 """.format(status_definition_simple=status_definition_simple,

@@ -1,5 +1,6 @@
 {
-    "state_machine_id": {
+    "uuid_of_state_machine_id": {
+      "name": "state_machine_name",
       "description":"what you should do in this state machine, one short phrase or sentence",
       "states_def": [
         {

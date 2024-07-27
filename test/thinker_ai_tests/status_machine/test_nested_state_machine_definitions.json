@@ -1,5 +1,6 @@
 {
   "middle_start": {
+    "name": "middle_start",
     "description": "",
     "states_def": [
       {
@@ -36,6 +37,7 @@
     }
   },
   "outer_start": {
+    "name": "outer_start",
     "description": "",
     "states_def": [
       {
@@ -72,6 +74,7 @@
     }
   },
   "outer_sm": {
+    "name": "outer_sm",
     "description": "",
     "states_def": [
       {

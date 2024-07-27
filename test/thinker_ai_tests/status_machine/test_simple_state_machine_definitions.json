@@ -1,5 +1,6 @@
 {
   "test_state_machine": {
+    "name": "test_state_machine",
     "description": "",
     "states_def": [
       {

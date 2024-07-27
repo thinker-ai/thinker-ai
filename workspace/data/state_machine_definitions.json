@@ -58,7 +58,7 @@
         "name": "model_training",
         "is_start": false,
         "state_context_class_name": "titanic_survival_prediction.model_training.contexts.ModelTrainingContext",
-        "description": "Train the machine learning model",
+        "description": "Train the model",
         "task_type": "model train",
         "actions": [
           {
@@ -75,7 +75,7 @@
         "name": "model_evaluation",
         "is_start": false,
         "state_context_class_name": "titanic_survival_prediction.model_evaluation.contexts.ModelEvaluationContext",
-        "description": "Evaluate the trained model",
+        "description": "Evaluate the model",
         "task_type": "model evaluate",
         "actions": [
           {

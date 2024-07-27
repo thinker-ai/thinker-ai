@@ -32,6 +32,16 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
         with open(self.file_path, 'w') as file:
             json.dump(self.instances, file, indent=2)
 
+    def save_json_text(self, json_text):
+        instances: dict = json.loads(json_text)
+        id, instance = list(instances.items())[0]
+        self.save_json(id, instance)
+
+    def save_json(self, id: str, instance: dict):
+        self.instances[id] = instance
+        with open(self.file_path, 'w') as file:
+            json.dump(self.instances, file, indent=2)
+
     def load(self, id: str) -> StateMachine:
         if id not in self.instances:
             raise ValueError(f"StateMachine instance with id '{id}' not found")
