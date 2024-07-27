@@ -389,19 +389,33 @@ class ActionFactory:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
         return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)
 
-#
-# def get_state_execute_order(state_machine_def:StateMachineDefinition,sorted_states_def:SortedSet=None)->SortedList[BaseStateDefinition]:
-#     if not sorted_states_def:
-#         sorted_states_def=SortedList()
-#     current_state_def_name = state_machine_def.name+"."+state_machine_def.get_start_state_def().name
-#     sorted_states_def.add(current_state_def_name)
-#     transitions = state_machine_def.transitions
-#     for transition in transitions:
-#         if (state_machine_def.name+"."+transition.source.name==current_state_def_name
-#                 and state_machine_def.name+"."+transition.target.name not in sorted_states_def):
-#             current_state_def_name=state_machine_def.name+"."+transition.target.name
-#             sorted_states_def.add(current_state_def_name)
-#         else:
-#
-#     return sorted_states_def
 
+def get_state_execute_order(state_machine_def: StateMachineDefinition, sorted_states_def: Optional[List[str]] = None) -> List[str]:
+    if sorted_states_def is None:
+        sorted_states_def = []
+
+    visited = set()
+    stack = []
+
+    def visit(state: BaseStateDefinition, current_state_machine_def: StateMachineDefinition):
+        state_id_str = f"{current_state_machine_def.id}.{state.id}"
+        if state_id_str in visited:
+            return
+        stack.append(state_id_str)
+        visited.add(state_id_str)
+        for transition in current_state_machine_def.transitions:
+            if transition.source == state:
+                visit(transition.target, current_state_machine_def)
+
+        # Process sub-state machine if any
+        if isinstance(state, StateDefinition) and state.inner_state_machine_definition:
+            sub_state_machine = state.inner_state_machine_definition
+            get_state_execute_order(sub_state_machine, sorted_states_def)
+
+    start_state = state_machine_def.get_start_state_def()
+    if start_state:
+        visit(start_state, state_machine_def)
+
+    sorted_states_def.extend(stack)  # Reverse the stack to get the correct order
+
+    return sorted_states_def
