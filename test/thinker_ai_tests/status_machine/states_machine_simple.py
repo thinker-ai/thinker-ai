@@ -23,6 +23,7 @@ class TestSimpleStateMachine(unittest.TestCase):
 
     def tearDown(self):
         self.state_machine = None
+        self.state_machine = None
 
     def test_simple_state_machine(self):
         # Transition to middle state

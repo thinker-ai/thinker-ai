@@ -1,10 +1,10 @@
 {
   "simple_instance": {
     "id": "simple_instance",
-    "state_machine_def_id": "test_state_machine",
+    "state_machine_def_name": "test_state_machine",
     "current_state_context": {
       "id": "state_start_context",
-      "state_def_id": "state_start"
+      "state_def_name": "start"
     },
     "history": []
   }

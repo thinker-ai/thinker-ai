@@ -5,21 +5,21 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "state_def_id": { "type": "string" }
+        "state_def_name": { "type": "string" }
       },
-      "required": ["id", "state_def_id"]
+      "required": ["id", "state_def_name"]
     },
     "StateMachineContext": {
       "type": "object",
       "properties": {
-        "state_machine_def_id": { "type": "string" },
+        "state_machine_def_name": { "type": "string" },
         "current_state_context": { "$ref": "#/definitions/StateContext" },
         "history": {
           "type": "array",
           "items": { "$ref": "#/definitions/StateContext" }
         }
       },
-      "required": ["state_machine_def_id", "current_state_context", "history"]
+      "required": ["state_machine_def_name", "current_state_context", "history"]
     }
   },
   "type": "object",

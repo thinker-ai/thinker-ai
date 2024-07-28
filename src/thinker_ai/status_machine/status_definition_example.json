@@ -1,10 +1,9 @@
 {
-    "uuid_of_state_machine_id": {
-      "name": "state_machine_name",
+    "state_machine_definition_name": {
+      "is_root":true,
       "description":"what you should do in this state machine, one short phrase or sentence",
       "states_def": [
         {
-          "id": "uuid_of_state_id",
           "name": "start_state_name",
           "is_start":true,
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends StateContex or CompositeStateContext class",
@@ -19,7 +18,6 @@
           "events": ["start_command_handled_event_name"]
         },
         {
-          "id": "uuid_of_state_id",
           "name": "middle_state_name",
           "is_start":false,
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends StateContex or CompositeStateContext class",
@@ -34,13 +32,11 @@
           "events": ["middle_command_handled_event_name_1","middle_command_handled_event_name_2"]
         },
         {
-          "id": "uuid_of_state_id_1",
           "name": "end_state_name_1",
           "description":"description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends BaseStateContext class"
         },
         {
-          "id": "uuid_of_state_id_2",
           "name": "end_state_name_2",
           "description":"description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends BaseStateContext class"

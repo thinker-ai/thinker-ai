@@ -12,7 +12,6 @@ from thinker_ai.agent.actions import Action
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
-from thinker_ai.status_machine.state_machine import next_state_machine_to_create
 from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
@@ -130,8 +129,8 @@ class TaskTree(Task):
     async def update_plan(self) -> bool:
         try:
             rsp_plan = await WritePlan().run(self)
-            exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             success, error = precheck_update_plan_from_rsp(rsp_plan, self)
+            exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
                 error_msg = f"The generated plan is not valid with error: {error}, try regenerating, remember to generate either the whole plan or the single changed task only"
                 logger.error(error_msg)
@@ -356,8 +355,35 @@ class TaskTree(Task):
             exec_logger.add(Message(content=data_info, role="user", cause_by=CheckData))
 
 
-def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
+def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
+    state_machine_defs = definition_repo.load(task_tree.name)
     rsp = json.loads(rsp)
+    tasks = [Task(**task_config) for task_config in rsp]
+
+    if len(tasks) == 1 or tasks[0].dependent_task_ids:
+        if tasks[0].dependent_task_ids and len(tasks) > 1:
+            # tasks[0].dependent_task_ids means the generated tasks are not a complete plan
+            # for they depend on tasks in the current plan, in this case, we only support updating one task each time
+            logger.warning(
+                "Current plan will take only the first generated task if the generated tasks are not a complete plan"
+            )
+        # handle a single task
+        if task_tree.has_task_id(tasks[0].id):
+            # replace an existing task
+            task_tree.replace_task(tasks[0])
+        else:
+            # append one task
+            task_tree.append_task(tasks[0])
+
+    else:
+        # add tasks in general
+        task_tree.add_tasks(tasks)
+
+
+def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
+    definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path / "temp"),
+                                                                config.state_machine.definition)
+    state_machine_definition = definition_repo.build(rsp)
     tasks = [Task(**task_config) for task_config in rsp]
 
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
@@ -383,7 +409,7 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
     temp_tree = deepcopy(task_tree)
     try:
-        update_plan_from_rsp(rsp, temp_tree)
+        update_state_flow_plan_from_rsp(rsp, temp_tree)
         return True, ""
     except Exception as e:
         return False, str(e)
@@ -400,8 +426,8 @@ class WritePlan(Action):
         instance_repo = FileBasedStateMachineContextRepository(str(config.workspace.path / "data"),
                                                                config.state_machine.instance, definition_repo)
         PROMPT_TEMPLATE: str = """
-        # Name:
-        {name}
+        #The Name Of State Machine To Be Created Or Updated is:
+        {next_to_write}
         # Instruction:
         {instruction}
         # Context:
@@ -409,37 +435,31 @@ class WritePlan(Action):
         # Available Task Types:
         {task_type_desc}
         # Guidance:
-        the exist status definition is
+        the exist state machine definitions are:
         ```json
          {exist_status_definition}
         ```
-        the exist status instance is
+        the exist state machine instances are:
         ```json
          {exist_status_instance}
         ```
-        the next to be created or updated state machine's name is {next_plan_to_write}
         {guidance}
         """
-        state_machine_defs = definition_repo.load(task_tree.name)
-        next_plan_to_write=task_tree.name
-        if state_machine_defs:
-            ids = definition_repo.get_state_machine_ids()
-            next_plan_to_write=next_state_machine_to_create(state_machine_defs,ids)
+        next_to_write,states_def = definition_repo.next_state_machine_to_create()
+        if not next_to_write:
+            next_to_write=task_tree.name
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
-            name=task_tree.name,
-            instruction=task_tree.instruction,
+            next_to_write=next_to_write,
+            instruction=states_def.description,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
-            parent_id=task_tree.id,
             task_type_desc=task_type_desc,
             exist_status_definition=replace_curly_braces(definition_repo.load_json_text()),
             exist_status_instance=replace_curly_braces(instance_repo.get_json_text()),
-            guidance=task_tree.type.guidance,
-            next_plan_to_write=next_plan_to_write
+            guidance=states_def.task_type.guidance
         )
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)
-        definition_repo.save_json_text(rsp)
         return rsp
 
 

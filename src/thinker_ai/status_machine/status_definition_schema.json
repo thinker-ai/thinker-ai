@@ -13,7 +13,6 @@
     "StateDefinition": {
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "name": { "type": "string" },
         "is_start":{ "type": "boolean" },
         "state_context_class_name": { "type": "string" },
@@ -33,12 +32,11 @@
     "BaseStateDefinition": {
       "type": "object",
       "properties": {
-        "id": { "type": "string" },
         "name": { "type": "string" },
         "description": { "type": "string" },
         "state_context_class_name": { "type": "string" }
       },
-      "required": ["id", "name", "description","state_context_class_name"]
+      "required": ["name", "description","state_context_class_name"]
     },
     "State_Definition": {
       "oneOf": [
@@ -58,6 +56,7 @@
     "StateMachineDefinition": {
       "type": "object",
       "properties": {
+        "is_root": { "type": "boolean" },
         "description": { "type": "string" },
         "states_def": {
           "type": "array",

@@ -1,10 +1,12 @@
 import json
 import os
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional, List, Tuple
 
 from thinker_ai.status_machine.task_desc import TaskType
-from thinker_ai.status_machine.state_machine import (ActionFactory, StateDefinition, Transition, StateMachineDefinition,
-                                                     StateMachineDefinitionRepository, BaseStateDefinition)
+from thinker_ai.status_machine.state_machine import (StateMachineDefinition,
+                                                     StateMachineDefinitionRepository,
+                                                     StateMachineDefinitionBuilder, BaseStateDefinition,
+                                                     StateDefinition)
 
 
 class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
@@ -25,108 +27,68 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
     def load_json_text(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)
 
-    def save_json_text(self, json_text):
-        definitions: dict = json.loads(json_text)
-        id, definition = list(definitions.items())[0]
-        self.save_json(id, definition)
+    def build(self, json_text) -> StateMachineDefinition:
+        return StateMachineDefinitionBuilder.from_json(json_text, self.get_state_machine_names())
 
-    def save(self, definition: StateMachineDefinition):
-        self.definitions[definition.id] = self._definition_to_dict(definition)
+    def save(self, state_machine_def: StateMachineDefinition):
+        self.definitions[state_machine_def.name] = StateMachineDefinitionBuilder.state_machine_def_to_dict(
+            state_machine_def)
         with open(self.file_path, 'w', encoding='utf-8') as file:
             json.dump(self.definitions, file, indent=2, ensure_ascii=False)
 
-    def save_json(self, id: str, definition: dict):
-        self.definitions[id] = definition
-        with open(self.file_path, 'w', encoding='utf-8') as file:
-            json.dump(self.definitions, file, indent=2, ensure_ascii=False)
+    def get_state_machine_names(self) -> Set:
+        return set(self.definitions.keys())
 
-    def get_state_machine_ids(self):
-            return self.definitions.keys()
-    def load(self, id: str) -> StateMachineDefinition:
-        data = self.definitions.get(id)
+    def load(self, name: str) -> StateMachineDefinition:
+        data = self.definitions.get(name)
         if data:
-            return self._definition_from_dict(id, data)
+            return StateMachineDefinitionBuilder.state_machine_def_from_dict(name, data, self.get_state_machine_names())
 
-    def _definition_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachineDefinition:
-        states = {self._state_from_dict(sd) for sd in data["states_def"]}
-        transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
-        return StateMachineDefinition(
-            id=id,
-            name=data["name"],
-            states_def=states,
-            transitions=transitions,
-            inner_end_state_to_outer_event=data.get("inner_end_state_to_outer_event")
-        )
+    def get_state_execute_order(self, state_machine_name: str,
+                                sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
+            -> List[Tuple[str, BaseStateDefinition]]:
+        if sorted_state_defs is None:
+            sorted_state_defs = []
 
-    @staticmethod
-    def _definition_to_dict(definition: StateMachineDefinition) -> Dict[str, Any]:
-        result = {
-            "id": definition.id,
-            "name":definition.name,
-            "states_def": [FileBasedStateMachineDefinitionRepository._state_definition_to_dict(sd) for sd in
-                           definition.states_def],
-            "transitions": [FileBasedStateMachineDefinitionRepository._transition_to_dict(t) for t in
-                            definition.transitions],
-        }
-        if definition.inner_end_state_to_outer_event:
-            result["inner_end_state_to_outer_event"] = definition.inner_end_state_to_outer_event
-        return result
+        visited: Set[str] = set()
+        stack: List[Tuple[str, BaseStateDefinition]] = []
+        state_machine_def = self.load(state_machine_name)
+        if not state_machine_def:
+            return sorted_state_defs
 
-    @staticmethod
-    def _state_definition_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
-        if isinstance(state_def, StateDefinition):
-            actions = [{a.on_command: a.get_full_class_name()} for a in state_def.actions]
-            return {
-                "id": state_def.id,
-                "name": state_def.name,
-                "description": state_def.description,
-                "state_context_class_name": state_def.state_context_class_name,
-                "task_type": state_def.task_type.name,
-                "actions": actions,
-                "events": list(state_def.events),
-                "is_start": state_def.is_start
-            }
-            # state_def包含的inner_state_machine_definition信息处于它的下级state_dict中，所以不设置到本级的state_dict中
-            # if isinstance(state_def, CompositeStateDefinition):
-            #     state_dict["inner_state_machine_definition"] = state_def.inner_state_machine_definition.id
-        elif isinstance(state_def, BaseStateDefinition):
-            return {
-                "id": state_def.id,
-                "name": state_def.name,
-                "description": state_def.description,
-                "state_context_class_name": state_def.state_context_class_name
-            }
+        def visit(state: BaseStateDefinition):
+            state_def_name = f"{state_machine_def.name}.{state.name}"
+            if state_def_name in visited:
+                return
+            stack.append((state_def_name, state))
+            visited.add(state_def_name)
+            for transition in state_machine_def.transitions:
+                if transition.source.name == state.name:
+                    visit(transition.target)
 
-    @staticmethod
-    def _transition_to_dict(transition: Transition) -> Dict[str, str]:
-        return {
-            "event": transition.event,
-            "source": transition.source.id,
-            "target": transition.target.id
-        }
+            # Process sub-state machine if any
+            if isinstance(state, StateDefinition) and state.is_composite:
+                self.get_state_execute_order(state.name, sorted_state_defs)
 
-    def _state_from_dict(self, data: Dict[str, Any]) -> BaseStateDefinition:
-        if data.get("actions"):
-            return StateDefinition(
-                id=data["id"],
-                name=data["name"],
-                state_context_class_name=data["state_context_class_name"],
-                description=data.get("description", ""),
-                task_type=TaskType.get_type(data.get("task_type", "")),
-                actions={ActionFactory.create_action(a) for a in data["actions"]},
-                result_events=set(data["events"]),
-                inner_state_machine_definition=self.load(data["id"]) if data["id"] in self.definitions else None,
-                is_start=data.get("is_start")
-            )
-        else:
-            return BaseStateDefinition(id=data["id"],
-                                       name=data["name"],
-                                       description=data.get("description", ""),
-                                       state_context_class_name=data.get("state_context_class_name")
-                                       )
+        start_state = state_machine_def.get_start_state_def()
+        if start_state:
+            visit(start_state)
 
-    @staticmethod
-    def _transition_from_dict(data: Dict[str, str], states: Set[BaseStateDefinition]) -> Transition:
-        source = next(sd for sd in states if sd.id == data["source"])
-        target = next(sd for sd in states if sd.id == data["target"])
-        return Transition(event=data["event"], source=source, target=target)
+        sorted_state_defs.extend(stack)  # Reverse the stack to get the correct order
+
+        return sorted_state_defs
+
+    def next_state_machine_to_create(self) -> tuple[str, StateDefinition]:
+        root_name = self.get_root_name()
+        if root_name:
+            sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = self.get_state_execute_order(root_name)
+            for name, states_def in sorted_states_defs:
+                if (name not in self.get_state_machine_names()
+                        and isinstance(states_def, StateDefinition)
+                        and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.name):
+                    return name, states_def
+
+    def get_root_name(self) -> str:
+        for definition in self.definitions.values():
+            if definition.get("is_root"):
+                return definition["name"]

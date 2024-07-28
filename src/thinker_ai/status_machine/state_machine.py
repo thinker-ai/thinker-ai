@@ -1,4 +1,5 @@
 import importlib
+import json
 import uuid
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
@@ -62,31 +63,25 @@ class CompositeAction(Action):
 
 
 class BaseStateDefinition:
-    def __init__(self, id: str,
+    def __init__(self,
                  name: str,
                  description: str,
                  state_context_class_name: str
                  ):
-        self.id = id
         self.name = name
         self.description = description
         self.state_context_class_name = state_context_class_name
 
 
 class StateDefinition(BaseStateDefinition):
-    def __init__(self, id: str, name: str, description: str, task_type: TaskTypeDef, state_context_class_name: str,
-                 actions: Set[Action], result_events: Set[str], is_start: bool = False,
-                 inner_state_machine_definition: "StateMachineDefinition" = None):
-        super().__init__(id, name, description, state_context_class_name)
+    def __init__(self, name: str, description: str, task_type: TaskTypeDef, state_context_class_name: str,
+                 actions: Set[Action], result_events: Set[str], is_start: bool = False, is_composite: bool = False):
+        super().__init__(name, description, state_context_class_name)
         self.task_type = task_type
         self.is_start = is_start
         self.events: Set[str] = result_events
         self.actions: Set[Action] = actions
-        self.inner_state_machine_definition = inner_state_machine_definition
-
-    def to_outer_event(self, inner_event: Event, state_context: "StateContext") -> Optional[Event]:
-        if self.inner_state_machine_definition not in self.events:
-            return self.inner_state_machine_definition.to_outer_event(inner_event, state_context)
+        self.is_composite = is_composite
 
 
 class BaseStateContext:
@@ -156,13 +151,14 @@ class Transition:
 
 
 class StateMachineDefinition:
-    def __init__(self, id: str,
+    def __init__(self,
                  name: str,
                  states_def: Set[BaseStateDefinition],
                  transitions: Set[Transition],
+                 is_root: bool = False,
                  inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
-        self.id = id
         self.name = name
+        self.is_root = is_root
         self.states_def: Set[BaseStateDefinition] = states_def
         self.transitions: Set[Transition] = transitions
         self.inner_end_state_to_outer_event = inner_end_state_to_outer_event if inner_end_state_to_outer_event is not None else {}
@@ -196,16 +192,137 @@ class StateMachineDefinition:
 
 class StateMachineDefinitionRepository(ABC):
     @abstractmethod
-    def load(self, id: str) -> StateMachineDefinition:
+    def load(self,name: str) -> StateMachineDefinition:
         raise NotImplementedError
 
     @abstractmethod
     def save(self, definition: StateMachineDefinition):
         raise NotImplementedError
 
-    @abstractmethod
-    def save_json(self, id: str, definition: dict):
-        raise NotImplementedError
+
+class StateMachineDefinitionBuilder:
+    @staticmethod
+    def from_json(json_text: str, exist_state_machine_names: Set) -> StateMachineDefinition:
+        data = json.loads(json_text)
+        name, new_data = next(iter(data.items()))
+        return StateMachineDefinitionBuilder.state_machine_def_from_dict(name, new_data, exist_state_machine_names)
+
+    @staticmethod
+    def to_json(state_machine_def: StateMachineDefinition) -> str:
+        data = {state_machine_def.name: StateMachineDefinitionBuilder.state_machine_def_to_dict(state_machine_def)}
+        return json.dumps(data, indent=2, ensure_ascii=False)
+
+    @staticmethod
+    def state_machine_def_from_dict(name: str, data: Dict[str, Any],
+                                    exist_state_machine_names: Set) -> StateMachineDefinition:
+        states = {StateMachineDefinitionBuilder._state_from_dict(data=sd,
+                                                                 state_machine_name=name,
+                                                                 exist_state_machine_names=exist_state_machine_names)
+                  for sd in data["states_def"]}
+        transitions = {StateMachineDefinitionBuilder._transition_from_dict(t, states) for t in data["transitions"]}
+        is_root = True if data.get("is_root") else False
+        return StateMachineDefinition(
+            name=name,
+            is_root=is_root,
+            states_def=states,
+            transitions=transitions,
+            inner_end_state_to_outer_event=data.get("inner_end_state_to_outer_event") if not is_root else None
+        )
+
+    @staticmethod
+    def state_machine_def_to_dict(state_machine_def: StateMachineDefinition) -> Dict[str, Any]:
+        result = {
+            "is_root": state_machine_def.is_root,
+            "states_def": [StateMachineDefinitionBuilder._state_definition_to_dict(sd) for sd in
+                           state_machine_def.states_def],
+            "transitions": [StateMachineDefinitionBuilder._transition_to_dict(t) for t in
+                            state_machine_def.transitions],
+        }
+        if not state_machine_def.is_root and state_machine_def.inner_end_state_to_outer_event:
+            result["inner_end_state_to_outer_event"] = state_machine_def.inner_end_state_to_outer_event
+        return result
+
+    @staticmethod
+    def _state_definition_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
+        if isinstance(state_def, StateDefinition):
+            actions = [{a.on_command: a.get_full_class_name()} for a in state_def.actions]
+            return {
+                "name": state_def.name,
+                "description": state_def.description,
+                "state_context_class_name": state_def.state_context_class_name,
+                "task_type": state_def.task_type.name,
+                "actions": actions,
+                "events": list(state_def.events),
+                "is_start": state_def.is_start
+            }
+        elif isinstance(state_def, BaseStateDefinition):
+            return {
+                "name": state_def.name,
+                "description": state_def.description,
+                "state_context_class_name": state_def.state_context_class_name
+            }
+
+    @staticmethod
+    def _transition_to_dict(transition: Transition) -> Dict[str, str]:
+        return {
+            "event": transition.event,
+            "source": transition.source.name,
+            "target": transition.target.name
+        }
+
+    @staticmethod
+    def _state_from_dict(data: Dict[str, Any], state_machine_name: str,
+                         exist_state_machine_names: Set) -> BaseStateDefinition:
+        is_composite = StateMachineDefinitionBuilder.is_composite_state(parent_state_machine_name=state_machine_name,
+                                                                        state_name=data["name"],
+                                                                        exist_state_machine_names=exist_state_machine_names)
+        if data.get("actions"):
+            return StateDefinition(
+                name=data["name"],
+                state_context_class_name=data["state_context_class_name"],
+                description=data.get("description", ""),
+                task_type=TaskType.get_type(data.get("task_type", "")),
+                actions={ActionFactory.create_action(a) for a in data["actions"]},
+                result_events=set(data["events"]),
+                is_composite=is_composite,
+                is_start=data.get("is_start")
+            )
+        else:
+            return BaseStateDefinition(
+                name=data["name"],
+                description=data.get("description", ""),
+                state_context_class_name=data.get("state_context_class_name")
+            )
+
+    @staticmethod
+    def is_composite_state(parent_state_machine_name:str,state_name:str, exist_state_machine_names):
+        state_machine_name = state_name
+        if parent_state_machine_name:
+            state_machine_name = f"{parent_state_machine_name}.{state_name}"
+        return state_machine_name in exist_state_machine_names
+
+    @staticmethod
+    def _transition_from_dict(data: Dict[str, str], states: Set[BaseStateDefinition]) -> Transition:
+        source = None
+        target = None
+
+        # 查找 source
+        for sd in states:
+            if sd.name == data["source"]:
+                source = sd
+                break
+        if source is None:
+            raise ValueError(f"Source state {data['source']} not found")
+
+        # 查找 target
+        for sd in states:
+            if sd.name == data["target"]:
+                target = sd
+                break
+        if target is None:
+            raise ValueError(f"Target state {data['target']} not found")
+
+        return Transition(event=data["event"], source=source, target=target)
 
 
 class StateContextBuilder:
@@ -221,7 +338,7 @@ class StateContextBuilder:
             full_class_name = state_def.state_context_class_name
             if not full_class_name:
                 full_class_name = "thinker_ai.status_machine.state_machine.StateDefinition"
-            if state_def.inner_state_machine_definition:
+            if state_def.is_composite:
                 return CompositeStateContext.from_class_name(id=id,
                                                              full_class_name=full_class_name,
                                                              state_def=state_def,
@@ -244,7 +361,7 @@ class StateContextBuilder:
 
 class StateMachine:
     def __init__(self, id: str,
-                 state_machine_def_id: str,
+                 state_machine_def_name: str,
                  current_state_context: BaseStateContext,
                  state_context_builder: StateContextBuilder,
                  state_machine_repository: "StateMachineRepository",
@@ -252,7 +369,7 @@ class StateMachine:
                  history: Optional[List[BaseStateContext]] = None):
         self.id = id
         self.state_context_builder = state_context_builder
-        self.state_machine_def_id = state_machine_def_id
+        self.state_machine_def_name = state_machine_def_name
         self.current_state_context: BaseStateContext = current_state_context
         self.history: List[BaseStateContext] = history or []
         self.state_machine_repository: StateMachineRepository = state_machine_repository
@@ -282,7 +399,7 @@ class StateMachine:
             f"No transition from state '{self.current_state_context.state_def.name}' with event '{event.name}'")
 
     def get_state_machine_def(self) -> StateMachineDefinition:
-        return self.state_machine_definition_repository.load(self.state_machine_def_id)
+        return self.state_machine_definition_repository.load(self.state_machine_def_name)
 
     def last_state(self) -> Optional[StateContext]:
         return self.history[-1] if self.history else None
@@ -351,9 +468,9 @@ class CompositeStateContext(StateContext):
         my_state_machine = self.state_machine_repository.load(self.id)
         if not my_state_machine:
             state_machine_definition = self.state_machine_definition_repository.load(
-                self.get_state_def().id)
+                self.get_state_def().name)
             my_state_machine = StateMachine(id=self.id,
-                                            state_machine_def_id=self.get_state_def().id,
+                                            state_machine_def_name=self.get_state_def().name,
                                             current_state_context=self.state_context_builder.build(
                                                 state_machine_definition.get_start_state_def()),
                                             state_context_builder=self.state_context_builder,
@@ -390,43 +507,3 @@ class ActionFactory:
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_class_name}'")
         return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)
-
-
-def get_state_execute_order(state_machine_def: StateMachineDefinition,
-                            sorted_states_def: Optional[List[BaseStateDefinition]] = None) -> List[BaseStateDefinition]:
-    if sorted_states_def is None:
-        sorted_states_def = []
-
-    visited = set()
-    stack = []
-
-    def visit(state: BaseStateDefinition, current_state_machine_def: StateMachineDefinition):
-        if state.name in visited:
-            return
-        stack.append(state)
-        visited.add(state.name)
-        for transition in current_state_machine_def.transitions:
-            if transition.source == state:
-                visit(transition.target, current_state_machine_def)
-
-        # Process sub-state machine if any
-        if isinstance(state, StateDefinition) and state.inner_state_machine_definition:
-            sub_state_machine = state.inner_state_machine_definition
-            get_state_execute_order(sub_state_machine, sorted_states_def)
-
-    start_state = state_machine_def.get_start_state_def()
-    if start_state:
-        visit(start_state, state_machine_def)
-
-    sorted_states_def.extend(stack)  # Reverse the stack to get the correct order
-
-    return sorted_states_def
-
-
-def next_state_machine_to_create(root_def: StateMachineDefinition, old_state_machine_ids: Set) -> StateDefinition:
-    sorted_states_def = get_state_execute_order(root_def)
-    for states_def in sorted_states_def:
-        if (states_def.id not in old_state_machine_ids
-                and isinstance(states_def, StateDefinition)
-                and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.name):
-            return states_def

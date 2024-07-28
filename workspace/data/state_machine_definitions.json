@@ -1,6 +1,7 @@
 {
   "titanic_survival_state_machine": {
     "name": "titanic_survival",
+    "is_root": true,
     "description": "Predict passenger survival outcome on the Titanic dataset",
     "states_def": [
       {

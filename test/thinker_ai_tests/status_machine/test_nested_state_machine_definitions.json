@@ -1,10 +1,8 @@
 {
-  "middle_start": {
-    "name": "middle_start",
+  "outer_sm.outer_start.middle_start": {
     "description": "",
     "states_def": [
       {
-        "id": "inner_start",
         "name": "inner_start",
         "is_start":true,
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
@@ -19,7 +17,6 @@
         "events": ["inner_start_command_handled"]
       },
       {
-        "id": "inner_end",
         "name": "inner_end",
         "description": "what you should do in this state, one short phrase or sentence",
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
@@ -36,12 +33,10 @@
       "inner_end": "middle_start_command_handled"
     }
   },
-  "outer_start": {
-    "name": "outer_start",
+  "outer_sm.outer_start": {
     "description": "",
     "states_def": [
       {
-        "id": "middle_start",
         "name": "middle_start",
         "is_start":true,
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
@@ -56,7 +51,6 @@
         "events": ["middle_start_command_handled"]
       },
       {
-        "id": "middle_end",
         "name": "middle_end",
         "description": "what you should do in this state, one short phrase or sentence",
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
@@ -74,11 +68,10 @@
     }
   },
   "outer_sm": {
-    "name": "outer_sm",
+    "is_root": true,
     "description": "",
     "states_def": [
       {
-        "id": "outer_start",
         "name": "outer_start",
         "is_start":true,
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
@@ -93,7 +86,6 @@
         "events": ["outer_start_command_handled"]
       },
       {
-        "id": "outer_end",
         "name": "outer_end",
         "description": "what you should do in this state, one short phrase or sentence",
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"

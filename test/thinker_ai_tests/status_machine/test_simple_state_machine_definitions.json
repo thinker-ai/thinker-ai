@@ -1,10 +1,8 @@
 {
   "test_state_machine": {
-    "name": "test_state_machine",
     "description": "",
     "states_def": [
       {
-        "id": "state_start",
         "name": "start",
         "is_start":true,
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
@@ -19,7 +17,6 @@
         "events": ["start_command_handled"]
       },
       {
-        "id": "state_middle",
         "name": "middle",
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
         "description": "what you should do in this state, one short phrase or sentence",
@@ -33,7 +30,6 @@
         "events": ["middle_command_handled"]
       },
       {
-        "id": "state_end",
         "name": "end",
         "description": "what you should do in this state, one short phrase or sentence",
         "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
@@ -42,13 +38,13 @@
     "transitions": [
       {
         "event": "start_command_handled",
-        "source": "state_start",
-        "target": "state_middle"
+        "source": "start",
+        "target": "middle"
       },
       {
         "event": "middle_command_handled",
-        "source": "state_middle",
-        "target": "state_end"
+        "source": "middle",
+        "target": "end"
       }
     ]
   }
