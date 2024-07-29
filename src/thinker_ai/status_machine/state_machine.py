@@ -62,6 +62,12 @@ class CompositeAction(Action):
         raise NotImplementedError
 
 
+class ActionDescription:
+    def __init__(self, data: dict):
+        self.on_command = data["on_command"]
+        self.full_class_name = data["full_class_name"]
+
+
 class BaseStateDefinition:
     def __init__(self,
                  name: str,
@@ -75,12 +81,13 @@ class BaseStateDefinition:
 
 class StateDefinition(BaseStateDefinition):
     def __init__(self, name: str, description: str, task_type: TaskTypeDef, state_context_class_name: str,
-                 actions: Set[Action], result_events: Set[str], is_start: bool = False, is_composite: bool = False):
+                 actions_des: Set[ActionDescription], result_events: Set[str], is_start: bool = False,
+                 is_composite: bool = False):
         super().__init__(name, description, state_context_class_name)
         self.task_type = task_type
         self.is_start = is_start
         self.events: Set[str] = result_events
-        self.actions: Set[Action] = actions
+        self.actions_des: Set[ActionDescription] = actions_des
         self.is_composite = is_composite
 
 
@@ -119,9 +126,15 @@ class StateContext(BaseStateContext):
         self.state_def = value
 
     def get_action(self, on_command: str) -> Optional[Action]:
-        for action in self.get_state_def().actions:
-            if action.on_command == on_command:
-                return action
+        action_des = self.get_action_des(on_command)
+        if action_des:
+            return ActionFactory.create_action(action_des)
+        return None
+
+    def get_action_des(self, on_command: str) -> Optional[ActionDescription]:
+        for action_des in self.state_def.actions_des:
+            if action_des.on_command == on_command:
+                return action_des
         return None
 
     def assert_event(self, event: Event):
@@ -192,34 +205,44 @@ class StateMachineDefinition:
 
 class StateMachineDefinitionRepository(ABC):
     @abstractmethod
-    def load(self,name: str) -> StateMachineDefinition:
+    def get(self, name: str) -> StateMachineDefinition:
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, definition: StateMachineDefinition):
+    def set(self, name: str, definition: StateMachineDefinition):
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_file(self, base_dir: str, file_name: str):
         raise NotImplementedError
 
 
 class StateMachineDefinitionBuilder:
-    @staticmethod
-    def from_json(json_text: str, exist_state_machine_names: Set) -> StateMachineDefinition:
-        data = json.loads(json_text)
-        name, new_data = next(iter(data.items()))
-        return StateMachineDefinitionBuilder.state_machine_def_from_dict(name, new_data, exist_state_machine_names)
 
-    @staticmethod
-    def to_json(state_machine_def: StateMachineDefinition) -> str:
-        data = {state_machine_def.name: StateMachineDefinitionBuilder.state_machine_def_to_dict(state_machine_def)}
+    def root_from_dict(self, state_machine_defs: dict) -> StateMachineDefinition:
+        for name, state_machine_def in iter(state_machine_defs.items()):
+            if state_machine_def.get("is_root"):
+                return self.state_machine_def_from_dict(name, state_machine_def, set(state_machine_defs.keys()))
+
+    def root_from_json(self, json_data: str) -> StateMachineDefinition:
+        data = json.loads(json_data)
+        return self.root_from_dict(data)
+
+    def root_to_dict(self, root_state_machine_def: StateMachineDefinition) -> dict:
+        if root_state_machine_def.is_root:
+            return {root_state_machine_def.name: self.state_machine_def_to_dict(root_state_machine_def)}
+
+    def root_to_json(self, root_state_machine_def: StateMachineDefinition) -> str:
+        data = self.root_to_dict(root_state_machine_def)
         return json.dumps(data, indent=2, ensure_ascii=False)
 
-    @staticmethod
-    def state_machine_def_from_dict(name: str, data: Dict[str, Any],
+    def state_machine_def_from_dict(self, name: str, data: Dict[str, Any],
                                     exist_state_machine_names: Set) -> StateMachineDefinition:
-        states = {StateMachineDefinitionBuilder._state_from_dict(data=sd,
-                                                                 state_machine_name=name,
-                                                                 exist_state_machine_names=exist_state_machine_names)
+        states = {self._state_def_from_dict(data=sd,
+                                            state_machine_name=name,
+                                            exist_state_machine_names=exist_state_machine_names)
                   for sd in data["states_def"]}
-        transitions = {StateMachineDefinitionBuilder._transition_from_dict(t, states) for t in data["transitions"]}
+        transitions = {self._transition_from_dict(t, states) for t in data["transitions"]}
         is_root = True if data.get("is_root") else False
         return StateMachineDefinition(
             name=name,
@@ -229,13 +252,12 @@ class StateMachineDefinitionBuilder:
             inner_end_state_to_outer_event=data.get("inner_end_state_to_outer_event") if not is_root else None
         )
 
-    @staticmethod
-    def state_machine_def_to_dict(state_machine_def: StateMachineDefinition) -> Dict[str, Any]:
+    def state_machine_def_to_dict(self, state_machine_def: StateMachineDefinition) -> Dict[str, Any]:
         result = {
             "is_root": state_machine_def.is_root,
-            "states_def": [StateMachineDefinitionBuilder._state_definition_to_dict(sd) for sd in
+            "states_def": [self._state_def_to_dict(sd) for sd in
                            state_machine_def.states_def],
-            "transitions": [StateMachineDefinitionBuilder._transition_to_dict(t) for t in
+            "transitions": [self._transition_to_dict(t) for t in
                             state_machine_def.transitions],
         }
         if not state_machine_def.is_root and state_machine_def.inner_end_state_to_outer_event:
@@ -243,15 +265,15 @@ class StateMachineDefinitionBuilder:
         return result
 
     @staticmethod
-    def _state_definition_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
+    def _state_def_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
-            actions = [{a.on_command: a.get_full_class_name()} for a in state_def.actions]
+            actions_des = [{a.on_command: a.full_class_name} for a in state_def.actions_des]
             return {
                 "name": state_def.name,
                 "description": state_def.description,
                 "state_context_class_name": state_def.state_context_class_name,
                 "task_type": state_def.task_type.name,
-                "actions": actions,
+                "actions": actions_des,
                 "events": list(state_def.events),
                 "is_start": state_def.is_start
             }
@@ -262,27 +284,18 @@ class StateMachineDefinitionBuilder:
                 "state_context_class_name": state_def.state_context_class_name
             }
 
-    @staticmethod
-    def _transition_to_dict(transition: Transition) -> Dict[str, str]:
-        return {
-            "event": transition.event,
-            "source": transition.source.name,
-            "target": transition.target.name
-        }
-
-    @staticmethod
-    def _state_from_dict(data: Dict[str, Any], state_machine_name: str,
-                         exist_state_machine_names: Set) -> BaseStateDefinition:
-        is_composite = StateMachineDefinitionBuilder.is_composite_state(parent_state_machine_name=state_machine_name,
-                                                                        state_name=data["name"],
-                                                                        exist_state_machine_names=exist_state_machine_names)
+    def _state_def_from_dict(self, data: Dict[str, Any], state_machine_name: str,
+                             exist_state_machine_names: Set) -> BaseStateDefinition:
+        is_composite = self.is_composite_state(parent_state_machine_name=state_machine_name,
+                                               state_name=data["name"],
+                                               exist_state_machine_names=exist_state_machine_names)
         if data.get("actions"):
             return StateDefinition(
                 name=data["name"],
                 state_context_class_name=data["state_context_class_name"],
                 description=data.get("description", ""),
                 task_type=TaskType.get_type(data.get("task_type", "")),
-                actions={ActionFactory.create_action(a) for a in data["actions"]},
+                actions_des={ActionDescription(a) for a in data["actions"]},
                 result_events=set(data["events"]),
                 is_composite=is_composite,
                 is_start=data.get("is_start")
@@ -295,11 +308,19 @@ class StateMachineDefinitionBuilder:
             )
 
     @staticmethod
-    def is_composite_state(parent_state_machine_name:str,state_name:str, exist_state_machine_names):
+    def is_composite_state(parent_state_machine_name: str, state_name: str, exist_state_machine_names):
         state_machine_name = state_name
         if parent_state_machine_name:
             state_machine_name = f"{parent_state_machine_name}.{state_name}"
         return state_machine_name in exist_state_machine_names
+
+    @classmethod
+    def _transition_to_dict(self, transition: Transition) -> Dict[str, str]:
+        return {
+            "event": transition.event,
+            "source": transition.source.name,
+            "target": transition.target.name
+        }
 
     @staticmethod
     def _transition_from_dict(data: Dict[str, str], states: Set[BaseStateDefinition]) -> Transition:
@@ -393,13 +414,13 @@ class StateMachine:
             if transition.event == event.name and transition.source.name == self.current_state_context.state_def.name:
                 self.history.append(self.current_state_context)
                 self.current_state_context = self.get_state_context(transition.target)
-                self.state_machine_repository.save(self)
+                self.state_machine_repository.set(self.id, self)
                 return
         raise ValueError(
             f"No transition from state '{self.current_state_context.state_def.name}' with event '{event.name}'")
 
     def get_state_machine_def(self) -> StateMachineDefinition:
-        return self.state_machine_definition_repository.load(self.state_machine_def_name)
+        return self.state_machine_definition_repository.get(self.state_machine_def_name)
 
     def last_state(self) -> Optional[StateContext]:
         return self.history[-1] if self.history else None
@@ -418,15 +439,15 @@ class StateMachine:
 
 class StateMachineRepository(ABC):
     @abstractmethod
-    def load(self, id: str) -> StateMachine:
+    def get(self, id: str) -> StateMachine:
         raise NotImplementedError
 
     @abstractmethod
-    def save(self, state_machine_context: StateMachine):
+    def set(self, id: str, state_machine_context: StateMachine):
         raise NotImplementedError
 
     @abstractmethod
-    def save_json(self, id: str, instance: dict):
+    def to_file(self, base_dir: str, file_name: str):
         raise NotImplementedError
 
 
@@ -464,10 +485,17 @@ class CompositeStateContext(StateContext):
     def set_state_def(self, value: StateDefinition):
         self.state_def = value
 
+    def get_action(self, on_command: str) -> Optional[CompositeAction]:
+        action = super().get_action(on_command)
+        if isinstance(action, CompositeAction):
+            return action
+        else:
+            raise TypeError("action not a CompositeAction")
+
     def get_state_machine(self) -> StateMachine:
-        my_state_machine = self.state_machine_repository.load(self.id)
+        my_state_machine = self.state_machine_repository.get(self.id)
         if not my_state_machine:
-            state_machine_definition = self.state_machine_definition_repository.load(
+            state_machine_definition = self.state_machine_definition_repository.get(
                 self.get_state_def().name)
             my_state_machine = StateMachine(id=self.id,
                                             state_machine_def_name=self.get_state_def().name,
@@ -478,14 +506,8 @@ class CompositeStateContext(StateContext):
                                             state_machine_definition_repository=self.state_machine_definition_repository,
                                             history=[]
                                             )
-            self.state_machine_repository.save(my_state_machine)
+            self.state_machine_repository.set(my_state_machine.id, my_state_machine)
         return my_state_machine
-
-    def get_action(self, on_command: str) -> Optional[CompositeAction]:
-        for action in self.state_def.actions:
-            if action.on_command == on_command and isinstance(action, CompositeAction):
-                return action
-        return None
 
     def to_outer_event(self, inner_event: Event) -> Optional[Event]:
         if inner_event:
@@ -500,10 +522,8 @@ class ActionFactory:
         cls._registry[action_class_name] = action_cls
 
     @classmethod
-    def create_action(cls, action) -> Optional[Action]:
-        on_command = action["on_command"]
-        action_class_name = action["full_class_name"]
-        action_cls: Action = cls._registry.get(action_class_name)
+    def create_action(cls, action_des: ActionDescription) -> Optional[Action]:
+        action_cls: Action = cls._registry.get(action_des.full_class_name)
         if action_cls is None:
-            raise ValueError(f"No Action class registered for class '{action_class_name}'")
-        return action_cls.from_class_name(on_command=on_command, full_class_name=action_class_name)
+            raise ValueError(f"No Action class registered for class '{action_des.full_class_name}'")
+        return action_cls.from_class_name(on_command=action_des.on_command, full_class_name=action_des.full_class_name)

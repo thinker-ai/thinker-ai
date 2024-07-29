@@ -3,7 +3,7 @@ import unittest
 from typing import Tuple, List
 
 from thinker_ai.status_machine.state_machine import ActionFactory, BaseStateDefinition
-from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
+from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import InnerStartAction
 
 
@@ -11,7 +11,7 @@ class TestStateMachineDefinition(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.dirname(__file__)
         self.definitions_file_name = 'test_execute_order_state_machine_definitions.json'
-        self.definition_repo = FileBasedStateMachineDefinitionRepository(self.base_dir, self.definitions_file_name)
+        self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir, self.definitions_file_name)
         ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
 
     def test_double_layer_state_machine(self):

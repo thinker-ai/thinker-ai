@@ -7,47 +7,45 @@ from thinker_ai.status_machine.state_machine import StateMachine, StateMachineRe
 
 
 class FileBasedStateMachineContextRepository(StateMachineRepository):
-    def __init__(self, base_dir: str, file_name: str,
-                 state_machine_definition_repository: StateMachineDefinitionRepository):
-        self.base_dir = base_dir
-        self.file_path = os.path.join(base_dir, file_name)
+    def __init__(self, instances: dict, state_machine_definition_repository: StateMachineDefinitionRepository):
         self.state_machine_definition_repository = state_machine_definition_repository
         self.state_context_builder = StateContextBuilder(self, self.state_machine_definition_repository)
-        self.instances = self._load_instances()
+        self.instances = instances
 
-    def _load_instances(self) -> Dict[str, Any]:
-        if os.path.exists(self.file_path):
+    @classmethod
+    def from_file(cls, base_dir: str, file_name: str,
+                  state_machine_definition_repository: StateMachineDefinitionRepository) -> "FileBasedStateMachineContextRepository":
+        file_path = os.path.join(base_dir, file_name)
+        instances = {}
+        if os.path.exists(file_path):
             try:
-                with open(self.file_path, 'r') as file:
-                    return json.load(file)
+                with open(file_path, 'r') as file:
+                    instances = json.load(file)
             except Exception:
-                return {}
-        return {}
+                pass
+        return cls(instances, state_machine_definition_repository)
 
-    def get_json_text(self) -> str:
+    def to_file(self, base_dir: str, file_name: str):
+        file_path = os.path.join(base_dir, file_name)
+        with open(file_path, 'w') as file:
+            json.dump(self.instances, file, indent=2)
+
+    @classmethod
+    def form_json(cls, json_text,
+                  state_machine_definition_repository: StateMachineDefinitionRepository) -> "FileBasedStateMachineContextRepository":
+        instances: dict = json.loads(json_text)
+        return cls(instances, state_machine_definition_repository)
+
+    def to_json(self) -> str:
         return json.dumps(self.instances, indent=2, ensure_ascii=False)
 
-    def save(self, state_machine_context: StateMachine):
-        self.instances[state_machine_context.id] = self._state_machine_to_dict(state_machine_context)
-        with open(self.file_path, 'w') as file:
-            json.dump(self.instances, file, indent=2)
+    def set(self, id, state_machine_context: StateMachine):
+        self.instances[id] = self._state_machine_to_dict(state_machine_context)
 
-    def save_json_text(self, json_text):
-        instances: dict = json.loads(json_text)
-        id, instance = list(instances.items())[0]
-        self.save_json(id, instance)
-
-    def save_json(self, id: str, instance: dict):
-        self.instances[id] = instance
-        with open(self.file_path, 'w') as file:
-            json.dump(self.instances, file, indent=2)
-
-    def load(self, id: str) -> StateMachine:
-        if id not in self.instances:
-            raise ValueError(f"StateMachine instance with id '{id}' not found")
-
-        data = self.instances[id]
-        return self._state_machine_from_dict(id, data)
+    def get(self, id: str) -> StateMachine:
+        data = self.instances.get(id)
+        if data:
+            return self._state_machine_from_dict(id, data)
 
     @staticmethod
     def _state_machine_to_dict(state_machine: StateMachine) -> Dict[str, Any]:
@@ -71,7 +69,7 @@ class FileBasedStateMachineContextRepository(StateMachineRepository):
         }
 
     def _state_machine_from_dict(self, id: str, data: Dict[str, Any]) -> StateMachine:
-        state_machine_def = self.state_machine_definition_repository.load(data["state_machine_def_name"])
+        state_machine_def = self.state_machine_definition_repository.get(data["state_machine_def_name"])
 
         current_state_context = data["current_state_context"]
         current_state = next(

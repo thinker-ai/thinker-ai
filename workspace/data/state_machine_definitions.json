@@ -1,20 +1,18 @@
 {
-  "titanic_survival_state_machine": {
-    "name": "titanic_survival",
+  "titanic_survival": {
     "is_root": true,
-    "description": "Predict passenger survival outcome on the Titanic dataset",
+    "description": "Predict passenger survival outcome based on Titanic dataset",
     "states_def": [
       {
-        "id": "eda_state",
-        "name": "Exploratory Data Analysis",
+        "name": "data_analysis",
         "is_start": true,
-        "state_context_class_name": "titanic_survival.ExploratoryDataAnalysis.contexts.EDAStateContext",
+        "state_context_class_name": "titanic_survival.data_analysis.contexts.DataAnalysisContext",
         "description": "Perform exploratory data analysis on the Titanic dataset",
         "task_type": "eda",
         "actions": [
           {
             "on_command": "perform_eda",
-            "full_class_name": "titanic_survival.ExploratoryDataAnalysis.actions.PerformEDAAction"
+            "full_class_name": "titanic_survival.data_analysis.actions.PerformEDAAction"
           }
         ],
         "events": [
@@ -22,16 +20,15 @@
         ]
       },
       {
-        "id": "data_preprocessing_state",
-        "name": "Data Preprocessing",
+        "name": "data_preprocessing",
         "is_start": false,
-        "state_context_class_name": "titanic_survival.DataPreprocessing.contexts.DataPreprocessingStateContext",
+        "state_context_class_name": "titanic_survival.data_preprocessing.contexts.DataPreprocessingContext",
         "description": "Preprocess the Titanic dataset",
         "task_type": "data preprocessing",
         "actions": [
           {
             "on_command": "preprocess_data",
-            "full_class_name": "titanic_survival.DataPreprocessing.actions.PreprocessDataAction"
+            "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction"
           }
         ],
         "events": [
@@ -39,16 +36,15 @@
         ]
       },
       {
-        "id": "feature_engineering_state",
-        "name": "Feature Engineering",
+        "name": "feature_engineering",
         "is_start": false,
-        "state_context_class_name": "titanic_survival.FeatureEngineering.contexts.FeatureEngineeringStateContext",
+        "state_context_class_name": "titanic_survival.feature_engineering.contexts.FeatureEngineeringContext",
         "description": "Perform feature engineering on the Titanic dataset",
         "task_type": "feature engineering",
         "actions": [
           {
             "on_command": "engineer_features",
-            "full_class_name": "titanic_survival.FeatureEngineering.actions.EngineerFeaturesAction"
+            "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction"
           }
         ],
         "events": [
@@ -56,16 +52,15 @@
         ]
       },
       {
-        "id": "model_training_state",
-        "name": "Model Training",
+        "name": "model_training",
         "is_start": false,
-        "state_context_class_name": "titanic_survival.ModelTraining.contexts.ModelTrainingStateContext",
-        "description": "Train a model to predict survival on the Titanic dataset",
+        "state_context_class_name": "titanic_survival.model_training.contexts.ModelTrainingContext",
+        "description": "Train a model to predict survival outcome",
         "task_type": "model train",
         "actions": [
           {
             "on_command": "train_model",
-            "full_class_name": "titanic_survival.ModelTraining.actions.TrainModelAction"
+            "full_class_name": "titanic_survival.model_training.actions.TrainModelAction"
           }
         ],
         "events": [
@@ -73,16 +68,15 @@
         ]
       },
       {
-        "id": "model_evaluation_state",
-        "name": "Model Evaluation",
+        "name": "model_evaluation",
         "is_start": false,
-        "state_context_class_name": "titanic_survival.ModelEvaluation.contexts.ModelEvaluationStateContext",
+        "state_context_class_name": "titanic_survival.model_evaluation.contexts.ModelEvaluationContext",
         "description": "Evaluate the trained model on the evaluation dataset",
         "task_type": "model evaluate",
         "actions": [
           {
             "on_command": "evaluate_model",
-            "full_class_name": "titanic_survival.ModelEvaluation.actions.EvaluateModelAction"
+            "full_class_name": "titanic_survival.model_evaluation.actions.EvaluateModelAction"
           }
         ],
         "events": [
@@ -90,37 +84,36 @@
         ]
       },
       {
-        "id": "end_state",
-        "name": "End State",
-        "description": "End of the state machine",
-        "state_context_class_name": "titanic_survival.EndState.contexts.EndStateContext"
+        "name": "end_state",
+        "description": "End state of the state machine",
+        "state_context_class_name": "titanic_survival.end_state.contexts.EndStateContext"
       }
     ],
     "transitions": [
       {
         "event": "eda_completed",
-        "source": "Exploratory Data Analysis",
-        "target": "Data Preprocessing"
+        "source": "data_analysis",
+        "target": "data_preprocessing"
       },
       {
         "event": "data_preprocessing_completed",
-        "source": "Data Preprocessing",
-        "target": "Feature Engineering"
+        "source": "data_preprocessing",
+        "target": "feature_engineering"
       },
       {
         "event": "feature_engineering_completed",
-        "source": "Feature Engineering",
-        "target": "Model Training"
+        "source": "feature_engineering",
+        "target": "model_training"
       },
       {
         "event": "model_training_completed",
-        "source": "Model Training",
-        "target": "Model Evaluation"
+        "source": "model_training",
+        "target": "model_evaluation"
       },
       {
         "event": "model_evaluation_completed",
-        "source": "Model Evaluation",
-        "target": "End State"
+        "source": "model_evaluation",
+        "target": "end_state"
       }
     ]
   }

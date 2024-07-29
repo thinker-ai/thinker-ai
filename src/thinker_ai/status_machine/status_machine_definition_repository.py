@@ -9,50 +9,75 @@ from thinker_ai.status_machine.state_machine import (StateMachineDefinition,
                                                      StateDefinition)
 
 
-class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
-    def __init__(self, base_dir: str, file_name: str):
-        self.base_dir = base_dir
-        self.file_path = os.path.join(base_dir, file_name)
-        self.definitions = self._load_definitions()
+class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
+    state_machine_definition_builder = StateMachineDefinitionBuilder()
 
-    def _load_definitions(self) -> Dict[str, Any]:
-        if os.path.exists(self.file_path):
-            try:
-                with open(self.file_path, 'r') as file:
-                    return json.load(file)
-            except Exception:
-                return {}
-        return {}
+    def __init__(self, definitions: Dict[str, Any]):
+        self.definitions = definitions
 
-    def load_json_text(self) -> str:
+    @classmethod
+    def from_json(cls, json_text) -> "DefaultBasedStateMachineDefinitionRepository":
+        definitions = json.loads(json_text)
+        return cls(definitions)
+
+    def to_json(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)
 
-    def build(self, json_text) -> StateMachineDefinition:
-        return StateMachineDefinitionBuilder.from_json(json_text, self.get_state_machine_names())
+    @classmethod
+    def from_file(cls, base_dir: str, file_name: str) -> "DefaultBasedStateMachineDefinitionRepository":
+        file_path = os.path.join(base_dir, file_name)
+        definitions = {}
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r') as file:
+                    definitions = json.load(file)
+            except Exception:
+                pass
+        return cls(definitions)
 
-    def save(self, state_machine_def: StateMachineDefinition):
-        self.definitions[state_machine_def.name] = StateMachineDefinitionBuilder.state_machine_def_to_dict(
-            state_machine_def)
-        with open(self.file_path, 'w', encoding='utf-8') as file:
+    def to_file(self, base_dir: str, file_name: str):
+        file_path = os.path.join(base_dir, file_name)
+        with open(file_path, 'w', encoding='utf-8') as file:
             json.dump(self.definitions, file, indent=2, ensure_ascii=False)
+
+    def get_root(self) -> StateMachineDefinition:
+        return self.state_machine_definition_builder.root_from_dict(self.definitions)
+
+    def get_root_name(self) -> str:
+        for name, definition in self.definitions.items():
+            if definition.get("is_root"):
+                return name
 
     def get_state_machine_names(self) -> Set:
         return set(self.definitions.keys())
 
-    def load(self, name: str) -> StateMachineDefinition:
+    def get(self, name: str) -> StateMachineDefinition:
         data = self.definitions.get(name)
         if data:
-            return StateMachineDefinitionBuilder.state_machine_def_from_dict(name, data, self.get_state_machine_names())
+            return self.state_machine_definition_builder.state_machine_def_from_dict(name, data,
+                                                                                     self.get_state_machine_names())
+
+    def set(self, name: str, state_machine_def: StateMachineDefinition):
+        states_def = self.get_state_execute_order(self.get_root_name())
+        if not states_def:
+            state_machine_def.is_root = True
+            self.definitions[name] = self.state_machine_definition_builder.state_machine_def_to_dict(state_machine_def)
+        else:
+            for state_def_name, state_def in states_def:
+                if state_def_name == name and isinstance(state_def, StateDefinition):
+                    state_def.is_composite = True
+                    self.definitions[name] = self.state_machine_definition_builder.state_machine_def_to_dict(
+                        state_machine_def)
 
     def get_state_execute_order(self, state_machine_name: str,
                                 sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
             -> List[Tuple[str, BaseStateDefinition]]:
+        state_machine_def = self.get(state_machine_name)
         if sorted_state_defs is None:
             sorted_state_defs = []
-
         visited: Set[str] = set()
         stack: List[Tuple[str, BaseStateDefinition]] = []
-        state_machine_def = self.load(state_machine_name)
+
         if not state_machine_def:
             return sorted_state_defs
 
@@ -87,8 +112,3 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
                         and isinstance(states_def, StateDefinition)
                         and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
                     return name, states_def
-
-    def get_root_name(self) -> str:
-        for name, definition in self.definitions.items():
-            if definition.get("is_root"):
-                return name

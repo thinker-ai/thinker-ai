@@ -71,7 +71,7 @@ class TaskType(Enum):
 
     STATE_MACHINE_PLAN = TaskTypeDef(
         name="state machine plan",
-        desc="Create the root state machine plan, or update a specified state machine  plan, or create a child state machine plan for the specified state in the state machine plan",
+        desc="Generate state machines based on instructions",
         guidance=STATE_MACHINE_PLAN_PROMPT,
     )
 

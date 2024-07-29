@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import os
-from copy import deepcopy
-
 from overrides import overrides
 
 import json
@@ -13,7 +10,7 @@ from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, 
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
 from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
-from thinker_ai.status_machine.status_machine_definition_repository import FileBasedStateMachineDefinitionRepository
+from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \
     TaskResult
@@ -26,6 +23,10 @@ DATA_INFO: str = """
 Latest data info after previous tasks:
 {info}
 """
+definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
+                                                               config.state_machine.definition)
+instance_repo = FileBasedStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
+                                                       config.state_machine.instance, definition_repo)
 
 
 async def confirm_review(review: str) -> bool:
@@ -50,30 +51,31 @@ class TaskTree(Task):
         super().__init__(**kwargs)
         self.add_tasks(tasks)
 
-    async def execute_plan(self, plan_update_max_retry: Optional[int] = None,
+    async def plan_and_act(self, plan_update_max_retry: Optional[int] = None,
                            task_execute_max_retry: Optional[int] = None):
         if not tasks_storage.load(self.id):
-            tasks_storage.save(self)  #用于子任务的查询访问
-        plan_update_max_retry = plan_update_max_retry if plan_update_max_retry else self.plan_update_max_retry
-        plan_update_count = 0
-        while plan_update_count < plan_update_max_retry:
-            plan_update_count += 1
-            if not await self.update_plan():
-                continue
-            execute_plan_success = await self.execute_plan_once(task_execute_max_retry)
+            tasks_storage.save(self)
+        if await self.try_plan(plan_update_max_retry):
+            execute_plan_success = await self.try_act(task_execute_max_retry)
             if execute_plan_success:
                 self.task_result = await AskPlanResult().run(self)
-                return
             else:
-                logger.info("计划执行失败，更新计划")
+                logger.info("计划执行失败")
 
+    async def try_plan(self, max_retry) -> bool:
+        max_retry = max_retry if max_retry else self.plan_update_max_retry
+        plan_update_count = 0
+        while plan_update_count < max_retry:
+            plan_update_count += 1
+            if await self.update_plan():
+                return True
         logger.info("更新计划次数超限，任务失败")
-        self.task_result = await AskPlanResult().run(self)
+        return False
 
-    async def execute_plan_once(self, task_execute_max_retry: Optional[int] = None) -> bool:
-        task_execute_max_retry = task_execute_max_retry if task_execute_max_retry else self.task_execute_max_retry
+    async def try_act(self, max_retry: Optional[int] = None) -> bool:
+        max_retry = max_retry if max_retry else self.task_execute_max_retry
         current_task_retry_counter = 0
-        while self.current_task and current_task_retry_counter < task_execute_max_retry:
+        while self.current_task and current_task_retry_counter < max_retry:
             current_task_retry_counter += 1
             await self._check_data()
             await self.current_task.write_and_exec_code(first_trial=current_task_retry_counter == 1)
@@ -128,7 +130,7 @@ class TaskTree(Task):
 
     async def update_plan(self) -> bool:
         try:
-            rsp_plan = await WritePlan().run(self)
+            rsp_plan = await WritePlan().run(self.name, self.instruction)
             success, error = precheck_update_plan_from_rsp(rsp_plan, self)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
@@ -356,8 +358,6 @@ class TaskTree(Task):
 
 
 def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    state_machine_defs = definition_repo.load(task_tree.name)
-    rsp = json.loads(rsp)
     tasks = [Task(**task_config) for task_config in rsp]
 
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
@@ -381,9 +381,7 @@ def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path / "temp"),
-                                                                config.state_machine.definition)
-    state_machine_definition = definition_repo.build(rsp)
+    state_machine_def = definition_repo.from_json(rsp)
     tasks = [Task(**task_config) for task_config in rsp]
 
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
@@ -407,9 +405,9 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
-    temp_tree = deepcopy(task_tree)
     try:
-        update_state_flow_plan_from_rsp(rsp, temp_tree)
+        state_machine_defs = definition_repo.from_json(rsp)
+        state_execute_order=state_machine_defs.get_state_execute_order(task_tree.name)
         return True, ""
     except Exception as e:
         return False, str(e)
@@ -420,14 +418,19 @@ class WritePlan(Action):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    async def run(self, task_tree: TaskTree) -> str:
-        definition_repo = FileBasedStateMachineDefinitionRepository(str(config.workspace.path / "data"),
-                                                                    config.state_machine.definition)
-        instance_repo = FileBasedStateMachineContextRepository(str(config.workspace.path / "data"),
-                                                               config.state_machine.instance, definition_repo)
+    async def run(self, plan_name: str, instruction: str) -> str:
+        if not plan_name or not instruction:
+            raise Exception("plan_name and instruction must be provided")
+        create_or_update = "create"
+        state_machine_def = definition_repo.get(plan_name)
+        if state_machine_def:
+            create_or_update = "update"
+
         PROMPT_TEMPLATE: str = """
-        #The Name Of State Machine To Be Created Or Updated is:
-        {next_to_write}
+        #The Name Of State Machine:
+        {plan_name}
+        # Create Or Update
+         you will {create_or_update} this State Machine
         # Instruction:
         {instruction}
         # Context:
@@ -435,28 +438,27 @@ class WritePlan(Action):
         # Available Task Types:
         {task_type_desc}
         # Guidance:
-        the exist state machine definitions are:
+        the exist state machine definitions are here,they are related to the current state machine and are the context of the current state machine:
         ```json
          {exist_status_definition}
         ```
-        the exist state machine instances are:
+        the exist state machine instances are here,they are related to the current state machine and are the context of the current state machine:
         ```json
          {exist_status_instance}
         ```
         {guidance}
         """
-        next_to_write,states_def = definition_repo.next_state_machine_to_create()
-        if not next_to_write:
-            next_to_write=task_tree.name
+
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
-            next_to_write=next_to_write,
-            instruction=states_def.description,
+            plan_name=plan_name,
+            create_or_update=create_or_update,
+            instruction=instruction,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
             task_type_desc=task_type_desc,
-            exist_status_definition=replace_curly_braces(definition_repo.load_json_text()),
-            exist_status_instance=replace_curly_braces(instance_repo.get_json_text()),
-            guidance=states_def.task_type.guidance
+            exist_status_definition=replace_curly_braces(definition_repo.to_json()),
+            exist_status_instance=replace_curly_braces(instance_repo.to_json()),
+            guidance=TaskType.STATE_MACHINE_PLAN.value.guidance
         )
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)
