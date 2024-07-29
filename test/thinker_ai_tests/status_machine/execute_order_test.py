@@ -15,8 +15,7 @@ class TestStateMachineDefinition(unittest.TestCase):
         ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
 
     def test_double_layer_state_machine(self):
-        sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = self.definition_repo.get_state_execute_order(
-            "example_sm")
+        sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = self.definition_repo.get_state_execute_order("example_sm")
         sorted_states = []
         for name, _ in sorted_states_defs:
             sorted_states.append(name)
@@ -77,16 +76,19 @@ class TestStateMachineDefinition(unittest.TestCase):
             "example_sm.C"
         ]
         try:
-            self.assertEqual(sorted_states, expected_order_1)
+            self.assertEqual(expected_order_1,sorted_states)
         except Exception:
             try:
-                self.assertEqual(sorted_states, expected_order_2)
+                self.assertEqual(expected_order_2,sorted_states)
             except Exception:
                 try:
-                    self.assertEqual(sorted_states, expected_order_3)
+                    self.assertEqual(expected_order_3,sorted_states)
                 except Exception:
-                    self.assertEqual(sorted_states, expected_order_4)
+                    self.assertEqual(expected_order_4,sorted_states)
 
+    def test_get_next_state_machine_to_create(self):
+        name, _ = self.definition_repo.next_state_machine_to_create()
+        self.assertEqual(name, "example_sm.A.4")
 
 if __name__ == '__main__':
     unittest.main()

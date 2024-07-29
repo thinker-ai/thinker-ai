@@ -85,10 +85,10 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
             for name, states_def in sorted_states_defs:
                 if (name not in self.get_state_machine_names()
                         and isinstance(states_def, StateDefinition)
-                        and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.name):
+                        and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
                     return name, states_def
 
     def get_root_name(self) -> str:
-        for definition in self.definitions.values():
+        for name, definition in self.definitions.items():
             if definition.get("is_root"):
-                return definition["name"]
+                return name

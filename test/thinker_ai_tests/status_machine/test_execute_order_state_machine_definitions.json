@@ -8,7 +8,7 @@
                 "is_start": true,
                 "state_context_class_name": "StateContext",
                 "description": "Start state",
-                "task_type": "state machine plan",
+                "task_type": "other",
                 "actions": [
                     {
                         "on_command": "inner_start_command",
@@ -22,7 +22,7 @@
                 "is_start": false,
                 "state_context_class_name": "StateContext",
                 "description": "State A description",
-                "task_type": "other",
+                "task_type": "state machine plan",
                 "actions": [
                     {
                         "on_command": "inner_start_command",
@@ -181,7 +181,7 @@
                 "is_start": false,
                 "state_context_class_name": "StateContext",
                 "description": "State 4 description",
-                "task_type": "other",
+                "task_type": "state machine plan",
                 "actions": [
                     {
                         "on_command": "inner_start_command",
