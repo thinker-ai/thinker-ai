@@ -116,7 +116,7 @@
             }
         ]
     },
-    "example_sm.with_sub": {
+    "example_sm.A": {
         "description": "Example description with sub",
         "states_def": [
             {
@@ -134,10 +134,10 @@
                 "events": []
             },
             {
-                "name": "A",
+                "name": "1",
                 "is_start": false,
                 "state_context_class_name": "StateContext",
-                "description": "State A description",
+                "description": "State 1 description",
                 "task_type": "other",
                 "actions": [
                     {
@@ -148,10 +148,10 @@
                 "events": []
             },
             {
-                "name": "B",
+                "name": "2",
                 "is_start": false,
                 "state_context_class_name": "StateContext",
-                "description": "State B description",
+                "description": "State 2 description",
                 "task_type": "other",
                 "actions": [
                     {
@@ -163,10 +163,10 @@
                 "is_composite": true
             },
             {
-                "name": "C",
+                "name": "3",
                 "is_start": false,
                 "state_context_class_name": "StateContext",
-                "description": "State C description",
+                "description": "State 3 description",
                 "task_type": "other",
                 "actions": [
                     {
@@ -177,10 +177,10 @@
                 "events": []
             },
             {
-                "name": "D",
+                "name": "4",
                 "is_start": false,
                 "state_context_class_name": "StateContext",
-                "description": "State D description",
+                "description": "State 4 description",
                 "task_type": "other",
                 "actions": [
                     {
@@ -191,10 +191,10 @@
                 "events": []
             },
             {
-                "name": "E",
+                "name": "5",
                 "is_start": false,
                 "state_context_class_name": "StateContext",
-                "description": "State E description",
+                "description": "State 5 description",
                 "task_type": "other",
                 "actions": [],
                 "events": []
@@ -202,34 +202,34 @@
         ],
         "transitions": [
             {
-                "event": "start_to_A",
+                "event": "start_to_1",
                 "source": "start",
-                "target": "A"
+                "target": "1"
             },
             {
-                "event": "A_to_B",
-                "source": "A",
-                "target": "B"
+                "event": "1_to_2",
+                "source": "1",
+                "target": "2"
             },
             {
-                "event": "B_to_C",
-                "source": "B",
-                "target": "C"
+                "event": "2_to_3",
+                "source": "2",
+                "target": "3"
             },
             {
-                "event": "C_to_A",
-                "source": "C",
-                "target": "A"
+                "event": "3_to_1",
+                "source": "3",
+                "target": "1"
             },
             {
-                "event": "B_to_D",
-                "source": "B",
-                "target": "D"
+                "event": "2_to_4",
+                "source": "2",
+                "target": "4"
             },
             {
-                "event": "D_to_E",
-                "source": "D",
-                "target": "E"
+                "event": "4_to_5",
+                "source": "4",
+                "target": "5"
             }
         ]
     }

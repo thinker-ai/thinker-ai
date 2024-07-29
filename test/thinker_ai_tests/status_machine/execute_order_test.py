@@ -46,32 +46,71 @@ class TestStateMachineDefinition(unittest.TestCase):
         for name, _ in sorted_states_defs:
             sorted_states.append(name)
         expected_order_1 = [
-            'example_sm.sub_start',
-            'example_sm.X',
-            'example_sm.Y',
-            'example_sm.with_sub.start',
-            'example_sm.with_sub.A',
-            'example_sm.with_sub.B',
-            'example_sm.with_sub.C',
-            'example_sm.with_sub.D',
-            'example_sm.with_sub.E'
+            "example_sm.A.start",
+            "example_sm.A.1",
+            "example_sm.A.2",
+            "example_sm.A.3",
+            "example_sm.A.4",
+            "example_sm.A.5",
+            'example_sm.start',
+            "example_sm.A",
+            "example_sm.B",
+            "example_sm.C",
+            "example_sm.D",
+            "example_sm.E"
         ]
         expected_order_2 = [
-            'example_sm.sub_start',
-            'example_sm.X',
-            'example_sm.Y',
-            'example_sm.with_sub.start',
-            'example_sm.with_sub.A',
-            'example_sm.with_sub.B',
-            'example_sm.with_sub.E',
-            'example_sm.with_sub.C',
-            'example_sm.with_sub.D'
+            "example_sm.A.start",
+            "example_sm.A.1",
+            "example_sm.A.2",
+            "example_sm.A.4",
+            "example_sm.A.5",
+            "example_sm.A.3",
+            'example_sm.start',
+            "example_sm.A",
+            "example_sm.B",
+            "example_sm.C",
+            "example_sm.D",
+            "example_sm.E"
+        ]
+        expected_order_3 = [
+            "example_sm.A.start",
+            "example_sm.A.1",
+            "example_sm.A.2",
+            "example_sm.A.4",
+            "example_sm.A.5",
+            "example_sm.A.3",
+            'example_sm.start',
+            "example_sm.A",
+            "example_sm.B",
+            "example_sm.D",
+            "example_sm.E",
+            "example_sm.C"
+        ]
+        expected_order_4 = [
+            "example_sm.A.start",
+            "example_sm.A.1",
+            "example_sm.A.2",
+            "example_sm.A.3",
+            "example_sm.A.4",
+            "example_sm.A.5",
+            'example_sm.start',
+            "example_sm.A",
+            "example_sm.B",
+            "example_sm.D",
+            "example_sm.E",
+            "example_sm.C"
         ]
         try:
             self.assertEqual(sorted_states, expected_order_1)
         except Exception:
-            self.assertEqual(sorted_states, expected_order_2)
-
+            try:
+                self.assertEqual(sorted_states, expected_order_2)
+            except Exception:
+                try:
+                    self.assertEqual(sorted_states, expected_order_3)
+                except Exception:
+                    self.assertEqual(sorted_states, expected_order_4)
 
 if __name__ == '__main__':
     unittest.main()

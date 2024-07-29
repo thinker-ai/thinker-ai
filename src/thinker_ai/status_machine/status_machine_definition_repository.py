@@ -68,7 +68,7 @@ class FileBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository
 
             # Process sub-state machine if any
             if isinstance(state, StateDefinition) and state.is_composite:
-                self.get_state_execute_order(state.name, sorted_state_defs)
+                self.get_state_execute_order(f"{state_machine_name}.{state.name}", sorted_state_defs)
 
         start_state = state_machine_def.get_start_state_def()
         if start_state:
