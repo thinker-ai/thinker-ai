@@ -6,7 +6,9 @@
       "type": "object",
       "properties": {
         "on_command": { "type": "string" },
-        "full_class_name": { "type": "string" }
+        "full_class_name": { "type": "string" },
+        "pre_check_list": { "type": "array" },
+        "result_check_list": { "type": "array" }
       },
       "required": ["on_command", "full_class_name"]
     },

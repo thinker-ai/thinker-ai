@@ -11,8 +11,10 @@
           "task_type":"task type of this state to do, should be one of Available Task Types",
           "actions": [
             {
-              "on_command":"on_command parameter of the handle method of Action interface",
-              "full_class_name":"the full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface"
+              "on_command":"the on_command parameter of the handle method of Action interface",
+              "pre_check_list": "Checklist to ensure that all conditions and resources for implementation are in place",
+              "full_class_name":"the full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface",
+              "result_check_list": "Checklist to ensure that all implementation results meet expectations"
             }
           ],
           "events": ["start_command_handled_event_name"]

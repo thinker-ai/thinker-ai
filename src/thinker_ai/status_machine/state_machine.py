@@ -35,12 +35,20 @@ class Command:
         self.payload = payload
 
 
+class ActionResult:
+    def __init__(self, success: bool, result: Any = None, exception: Exception = None, event: Event = None):
+        self.success = success
+        self.result = result
+        self.exception = exception
+        self.event = event
+
+
 class Action(ABC):
     def __init__(self, on_command: str):
         self.on_command = on_command
 
     @abstractmethod
-    def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> ActionResult:
         raise NotImplementedError
 
     @classmethod
@@ -57,7 +65,7 @@ class CompositeAction(Action):
         super().__init__(on_command)
 
     @abstractmethod
-    def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> ActionResult:
         # 子类实现该方法，分解为多个inner_command并根据需要调用该方法owner_state_context.handle_single_inner_command,最后通过to_outer_event返回结果
         raise NotImplementedError
 
@@ -65,7 +73,11 @@ class CompositeAction(Action):
 class ActionDescription:
     def __init__(self, data: dict):
         self.on_command = data["on_command"]
+        if data.get("pre_check_list"):
+            self.pre_check_list: list[str] = [item for item in data.get("pre_check_list")]
         self.full_class_name = data["full_class_name"]
+        if data.get("result_check_list"):
+            self.result_check_list: list[str] = [item for item in data.get("pre_check_list")]
 
 
 class BaseStateDefinition:
@@ -143,14 +155,14 @@ class StateContext(BaseStateContext):
         if event.name not in self.state_def.events:
             raise RuntimeError(f'Illegal event "{event.name}" for state {self.state_def.name}')
 
-    def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> ActionResult:
         action = self.get_action(command.name)
         if action:
-            event = action.handle(command, self, **kwargs)
-            if event:
-                self.assert_event(event)
-                outer_state_machine.on_event(event)
-            return event
+            result = action.handle(command, self, **kwargs)
+            if result.event:
+                self.assert_event(result.event)
+                outer_state_machine.on_event(result.event)
+            return result
         else:
             raise Exception(
                 f"Illegal command {command.name} for state {self.state_def.name}")
@@ -267,7 +279,11 @@ class StateMachineDefinitionBuilder:
     @staticmethod
     def _state_def_to_dict(state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
-            actions_des = [{a.on_command: a.full_class_name} for a in state_def.actions_des]
+            actions_des = [{"on_command": a.on_command,
+                            "full_class_name": a.full_class_name,
+                            "pre_check_list": a.pre_check_list,
+                            "result_check_list": a.result_check_list
+                            } for a in state_def.actions_des]
             return {
                 "name": state_def.name,
                 "description": state_def.description,
@@ -396,7 +412,7 @@ class StateMachine:
         self.state_machine_repository: StateMachineRepository = state_machine_repository
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
-    def handle(self, command: Command, **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, **kwargs) -> ActionResult:
         if self.id != command.target:
             raise Exception(f"the state context {self.id} do not the command  target {command.target}")
         if isinstance(self.current_state_context, StateContext):
@@ -466,18 +482,19 @@ class CompositeStateContext(StateContext):
     def from_class_name(cls, full_class_name: str, **kwargs) -> 'CompositeStateContext':
         return from_class_name(cls, full_class_name, **kwargs)
 
-    def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> Optional[Event]:
+    def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> ActionResult:
         action = self.get_action(command.name)
         if action:
-            event = action.handle(command, self, **kwargs)
-            if event:
-                self.assert_event(event)
-                outer_state_machine.on_event(event)
-            return event
+            result = action.handle(command, self, **kwargs)
+            if result.event:
+                self.assert_event(result.event)
+                outer_state_machine.on_event(result.event)
+            return result
 
-    def handle_inner(self, inner_command: Command, **kwargs) -> Optional[Event]:
-        inner_event = self.get_state_machine().handle(inner_command, **kwargs)
-        return self.to_outer_event(inner_event)
+    def handle_inner(self, inner_command: Command, **kwargs) -> ActionResult:
+        inner_result = self.get_state_machine().handle(inner_command, **kwargs)
+        inner_result.event = self.to_outer_event(inner_result.event)
+        return inner_result
 
     def get_state_def(self) -> StateDefinition:
         return cast(StateDefinition, self.state_def)
