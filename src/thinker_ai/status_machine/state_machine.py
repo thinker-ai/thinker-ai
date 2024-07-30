@@ -2,7 +2,7 @@ import importlib
 import json
 import uuid
 from abc import abstractmethod, ABC
-from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type
+from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type, Tuple
 
 from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 
@@ -89,6 +89,9 @@ class BaseStateDefinition:
         self.name = name
         self.description = description
         self.state_context_class_name = state_context_class_name
+
+    def is_terminal(self):
+        return type(self) is BaseStateDefinition
 
 
 class StateDefinition(BaseStateDefinition):
@@ -214,6 +217,129 @@ class StateMachineDefinition:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
 
+    def get_state_machine_create_order(self, state_machine_def__repo: "StateMachineDefinitionRepository",
+                                       state_machine_name: str = None,
+                                       sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
+            -> List[Tuple[str, BaseStateDefinition]]:
+        if not state_machine_name:
+            state_machine_name = self.name
+            state_machine_def = self
+        else:
+            state_machine_def = state_machine_def__repo.get(state_machine_name)
+            if not state_machine_def:
+                return sorted_state_defs
+
+        if sorted_state_defs is None:
+            sorted_state_defs = []
+        visited: Set[str] = set()
+        stack: List[Tuple[str, BaseStateDefinition]] = []
+
+        if not state_machine_def:
+            return sorted_state_defs
+
+        def visit(state: BaseStateDefinition):
+            state_def_name = f"{state_machine_def.name}.{state.name}"
+            if state_def_name in visited:
+                return
+            visited.add(state_def_name)
+            if isinstance(state, StateDefinition) and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name:
+                stack.append((state_def_name, state))
+            for transition in state_machine_def.transitions:
+                if transition.source.name == state.name:
+                    visit(transition.target)
+
+            # Process sub-state machine if any
+            if isinstance(state, StateDefinition) and state.is_composite:
+                self.get_state_machine_create_order(state_machine_def__repo,f"{state_machine_name}.{state.name}", sorted_state_defs)
+
+        start_state = state_machine_def.get_start_state_def()
+        if start_state:
+            visit(start_state)
+
+        sorted_state_defs.extend(stack)  # Reverse the stack to get the correct order
+
+        return sorted_state_defs
+
+    def get_state_execute_paths(self) -> List[
+        List[Tuple[str, BaseStateDefinition]]]:
+        class Branch:
+            def __init__(self, from_state: str):
+                self.from_state = from_state
+                self.to = {}  # Dictionary to store target states and their visited status
+
+            def add_to_state(self, to_state: str):
+                self.to[to_state] = False  # Initially, set the visited status to False
+
+            def mark_visited(self, to_state: str):
+                if to_state in self.to:
+                    self.to[to_state] = True
+
+        def find_all_branches() -> dict:
+            branches = {}
+
+            for state_def in self.states_def:
+                from_state_name = state_def.name
+                if from_state_name not in branches:
+                    branch = Branch(from_state_name)
+                    for transition in self.transitions:
+                        if transition.source.name == from_state_name:
+                            branch.add_to_state(transition.target.name)
+                    if len(branch.to.items()) > 1:  # 否则不叫分支
+                        branches[from_state_name] = branch
+            return branches
+
+        # Initialize branches
+        branches = find_all_branches()
+
+        def has_unvisited_branch() -> bool:
+            for branch in branches.values():
+                for to_state, visited in branch.to.items():
+                    if not visited:
+                        return True
+            return False
+
+        execution_plan = []
+        while True:
+            current_path = []
+
+            def visit(state: BaseStateDefinition) -> bool:
+                state_def_name = f"{self.name}.{state.name}"
+                current_path.append((state_def_name, state))
+                if state.is_terminal():
+                    return True  # 表示不要递归后续的遍历
+                for transition in self.transitions:
+                    if transition.source.name == state.name:
+                        next_state = transition.target
+                        branch: Branch = branches.get(transition.source.name)
+                        if branch:  # 存在分支
+                            visited = branch.to.get(next_state.name)
+                            if visited:  # 且访问过
+                                continue
+                            else:
+                                branch.mark_visited(next_state.name)
+                        return visit(next_state)
+
+            start_state = self.get_start_state_def()
+            if start_state:
+                visit(start_state)
+                execution_plan.append(current_path)
+
+            # Check if there are any unvisited branches left
+            if not has_unvisited_branch():
+                break
+
+        return execution_plan
+
+    def next_state_machine_to_create(self, exist_state_machine_names: set[str],
+                                     state_machine_def_repo: "StateMachineDefinitionRepository") -> tuple[
+        str, StateDefinition]:
+        execute_path: List[Tuple[str, BaseStateDefinition]] = self.get_state_machine_create_order(state_machine_def_repo)
+        for name, states_def in execute_path:
+            if (name not in exist_state_machine_names
+                    and isinstance(states_def, StateDefinition)
+                    and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
+                return name, states_def
+
 
 class StateMachineDefinitionRepository(ABC):
     @abstractmethod
@@ -226,6 +352,14 @@ class StateMachineDefinitionRepository(ABC):
 
     @abstractmethod
     def to_file(self, base_dir: str, file_name: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_root_name(self):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_state_machine_names(self):
         raise NotImplementedError
 
 

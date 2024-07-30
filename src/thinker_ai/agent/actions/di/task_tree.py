@@ -6,6 +6,7 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
+from thinker_ai.status_machine.state_machine import StateDefinition
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
@@ -407,8 +408,8 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
     try:
         state_machine_defs = definition_repo.from_json(rsp)
-        state_execute_order=state_machine_defs.get_state_execute_order(task_tree.name)
-        return True, ""
+
+
     except Exception as e:
         return False, str(e)
 

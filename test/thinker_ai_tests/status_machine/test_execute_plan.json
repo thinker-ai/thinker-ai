@@ -1,0 +1,119 @@
+{
+  "example_sm": {
+    "is_root": true,
+    "description": "Example description",
+    "states_def": [
+      {
+        "name": "start",
+        "is_start": true,
+        "state_context_class_name": "StateContext",
+        "description": "Start state",
+        "task_type": "other",
+        "actions": [
+          {
+            "on_command": "inner_start_command",
+            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+          }
+        ],
+        "events": []
+      },
+      {
+        "name": "A",
+        "is_start": false,
+        "state_context_class_name": "StateContext",
+        "description": "State A description",
+        "task_type": "state machine plan",
+        "actions": [
+          {
+            "on_command": "inner_start_command",
+            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+          }
+        ],
+        "events": []
+      },
+      {
+        "name": "B",
+        "is_start": false,
+        "state_context_class_name": "StateContext",
+        "description": "State B description",
+        "task_type": "other",
+        "actions": [
+          {
+            "on_command": "inner_start_command",
+            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+          }
+        ],
+        "events": []
+      },
+      {
+        "name": "C",
+        "is_start": false,
+        "state_context_class_name": "StateContext",
+        "description": "State C description",
+        "task_type": "other",
+        "actions": [
+          {
+            "on_command": "inner_start_command",
+            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+          }
+        ],
+        "events": []
+      },
+      {
+        "name": "D",
+        "is_start": false,
+        "state_context_class_name": "StateContext",
+        "description": "State D description",
+        "task_type": "other",
+        "actions": [
+          {
+            "on_command": "inner_start_command",
+            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+          }
+        ],
+        "events": []
+      },
+      {
+        "name": "E",
+        "is_start": false,
+        "state_context_class_name": "StateContext",
+        "description": "State E description",
+        "task_type": "other",
+        "actions": [],
+        "events": []
+      }
+    ],
+    "transitions": [
+      {
+        "event": "start_to_A",
+        "source": "start",
+        "target": "A"
+      },
+      {
+        "event": "A_to_B",
+        "source": "A",
+        "target": "B"
+      },
+      {
+        "event": "B_to_C",
+        "source": "B",
+        "target": "C"
+      },
+      {
+        "event": "C_to_A",
+        "source": "C",
+        "target": "A"
+      },
+      {
+        "event": "B_to_D",
+        "source": "B",
+        "target": "D"
+      },
+      {
+        "event": "D_to_E",
+        "source": "D",
+        "target": "E"
+      }
+    ]
+  }
+}

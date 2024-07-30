@@ -12,12 +12,12 @@
         "actions": [
           {
             "on_command": "perform_eda",
-            "full_class_name": "titanic_survival.data_analysis.actions.PerformEDAAction"
+            "pre_check_list": ["Ensure dataset is loaded", "Ensure necessary libraries are imported"],
+            "full_class_name": "titanic_survival.data_analysis.actions.PerformEDAAction",
+            "result_check_list": ["EDA report generated", "Insights on data distribution and missing values"]
           }
         ],
-        "events": [
-          "eda_completed"
-        ]
+        "events": ["eda_completed"]
       },
       {
         "name": "data_preprocessing",
@@ -28,28 +28,28 @@
         "actions": [
           {
             "on_command": "preprocess_data",
-            "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction"
+            "pre_check_list": ["EDA completed", "Insights on missing values and data distribution"],
+            "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction",
+            "result_check_list": ["Data cleaned", "Missing values handled", "Data ready for feature engineering"]
           }
         ],
-        "events": [
-          "data_preprocessing_completed"
-        ]
+        "events": ["data_preprocessing_completed"]
       },
       {
         "name": "feature_engineering",
         "is_start": false,
         "state_context_class_name": "titanic_survival.feature_engineering.contexts.FeatureEngineeringContext",
-        "description": "Perform feature engineering on the Titanic dataset",
+        "description": "Create new features for the Titanic dataset",
         "task_type": "feature engineering",
         "actions": [
           {
             "on_command": "engineer_features",
-            "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction"
+            "pre_check_list": ["Data preprocessed", "Feature engineering plan ready"],
+            "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction",
+            "result_check_list": ["New features created", "Feature set ready for modeling"]
           }
         ],
-        "events": [
-          "feature_engineering_completed"
-        ]
+        "events": ["feature_engineering_completed"]
       },
       {
         "name": "model_training",
@@ -60,33 +60,38 @@
         "actions": [
           {
             "on_command": "train_model",
-            "full_class_name": "titanic_survival.model_training.actions.TrainModelAction"
+            "pre_check_list": ["Feature set ready", "Model training plan ready"],
+            "full_class_name": "titanic_survival.model_training.actions.TrainModelAction",
+            "result_check_list": ["Model trained", "Training metrics available"]
           }
         ],
-        "events": [
-          "model_training_completed"
-        ]
+        "events": ["model_training_completed"]
       },
       {
         "name": "model_evaluation",
         "is_start": false,
         "state_context_class_name": "titanic_survival.model_evaluation.contexts.ModelEvaluationContext",
-        "description": "Evaluate the trained model on the evaluation dataset",
+        "description": "Evaluate the trained model on evaluation data",
         "task_type": "model evaluate",
         "actions": [
           {
             "on_command": "evaluate_model",
-            "full_class_name": "titanic_survival.model_evaluation.actions.EvaluateModelAction"
+            "pre_check_list": ["Model trained", "Evaluation data ready"],
+            "full_class_name": "titanic_survival.model_evaluation.actions.EvaluateModelAction",
+            "result_check_list": ["Model evaluated", "Evaluation metrics available"]
           }
         ],
-        "events": [
-          "model_evaluation_completed"
-        ]
+        "events": ["model_evaluation_completed"]
       },
       {
-        "name": "end_state",
-        "description": "End state of the state machine",
-        "state_context_class_name": "titanic_survival.end_state.contexts.EndStateContext"
+        "name": "end_state_success",
+        "description": "Successfully completed the Titanic survival prediction task",
+        "state_context_class_name": "titanic_survival.end_state_success.contexts.EndStateSuccessContext"
+      },
+      {
+        "name": "end_state_failure",
+        "description": "Failed to complete the Titanic survival prediction task",
+        "state_context_class_name": "titanic_survival.end_state_failure.contexts.EndStateFailureContext"
       }
     ],
     "transitions": [
@@ -113,7 +118,7 @@
       {
         "event": "model_evaluation_completed",
         "source": "model_evaluation",
-        "target": "end_state"
+        "target": "end_state_success"
       }
     ]
   }
