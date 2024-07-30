@@ -15,7 +15,7 @@ class TestStateMachineDefinition(unittest.TestCase):
 
     def test_get_state_execute_paths(self):
         state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
-        execute_paths:List[List[Tuple[str, BaseStateDefinition]]] = state_machine_definition.get_state_execute_paths()
+        execute_paths:List[List[Tuple[str, BaseStateDefinition]]] = state_machine_definition.get_state_validate_paths()
         actual_paths=[]
         for path in execute_paths:
             plan = []

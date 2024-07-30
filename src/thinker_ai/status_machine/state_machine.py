@@ -250,7 +250,8 @@ class StateMachineDefinition:
 
             # Process sub-state machine if any
             if isinstance(state, StateDefinition) and state.is_composite:
-                self.get_state_machine_create_order(state_machine_def__repo,f"{state_machine_name}.{state.name}", sorted_state_defs)
+                self.get_state_machine_create_order(state_machine_def__repo, f"{state_machine_name}.{state.name}",
+                                                    sorted_state_defs)
 
         start_state = state_machine_def.get_start_state_def()
         if start_state:
@@ -260,8 +261,56 @@ class StateMachineDefinition:
 
         return sorted_state_defs
 
-    def get_state_execute_paths(self) -> List[
-        List[Tuple[str, BaseStateDefinition]]]:
+    def next_state_machine_to_create(self, exist_state_machine_names: set[str],
+                                     state_machine_def_repo: "StateMachineDefinitionRepository") -> tuple[
+        str, StateDefinition]:
+        execute_path: List[Tuple[str, BaseStateDefinition]] = self.get_state_machine_create_order(
+            state_machine_def_repo)
+        for name, states_def in execute_path:
+            if (name not in exist_state_machine_names
+                    and isinstance(states_def, StateDefinition)
+                    and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
+                return name, states_def
+
+    def get_validate_command_in_order(self) -> List[Command]:
+        paths = self.get_state_validate_paths()
+        command_order = []
+
+        for path in paths:
+            for i in range(len(path) - 1):
+                state_def_name, state = path[i]
+                next_state_def_name, next_state = path[i + 1]
+
+                # Find the transition that matches this state to the next state
+                transition = self.get_transition(state.name, next_state.name)
+                if transition:
+                    # Find the action associated with this transition
+                    if isinstance(state,StateDefinition):
+                        action = self.get_validate_action_desc_for_transition(state, transition)
+                        if action:
+                            command = Command(
+                                name=action.on_command,
+                                target=transition.target.name,
+                                payload={"event": transition.event}
+                            )
+                            command_order.append(command)
+
+        return command_order
+
+    def get_transition(self, source_state_name: str, target_state_name: str) -> Optional[Transition]:
+        for transition in self.transitions:
+            if transition.source.name == source_state_name and transition.target.name == target_state_name:
+                return transition
+        return None
+
+    @staticmethod
+    def get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[ActionDescription]:
+        for action in state.actions_des:
+            if f"{action.on_command}_handled" == transition.event:  # Assuming event name is used as command
+                return action
+        return None
+
+    def get_state_validate_paths(self) -> List[List[Tuple[str, BaseStateDefinition]]]:
         class Branch:
             def __init__(self, from_state: str):
                 self.from_state = from_state
@@ -329,16 +378,6 @@ class StateMachineDefinition:
                 break
 
         return execution_plan
-
-    def next_state_machine_to_create(self, exist_state_machine_names: set[str],
-                                     state_machine_def_repo: "StateMachineDefinitionRepository") -> tuple[
-        str, StateDefinition]:
-        execute_path: List[Tuple[str, BaseStateDefinition]] = self.get_state_machine_create_order(state_machine_def_repo)
-        for name, states_def in execute_path:
-            if (name not in exist_state_machine_names
-                    and isinstance(states_def, StateDefinition)
-                    and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
-                return name, states_def
 
 
 class StateMachineDefinitionRepository(ABC):
