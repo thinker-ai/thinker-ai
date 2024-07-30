@@ -6,10 +6,10 @@ from thinker_ai.status_machine.state_machine import StateMachineDefinition, Base
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 
 
-class TestStateMachineDefinition(unittest.TestCase):
+class StateExecutePathsTest(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.dirname(__file__)
-        self.definitions_file_name = 'test_execute_plan.json'
+        self.definitions_file_name = 'state_machine_create_order_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
 
