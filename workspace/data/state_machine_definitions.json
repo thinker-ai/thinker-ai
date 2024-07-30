@@ -14,7 +14,7 @@
             "on_command": "perform_eda",
             "pre_check_list": ["Ensure dataset is loaded", "Ensure necessary libraries are imported"],
             "full_class_name": "titanic_survival.data_analysis.actions.PerformEDAAction",
-            "result_check_list": ["EDA report generated", "Insights on data distribution and missing values"]
+            "post_check_list": ["EDA report generated", "Insights on data distribution and missing values"]
           }
         ],
         "events": ["eda_completed"]
@@ -30,7 +30,7 @@
             "on_command": "preprocess_data",
             "pre_check_list": ["EDA completed", "Insights on missing values and data distribution"],
             "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction",
-            "result_check_list": ["Data cleaned", "Missing values handled", "Data ready for feature engineering"]
+            "post_check_list": ["Data cleaned", "Missing values handled", "Data ready for feature engineering"]
           }
         ],
         "events": ["data_preprocessing_completed"]
@@ -46,7 +46,7 @@
             "on_command": "engineer_features",
             "pre_check_list": ["Data preprocessed", "Feature engineering plan ready"],
             "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction",
-            "result_check_list": ["New features created", "Feature set ready for modeling"]
+            "post_check_list": ["New features created", "Feature set ready for modeling"]
           }
         ],
         "events": ["feature_engineering_completed"]
@@ -62,7 +62,7 @@
             "on_command": "train_model",
             "pre_check_list": ["Feature set ready", "Model training plan ready"],
             "full_class_name": "titanic_survival.model_training.actions.TrainModelAction",
-            "result_check_list": ["Model trained", "Training metrics available"]
+            "post_check_list": ["Model trained", "Training metrics available"]
           }
         ],
         "events": ["model_training_completed"]
@@ -78,7 +78,7 @@
             "on_command": "evaluate_model",
             "pre_check_list": ["Model trained", "Evaluation data ready"],
             "full_class_name": "titanic_survival.model_evaluation.actions.EvaluateModelAction",
-            "result_check_list": ["Model evaluated", "Evaluation metrics available"]
+            "post_check_list": ["Model evaluated", "Evaluation metrics available"]
           }
         ],
         "events": ["model_evaluation_completed"]

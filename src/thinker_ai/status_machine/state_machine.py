@@ -76,8 +76,8 @@ class ActionDescription:
         if data.get("pre_check_list"):
             self.pre_check_list: list[str] = [item for item in data.get("pre_check_list")]
         self.full_class_name = data["full_class_name"]
-        if data.get("result_check_list"):
-            self.result_check_list: list[str] = [item for item in data.get("pre_check_list")]
+        if data.get("post_check_list"):
+            self.post_check_list: list[str] = [item for item in data.get("post_check_list")]
 
 
 class BaseStateDefinition:
@@ -455,7 +455,7 @@ class StateMachineDefinitionBuilder:
             actions_des = [{"on_command": a.on_command,
                             "full_class_name": a.full_class_name,
                             "pre_check_list": a.pre_check_list,
-                            "result_check_list": a.result_check_list
+                            "post_check_list": a.post_check_list
                             } for a in state_def.actions_des]
             return {
                 "name": state_def.name,
