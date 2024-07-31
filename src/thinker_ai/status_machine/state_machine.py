@@ -92,8 +92,9 @@ class MockCompositeAction(CompositeAction):
                               .get_state_machine_def().get_validate_command_in_order())
             for inner_command in inner_commands:
                 owner_state_context.handle_inner(inner_command)
-            result = ActionResult(success=True, event=Event(id=self.on_command, name=command.payload.get("event")))
-            return result
+            if owner_state_context.get_state_machine().current_state_context.state_def.is_terminal():
+                result = ActionResult(success=True, event=Event(id=self.on_command, name=command.payload.get("event")))
+                return result
         return ActionResult(success=False)
 
 
