@@ -70,6 +70,33 @@ class CompositeAction(Action):
         raise NotImplementedError
 
 
+class MockAction(Action):
+
+    def __init__(self, on_command):
+        super().__init__(on_command)
+
+    def handle(self, command: Command, owner_state_context: "StateContext", **kwargs) -> ActionResult:
+        if command.name == self.on_command:
+            result = ActionResult(success=True, event=Event(id=self.on_command, name=command.payload.get("event")))
+            return result
+        return ActionResult(success=False)
+
+
+class MockCompositeAction(CompositeAction):
+    def __init__(self, on_command):
+        super().__init__(on_command)
+
+    def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> ActionResult:
+        if command.name == self.on_command:
+            inner_commands = (owner_state_context.get_state_machine()
+                              .get_state_machine_def().get_validate_command_in_order())
+            for inner_command in inner_commands:
+                owner_state_context.handle_inner(inner_command)
+            result = ActionResult(success=True, event=Event(id=self.on_command, name=command.payload.get("event")))
+            return result
+        return ActionResult(success=False)
+
+
 class ActionDescription:
     def __init__(self, data: dict):
         self.on_command = data["on_command"]
@@ -160,7 +187,8 @@ class StateContext(BaseStateContext):
 
     def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> ActionResult:
         if self.state_def.name != command.target:
-            raise Exception(f"the current state context {self.state_def.name} do not the command target {command.target}")
+            raise Exception(
+                f"the current state context {self.state_def.name} do not the command target {command.target}")
         action = self.get_action(command.name)
         if action:
             result = action.handle(command, self, **kwargs)
@@ -288,7 +316,7 @@ class StateMachineDefinition:
                 transition = self.get_transition(state.name, next_state.name)
                 if transition:
                     # Find the action associated with this transition
-                    if isinstance(state,StateDefinition):
+                    if isinstance(state, StateDefinition):
                         action = self._get_validate_action_desc_for_transition(state, transition)
                         if action:
                             command = Command(
@@ -307,7 +335,8 @@ class StateMachineDefinition:
         return None
 
     @staticmethod
-    def _get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[ActionDescription]:
+    def _get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[
+        ActionDescription]:
         for action in state.actions_des:
             if f"{action.on_command}_handled" == transition.event:  # Assuming event name is used as command
                 return action
