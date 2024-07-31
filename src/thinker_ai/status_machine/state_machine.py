@@ -159,6 +159,8 @@ class StateContext(BaseStateContext):
             raise RuntimeError(f'Illegal event "{event.name}" for state {self.state_def.name}')
 
     def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> ActionResult:
+        if self.state_def.name != command.target:
+            raise Exception(f"the current state context {self.state_def.name} do not the command target {command.target}")
         action = self.get_action(command.name)
         if action:
             result = action.handle(command, self, **kwargs)
@@ -217,9 +219,9 @@ class StateMachineDefinition:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
 
-    def get_state_machine_create_order(self, state_machine_def__repo: "StateMachineDefinitionRepository",
-                                       state_machine_name: str = None,
-                                       sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
+    def _get_state_machine_create_order(self, state_machine_def__repo: "StateMachineDefinitionRepository",
+                                        state_machine_name: str = None,
+                                        sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
             -> List[Tuple[str, BaseStateDefinition]]:
         if not state_machine_name:
             state_machine_name = self.name
@@ -242,7 +244,9 @@ class StateMachineDefinition:
             if state_def_name in visited:
                 return
             visited.add(state_def_name)
-            if isinstance(state, StateDefinition) and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name:
+            if (isinstance(state, StateDefinition)
+                    and state.task_type
+                    and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
                 stack.append((state_def_name, state))
             for transition in state_machine_def.transitions:
                 if transition.source.name == state.name:
@@ -250,8 +254,8 @@ class StateMachineDefinition:
 
             # Process sub-state machine if any
             if isinstance(state, StateDefinition) and state.is_composite:
-                self.get_state_machine_create_order(state_machine_def__repo, f"{state_machine_name}.{state.name}",
-                                                    sorted_state_defs)
+                self._get_state_machine_create_order(state_machine_def__repo, f"{state_machine_name}.{state.name}",
+                                                     sorted_state_defs)
 
         start_state = state_machine_def.get_start_state_def()
         if start_state:
@@ -261,19 +265,18 @@ class StateMachineDefinition:
 
         return sorted_state_defs
 
-    def next_state_machine_to_create(self, exist_state_machine_names: set[str],
-                                     state_machine_def_repo: "StateMachineDefinitionRepository") -> tuple[
-        str, StateDefinition]:
-        execute_path: List[Tuple[str, BaseStateDefinition]] = self.get_state_machine_create_order(
-            state_machine_def_repo)
+    def next_state_machine_to_create(self, state_machine_def_repo: "StateMachineDefinitionRepository") \
+            -> tuple[str, StateDefinition]:
+        execute_path: List[Tuple[str, BaseStateDefinition]] = (
+            self._get_state_machine_create_order(state_machine_def_repo))
         for name, states_def in execute_path:
-            if (name not in exist_state_machine_names
+            if (name not in state_machine_def_repo.get_state_machine_names()
                     and isinstance(states_def, StateDefinition)
                     and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
                 return name, states_def
 
     def get_validate_command_in_order(self) -> List[Command]:
-        paths = self.get_state_validate_paths()
+        paths = self._get_state_validate_paths()
         command_order = []
 
         for path in paths:
@@ -286,11 +289,11 @@ class StateMachineDefinition:
                 if transition:
                     # Find the action associated with this transition
                     if isinstance(state,StateDefinition):
-                        action = self.get_validate_action_desc_for_transition(state, transition)
+                        action = self._get_validate_action_desc_for_transition(state, transition)
                         if action:
                             command = Command(
                                 name=action.on_command,
-                                target=transition.target.name,
+                                target=transition.source.name,
                                 payload={"event": transition.event}
                             )
                             command_order.append(command)
@@ -304,13 +307,13 @@ class StateMachineDefinition:
         return None
 
     @staticmethod
-    def get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[ActionDescription]:
+    def _get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[ActionDescription]:
         for action in state.actions_des:
             if f"{action.on_command}_handled" == transition.event:  # Assuming event name is used as command
                 return action
         return None
 
-    def get_state_validate_paths(self) -> List[List[Tuple[str, BaseStateDefinition]]]:
+    def _get_state_validate_paths(self) -> List[List[Tuple[str, BaseStateDefinition]]]:
         class Branch:
             def __init__(self, from_state: str):
                 self.from_state = from_state
@@ -586,8 +589,6 @@ class StateMachine:
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> ActionResult:
-        if self.id != command.target:
-            raise Exception(f"the state context {self.id} do not the command  target {command.target}")
         if isinstance(self.current_state_context, StateContext):
             return self.current_state_context.handle(command, self, **kwargs)
         else:

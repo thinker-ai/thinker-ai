@@ -56,7 +56,7 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
                                                                                      self.get_state_machine_names())
 
     def set(self, name: str, state_machine_def: StateMachineDefinition):
-        states_def = self.get_root().get_state_validate_paths()
+        states_def = self.get_root()._get_state_validate_paths()
         if not states_def:
             state_machine_def.is_root = True
             self.definitions[name] = self.state_machine_definition_builder.state_machine_def_to_dict(state_machine_def)

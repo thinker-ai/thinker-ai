@@ -17,7 +17,7 @@ class StateMachineCreateOrderTest(unittest.TestCase):
 
     def test_double_layer_state_machine(self):
         state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
-        sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = state_machine_definition.get_state_machine_create_order(
+        sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = state_machine_definition._get_state_machine_create_order(
             self.definition_repo)
         sorted_states = []
         for name, _ in sorted_states_defs:
@@ -29,7 +29,7 @@ class StateMachineCreateOrderTest(unittest.TestCase):
         self.assertEqual(sorted_states,expected_order)
     def test_get_next_state_machine_to_create(self):
         state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
-        name, _ = state_machine_definition.next_state_machine_to_create(self.definition_repo.get_state_machine_names(),self.definition_repo)
+        name, _ = state_machine_definition.next_state_machine_to_create(self.definition_repo)
         self.assertEqual(name, "example_sm.A.4")
 
 
