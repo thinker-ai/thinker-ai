@@ -1,8 +1,8 @@
 import unittest
 import os
 
-from thinker_ai.status_machine.state_machine import Command, ActionFactory
-from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
+from thinker_ai.status_machine.state_machine import Command, ActionFactory, StateMachineBuilder, StateContextBuilder
+from thinker_ai.status_machine.state_machine_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import InnerStartAction, MiddleStartAction, OuterStartAction
 
@@ -15,8 +15,9 @@ class TestNestedStateMachine(unittest.TestCase):
         self.instances_file_name = 'test_nested_state_machine_instances.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
-        self.instance_repo = FileBasedStateMachineContextRepository.from_file(self.base_dir, self.instances_file_name,
-                                                                              self.definition_repo)
+        self.instance_repo = DefaultStateMachineContextRepository.from_file(self.base_dir, self.instances_file_name,
+                                                                            StateMachineBuilder(StateContextBuilder()),
+                                                                            self.definition_repo)
         ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
         ActionFactory.register_action(MiddleStartAction.get_full_class_name(), MiddleStartAction)
         ActionFactory.register_action(OuterStartAction.get_full_class_name(), OuterStartAction)
@@ -27,7 +28,7 @@ class TestNestedStateMachine(unittest.TestCase):
         self.state_machine = None
 
     def test_combined_state_machine(self):
-        commands = self.state_machine.get_state_machine_def().get_validate_commands_in_order()
+        commands = self.state_machine.get_state_machine_def().get_self_validate_commands_in_order()
         self.state_machine.handle(commands[0])
         # Verify middle state machine transitions
         middle_state_machine = self.instance_repo.get("outer_start_instance")

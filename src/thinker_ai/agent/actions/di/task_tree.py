@@ -6,11 +6,11 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.state_machine import StateDefinition
+from thinker_ai.status_machine.state_machine import StateDefinition, StateMachineBuilder, StateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
-from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
+from thinker_ai.status_machine.state_machine_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \
@@ -26,8 +26,10 @@ Latest data info after previous tasks:
 """
 definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
                                                                config.state_machine.definition)
-instance_repo = FileBasedStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
-                                                       config.state_machine.instance, definition_repo)
+instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
+                                                               config.state_machine.instance,
+                                                               StateMachineBuilder(StateContextBuilder()),
+                                                               definition_repo)
 
 
 async def confirm_review(review: str) -> bool:
@@ -408,7 +410,7 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
     try:
         state_machine_defs = definition_repo.from_json(rsp)
-
+        state_machine_defs.get_root().self_validate()
 
     except Exception as e:
         return False, str(e)

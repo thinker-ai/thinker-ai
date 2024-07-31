@@ -1,102 +1,104 @@
 {
-  "outer_sm.outer_start.middle_start": {
-    "description": "",
-    "states_def": [
-      {
-        "name": "inner_start",
-        "is_start":true,
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "task_type": "task type of this state to do, should be one of Available Task Types",
-        "actions": [
-            {
-              "on_command":"inner_start_command",
-              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
-            }
-        ],
-        "events": ["inner_start_command_handled"]
-      },
-      {
-        "name": "inner_end",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
-      }
-    ],
-    "transitions": [
-      {
-        "event": "inner_start_command_handled",
-        "source": "inner_start",
-        "target": "inner_end"
-      }
-    ],
-    "inner_end_state_to_outer_event": {
-      "inner_end": "middle_start_command_handled"
-    }
-  },
-  "outer_sm.outer_start": {
-    "description": "",
-    "states_def": [
-      {
-        "name": "middle_start",
-        "is_start":true,
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "task_type": "task type of this state to do, should be one of Available Task Types",
-        "actions": [
-            {
-              "on_command":"middle_start_command",
-              "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
-            }
-        ],
-        "events": ["middle_start_command_handled"]
-      },
-      {
-        "name": "middle_end",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
-      }
-    ],
-    "transitions": [
-      {
-        "event": "middle_start_command_handled",
-        "source": "middle_start",
-        "target": "middle_end"
-      }
-    ],
-    "inner_end_state_to_outer_event": {
-      "middle_end": "outer_start_command_handled"
-    }
-  },
-  "outer_sm": {
-    "is_root": true,
-    "description": "",
-    "states_def": [
-      {
-        "name": "outer_start",
-        "is_start":true,
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "task_type": "task type of this state to do, should be one of Available Task Types",
-        "actions": [
+  "group_nested": {
+    "outer_sm.outer_start.middle_start": {
+        "description": "",
+        "states_def": [
           {
-            "on_command":"outer_start_command",
-            "full_class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
+            "name": "inner_start",
+            "is_start":true,
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.SampleContext",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "task_type": "task type of this state to do, should be one of Available Task Types",
+            "actions": [
+                {
+                  "on_command":"inner_start_command",
+                  "full_class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                }
+            ],
+            "events": ["inner_start_command_handled"]
+          },
+          {
+            "name": "inner_end",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
           }
         ],
-        "events": ["outer_start_command_handled"]
+        "transitions": [
+          {
+            "event": "inner_start_command_handled",
+            "source": "inner_start",
+            "target": "inner_end"
+          }
+        ],
+        "inner_end_state_to_outer_event": {
+          "inner_end": "middle_start_command_handled"
+        }
       },
-      {
-        "name": "outer_end",
-        "description": "what you should do in this state, one short phrase or sentence",
-        "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
+      "outer_sm.outer_start": {
+        "description": "",
+        "states_def": [
+          {
+            "name": "middle_start",
+            "is_start":true,
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "task_type": "task type of this state to do, should be one of Available Task Types",
+            "actions": [
+                {
+                  "on_command":"middle_start_command",
+                  "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
+                }
+            ],
+            "events": ["middle_start_command_handled"]
+          },
+          {
+            "name": "middle_end",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
+          }
+        ],
+        "transitions": [
+          {
+            "event": "middle_start_command_handled",
+            "source": "middle_start",
+            "target": "middle_end"
+          }
+        ],
+        "inner_end_state_to_outer_event": {
+          "middle_end": "outer_start_command_handled"
+        }
+      },
+      "outer_sm": {
+        "is_root": true,
+        "description": "",
+        "states_def": [
+          {
+            "name": "outer_start",
+            "is_start":true,
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.CompositeSampleContext",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "task_type": "task type of this state to do, should be one of Available Task Types",
+            "actions": [
+              {
+                "on_command":"outer_start_command",
+                "full_class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
+              }
+            ],
+            "events": ["outer_start_command_handled"]
+          },
+          {
+            "name": "outer_end",
+            "description": "what you should do in this state, one short phrase or sentence",
+            "state_context_class_name": "thinker_ai_tests.status_machine.sample_contexts.EndSampleContext"
+          }
+        ],
+        "transitions": [
+          {
+            "event": "outer_start_command_handled",
+            "source": "outer_start",
+            "target": "outer_end"
+          }
+        ]
       }
-    ],
-    "transitions": [
-      {
-        "event": "outer_start_command_handled",
-        "source": "outer_start",
-        "target": "outer_end"
-      }
-    ]
   }
 }

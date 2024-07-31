@@ -2,6 +2,7 @@
   "simple_instance": {
     "id": "simple_instance",
     "state_machine_def_name": "test_state_machine",
+    "state_machine_def_group_name":"group_simple",
     "current_state_context": {
       "id": "state_start_context",
       "state_def_name": "start"

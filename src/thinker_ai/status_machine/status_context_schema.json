@@ -13,6 +13,7 @@
       "type": "object",
       "properties": {
         "state_machine_def_name": { "type": "string" },
+        "state_machine_def_group_name": { "type": "string" },
         "current_state_context": { "$ref": "#/definitions/StateContext" },
         "history": {
           "type": "array",

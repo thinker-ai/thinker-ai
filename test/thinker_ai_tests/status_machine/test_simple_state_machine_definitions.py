@@ -1,7 +1,7 @@
 import os
 import unittest
-from thinker_ai.status_machine.state_machine import Command, ActionFactory
-from thinker_ai.status_machine.state_machine_repository import FileBasedStateMachineContextRepository
+from thinker_ai.status_machine.state_machine import Command, ActionFactory, StateMachineBuilder, StateContextBuilder
+from thinker_ai.status_machine.state_machine_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import StartAction,MiddleAction
 
@@ -14,9 +14,10 @@ class TestSimpleStateMachine(unittest.TestCase):
         self.base_dir = os.path.dirname(__file__)
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                          'test_simple_state_machine_definitions.json')
-        self.instance_repo = FileBasedStateMachineContextRepository.from_file(self.base_dir,
+        self.instance_repo = DefaultStateMachineContextRepository.from_file(self.base_dir,
                                                                     'test_simple_state_machine_instances.json',
-                                                                    self.definition_repo)
+                                                                            StateMachineBuilder(StateContextBuilder()),
+                                                                            self.definition_repo)
 
         # 读取状态机实例
         self.state_machine = self.instance_repo.get("simple_instance")
@@ -27,7 +28,7 @@ class TestSimpleStateMachine(unittest.TestCase):
 
     def test_simple_state_machine(self):
         # Transition to middle state
-        commands = self.state_machine.get_state_machine_def().get_validate_commands_in_order()
+        commands = self.state_machine.get_state_machine_def().get_self_validate_commands_in_order()
         self.state_machine.handle(commands[0])
         self.assertEqual(self.state_machine.current_state_context.state_def.name, "middle")
         # Transition to end state

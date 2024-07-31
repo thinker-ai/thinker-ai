@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "name": { "type": "string" },
   "definitions": {
-     "Action": {
+    "Action": {
       "type": "object",
       "properties": {
         "on_command": { "type": "string" },
@@ -16,7 +16,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
-        "is_start":{ "type": "boolean" },
+        "is_start": { "type": "boolean" },
         "state_context_class_name": { "type": "string" },
         "description": { "type": "string" },
         "task_type": { "type": "string" },
@@ -29,7 +29,7 @@
           "items": { "type": "string" }
         }
       },
-      "required": ["id", "name", "description","task_type","actions","events","state_context_class_name"]
+      "required": ["id", "name", "description", "task_type", "actions", "events", "state_context_class_name"]
     },
     "BaseStateDefinition": {
       "type": "object",
@@ -38,7 +38,7 @@
         "description": { "type": "string" },
         "state_context_class_name": { "type": "string" }
       },
-      "required": ["name", "description","state_context_class_name"]
+      "required": ["name", "description", "state_context_class_name"]
     },
     "State_Definition": {
       "oneOf": [
@@ -75,11 +75,18 @@
       },
       "required": ["description", "states_def", "transitions"],
       "additionalProperties": false
+    },
+    "StateMachineGroup": {
+      "type": "object",
+      "patternProperties": {
+        "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/StateMachineDefinition" }
+      },
+      "additionalProperties": false
     }
   },
   "type": "object",
   "patternProperties": {
-    "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/StateMachineDefinition" }
+    "^[a-zA-Z0-9_-]+$": { "$ref": "#/definitions/StateMachineGroup" }
   },
   "additionalProperties": false
 }

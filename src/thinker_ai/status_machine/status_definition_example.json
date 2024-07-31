@@ -1,48 +1,54 @@
 {
+  "group_name": {
     "state_machine_definition_name": {
-      "is_root":true,
-      "description":"what you should do in this state machine, one short phrase or sentence",
+      "is_root": true,
+      "description": "what you should do in this state machine, one short phrase or sentence",
       "states_def": [
         {
           "name": "start_state_name",
-          "is_start":true,
+          "is_start": true,
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends StateContex or CompositeStateContext class",
-          "description":"what you should do in this state context, one short phrase or sentence",
-          "task_type":"task type of this state to do, should be one of Available Task Types",
+          "description": "what you should do in this state context, one short phrase or sentence",
+          "task_type": "task type of this state to do, should be one of Available Task Types",
           "actions": [
             {
-              "on_command":"The on_command parameter of the handle method of Action interface",
+              "on_command": "The on_command parameter of the handle method of Action interface",
               "pre_check_list": "Checklist to ensure that all conditions and resources for implementation are in place",
-              "full_class_name":"≈he full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface",
+              "full_class_name": "≈he full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface",
               "post_check_list": "Checklist to ensure that all implementation results meet expectations"
             }
           ],
-          "events": ["start_command_handled_event_name"]
+          "events": [
+            "start_command_handled_event_name"
+          ]
         },
         {
           "name": "middle_state_name",
-          "is_start":false,
+          "is_start": false,
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends StateContex or CompositeStateContext class",
-          "description":"what you should do in this state context, one short phrase or sentence",
-          "task_type":"task type of the state_context_class to do, should be one of Available Task Types",
+          "description": "what you should do in this state context, one short phrase or sentence",
+          "task_type": "task type of the state_context_class to do, should be one of Available Task Types",
           "actions": [
             {
-              "on_command":"the on_command parameter of the handle method of Action interface",
+              "on_command": "the on_command parameter of the handle method of Action interface",
               "pre_check_list": "Checklist to ensure that all conditions and resources for implementation are in place",
-              "full_class_name":"the full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface",
+              "full_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.actions' implements the Action interface",
               "post_check_list": "Checklist to ensure that all implementation results meet expectations"
             }
           ],
-          "events": ["middle_command_handled_event_name_1","middle_command_handled_event_name_2"]
+          "events": [
+            "middle_command_handled_event_name_1",
+            "middle_command_handled_event_name_2"
+          ]
         },
         {
           "name": "end_state_name_1",
-          "description":"description of this state context, one short phrase or sentence",
+          "description": "description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends BaseStateContext class"
         },
         {
           "name": "end_state_name_2",
-          "description":"description of this state context, one short phrase or sentence",
+          "description": "description of this state context, one short phrase or sentence",
           "state_context_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.contexts' of the state context that extends BaseStateContext class"
         }
       ],
@@ -63,9 +69,10 @@
           "target": "end_state_name_2"
         }
       ],
-     "inner_end_state_to_outer_event": {
-         "end_state_name_1": "outer_start_command_handled_1",
-         "end_state_name_2": "outer_start_command_handled_2"
-     }
-   }
+      "inner_end_state_to_outer_event": {
+        "end_state_name_1": "outer_start_command_handled_1",
+        "end_state_name_2": "outer_start_command_handled_2"
+      }
+    }
+  }
 }

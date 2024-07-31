@@ -16,7 +16,7 @@ class StateMachineCreateOrderTest(unittest.TestCase):
         ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
 
     def test_state_machine_create_order(self):
-        state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
+        state_machine_definition: StateMachineDefinition = self.definition_repo.get_root("state_machine_create_order")
         sorted_states_defs: List[Tuple[str, BaseStateDefinition]] = state_machine_definition.get_state_machine_create_order(
             self.definition_repo)
         sorted_states = []
