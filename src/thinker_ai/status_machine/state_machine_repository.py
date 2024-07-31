@@ -25,9 +25,15 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
                 return cls(state_machine_builder, state_machine_def_repo, instances)
 
     @classmethod
+    def new(cls, state_machine_builder: StateMachineBuilder,
+               state_machine_def_repo: StateMachineDefinitionRepository
+               ) -> "DefaultStateMachineContextRepository":
+        return cls(state_machine_builder, state_machine_def_repo, {})
+
+    @classmethod
     def form_json(cls, state_machine_builder: StateMachineBuilder,
                   state_machine_def_repo: StateMachineDefinitionRepository,
-                  json_text: str = None) -> "DefaultStateMachineContextRepository":
+                  json_text: str) -> "DefaultStateMachineContextRepository":
         if json_text:
             instances: dict = json.loads(json_text)
         else:

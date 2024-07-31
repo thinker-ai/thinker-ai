@@ -9,9 +9,22 @@ from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 T = TypeVar('T')
 
 
+def get_class_from_full_class_name(full_class_name: str):
+    if '.' in full_class_name:
+        module_name, class_name = full_class_name.rsplit('.', 1)
+        module = importlib.import_module(module_name)
+        context_class = getattr(module, class_name)
+    else:
+        # 假设类名在当前命名空间中
+        context_class = globals().get(full_class_name)
+        if context_class is None:
+            raise ValueError(f"Class '{full_class_name}' not found in the current namespace.")
+
+    return context_class
+
+
 def from_class_name(cls: Type[T], full_class_name: str, **kwargs: Any) -> T:
-    module_name, full_class_name = full_class_name.rsplit('.', 1)
-    context_class = getattr(importlib.import_module(module_name), full_class_name)
+    context_class = get_class_from_full_class_name(full_class_name)
     instance = context_class(**kwargs)
     if not isinstance(instance, cls):
         raise TypeError(f"Class {full_class_name} is not a subclass of {cls.__name__}")
@@ -159,10 +172,6 @@ class BaseStateContext:
 class StateContext(BaseStateContext):
     def __init__(self, id: str, state_def: StateDefinition):
         super().__init__(id, state_def)
-
-    @classmethod
-    def from_class_name(cls, full_class_name: str, **kwargs) -> 'StateContext':
-        return from_class_name(cls, full_class_name, **kwargs)
 
     def get_state_def(self) -> StateDefinition:
         return self.state_def
@@ -609,9 +618,7 @@ class StateContextBuilder:
             full_class_name = state_def.state_context_class_name
             if not full_class_name:
                 full_class_name = "thinker_ai.status_machine.state_machine.BaseStateContext"
-            return BaseStateContext.from_class_name(id=id,
-                                                    full_class_name=full_class_name,
-                                                    state_def=state_def)
+            return BaseStateContext.from_class_name(id=id, full_class_name=full_class_name, state_def=state_def)
 
 
 class StateMachine:
@@ -705,10 +712,6 @@ class CompositeStateContext(StateContext):
         self.state_machine_repository = state_machine_repository
         self.state_machine_definition_repository = state_machine_definition_repository
 
-    @classmethod
-    def from_class_name(cls, full_class_name: str, **kwargs) -> 'CompositeStateContext':
-        return from_class_name(cls, full_class_name, **kwargs)
-
     def handle(self, command: Command, outer_state_machine: 'StateMachine', **kwargs) -> ActionResult:
         if self.state_def.name != command.target:
             raise Exception(
@@ -754,7 +757,7 @@ class CompositeStateContext(StateContext):
                                                 state_machine_definition.get_start_state_def(),
                                                 self.state_machine_definition_repository,
                                                 self.state_machine_repository
-                                                ),
+                                            ),
                                             state_context_builder=self.state_context_builder,
                                             state_machine_repository=self.state_machine_repository,
                                             state_machine_definition_repository=self.state_machine_definition_repository,
@@ -774,8 +777,8 @@ class StateMachineBuilder:
 
     def new(self, state_machine_def_group_name: str,
             state_machine_def_name: str,
-            state_machine_definition_repository:StateMachineDefinitionRepository,
-            state_machine_context_repository:StateMachineRepository
+            state_machine_definition_repository: StateMachineDefinitionRepository,
+            state_machine_context_repository: StateMachineRepository
             ) -> StateMachine:
         state_machine_def = (state_machine_definition_repository
                              .get(state_machine_def_group_name, state_machine_def_name))
@@ -826,11 +829,11 @@ class StateMachineBuilder:
         ]
 
         return {
-                "state_machine_def_name": state_machine.state_machine_def_name,
-                "state_machine_def_group_name": state_machine.get_state_machine_def().group_name,
-                "current_state_context": current_state_context,
-                "history": history_data
-            }
+            "state_machine_def_name": state_machine.state_machine_def_name,
+            "state_machine_def_group_name": state_machine.get_state_machine_def().group_name,
+            "current_state_context": current_state_context,
+            "history": history_data
+        }
 
     def from_dict(self, id: str,
                   data: Dict[str, Any],
@@ -874,7 +877,7 @@ class StateMachineBuilder:
                   state_machine_context_repository: StateMachineRepository
                   ) -> "StateMachine":
         data = json.loads(json_text)
-        return self.from_dict(id, data,state_machine_definition_repository,state_machine_context_repository)
+        return self.from_dict(id, data, state_machine_definition_repository, state_machine_context_repository)
 
 
 class ActionFactory:

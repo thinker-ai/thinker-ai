@@ -12,11 +12,11 @@
             "task_type": "other",
             "actions": [
               {
-                "on_command": "inner_start_command",
+                "on_command": "start_to_A",
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": []
+            "events": ["start_to_A_handled"]
           },
           {
             "name": "A",
@@ -26,11 +26,11 @@
             "task_type": "state machine plan",
             "actions": [
               {
-                "on_command": "inner_start_command",
+                "on_command": "A_to_B",
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": []
+            "events": ["A_to_B_handled"]
           },
           {
             "name": "B",
@@ -40,11 +40,15 @@
             "task_type": "other",
             "actions": [
               {
-                "on_command": "inner_start_command",
+                "on_command":"B_to_C",
+                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+              },
+              {
+                "on_command": "B_to_D",
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": []
+            "events": ["B_to_C_handled","B_to_D_handled"]
           },
           {
             "name": "C",
@@ -54,11 +58,11 @@
             "task_type": "other",
             "actions": [
               {
-                "on_command": "inner_start_command",
+                "on_command": "C_to_A",
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": []
+            "events": ["C_to_A_handled"]
           },
           {
             "name": "D",
@@ -68,16 +72,16 @@
             "task_type": "other",
             "actions": [
               {
-                "on_command": "inner_start_command",
+                "on_command": "D_to_E",
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": []
+            "events": ["D_to_E_handled"]
           },
           {
             "name": "E",
             "is_start": false,
-            "state_context_class_name": "StateContext",
+            "state_context_class_name": "BaseStateContext",
             "description": "State E description",
             "task_type": "other",
             "actions": [],
@@ -86,32 +90,32 @@
         ],
         "transitions": [
           {
-            "event": "start_to_A",
+            "event": "start_to_A_handled",
             "source": "start",
             "target": "A"
           },
           {
-            "event": "A_to_B",
+            "event": "A_to_B_handled",
             "source": "A",
             "target": "B"
           },
           {
-            "event": "B_to_C",
+            "event": "B_to_C_handled",
             "source": "B",
             "target": "C"
           },
           {
-            "event": "C_to_A",
+            "event": "C_to_A_handled",
             "source": "C",
             "target": "A"
           },
           {
-            "event": "B_to_D",
+            "event": "B_to_D_handled",
             "source": "B",
             "target": "D"
           },
           {
-            "event": "D_to_E",
+            "event": "D_to_E_handled",
             "source": "D",
             "target": "E"
           }

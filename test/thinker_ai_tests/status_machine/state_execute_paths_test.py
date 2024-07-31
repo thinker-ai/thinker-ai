@@ -13,6 +13,8 @@ class StateExecutePathsTest(unittest.TestCase):
         self.definitions_file_name = 'state_execute_paths_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
+        self.instance_repo = DefaultStateMachineContextRepository.new(StateMachineBuilder(StateContextBuilder()),
+                                                                            self.definition_repo)
         self.state_machine_definition = self.definition_repo.get_root("paths_test")
 
     def test_get_state_execute_paths(self):
@@ -50,8 +52,14 @@ class StateExecutePathsTest(unittest.TestCase):
             self.assertTrue(plan in expected_path)
 
     def test_get_execute_commands_in_order(self):
-        instance_repo = DefaultStateMachineContextRepository.form_json(StateMachineBuilder(StateContextBuilder()),
-                                                                       self.definition_repo)
+        state_machine_builder = StateMachineBuilder(StateContextBuilder())
+        state_machine = state_machine_builder.new("paths_test",
+                                  "example_sm",
+                                  self.definition_repo,
+                                  self.instance_repo
+            )
+        result = state_machine.self_validate()
+        self.assertTrue(result)
 
 
 
