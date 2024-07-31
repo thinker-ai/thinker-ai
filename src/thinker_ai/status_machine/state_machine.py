@@ -248,9 +248,9 @@ class StateMachineDefinition:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
 
-    def _get_state_machine_create_order(self, state_machine_def_repo: "StateMachineDefinitionRepository",
-                                        state_machine_name: str = None,
-                                        sorted_state_defs: Optional[List[Tuple[str, StateDefinition]]] = None) \
+    def get_state_machine_create_order(self, state_machine_def_repo: "StateMachineDefinitionRepository",
+                                       state_machine_name: str = None,
+                                       sorted_state_defs: Optional[List[Tuple[str, StateDefinition]]] = None) \
             -> List[Tuple[str, StateDefinition]]:
         if not state_machine_name:
             state_machine_name = self.name
@@ -285,8 +285,8 @@ class StateMachineDefinition:
 
             # Process sub-state machine if any
             if isinstance(state, StateDefinition) and state.is_composite:
-                self._get_state_machine_create_order(state_machine_def_repo, f"{state_machine_name}.{state.name}",
-                                                     sorted_state_defs)
+                self.get_state_machine_create_order(state_machine_def_repo, f"{state_machine_name}.{state.name}",
+                                                    sorted_state_defs)
 
         start_state = state_machine_def.get_start_state_def()
         if start_state:
@@ -295,12 +295,6 @@ class StateMachineDefinition:
         sorted_state_defs.extend(stack)  # Reverse the stack to get the correct order
 
         return sorted_state_defs
-
-    def next_state_machine_to_create(self, state_machine_def_repo: "StateMachineDefinitionRepository") \
-            -> tuple[str, StateDefinition]:
-        execute_path: List[Tuple[str, StateDefinition]] = (
-            self._get_state_machine_create_order(state_machine_def_repo))
-        return execute_path[0]
 
     def get_validate_command_in_order(self) -> List[Command]:
         paths = self._get_state_validate_paths()
