@@ -248,15 +248,15 @@ class StateMachineDefinition:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
 
-    def _get_state_machine_create_order(self, state_machine_def__repo: "StateMachineDefinitionRepository",
+    def _get_state_machine_create_order(self, state_machine_def_repo: "StateMachineDefinitionRepository",
                                         state_machine_name: str = None,
-                                        sorted_state_defs: Optional[List[Tuple[str, BaseStateDefinition]]] = None) \
-            -> List[Tuple[str, BaseStateDefinition]]:
+                                        sorted_state_defs: Optional[List[Tuple[str, StateDefinition]]] = None) \
+            -> List[Tuple[str, StateDefinition]]:
         if not state_machine_name:
             state_machine_name = self.name
             state_machine_def = self
         else:
-            state_machine_def = state_machine_def__repo.get(state_machine_name)
+            state_machine_def = state_machine_def_repo.get(state_machine_name)
             if not state_machine_def:
                 return sorted_state_defs
 
@@ -275,7 +275,9 @@ class StateMachineDefinition:
             visited.add(state_def_name)
             if (isinstance(state, StateDefinition)
                     and state.task_type
-                    and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
+                    and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name
+                    and state_def_name not in state_machine_def_repo.get_state_machine_names()
+            ):
                 stack.append((state_def_name, state))
             for transition in state_machine_def.transitions:
                 if transition.source.name == state.name:
@@ -283,7 +285,7 @@ class StateMachineDefinition:
 
             # Process sub-state machine if any
             if isinstance(state, StateDefinition) and state.is_composite:
-                self._get_state_machine_create_order(state_machine_def__repo, f"{state_machine_name}.{state.name}",
+                self._get_state_machine_create_order(state_machine_def_repo, f"{state_machine_name}.{state.name}",
                                                      sorted_state_defs)
 
         start_state = state_machine_def.get_start_state_def()
@@ -296,13 +298,9 @@ class StateMachineDefinition:
 
     def next_state_machine_to_create(self, state_machine_def_repo: "StateMachineDefinitionRepository") \
             -> tuple[str, StateDefinition]:
-        execute_path: List[Tuple[str, BaseStateDefinition]] = (
+        execute_path: List[Tuple[str, StateDefinition]] = (
             self._get_state_machine_create_order(state_machine_def_repo))
-        for name, states_def in execute_path:
-            if (name not in state_machine_def_repo.get_state_machine_names()
-                    and isinstance(states_def, StateDefinition)
-                    and states_def.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name):
-                return name, states_def
+        return execute_path[0]
 
     def get_validate_command_in_order(self) -> List[Command]:
         paths = self._get_state_validate_paths()

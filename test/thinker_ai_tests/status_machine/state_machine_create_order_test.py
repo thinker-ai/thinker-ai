@@ -10,7 +10,7 @@ from thinker_ai_tests.status_machine.sample_actions import InnerStartAction
 class StateMachineCreateOrderTest(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.dirname(__file__)
-        self.definitions_file_name = 'state_execute_paths_test.json'
+        self.definitions_file_name = 'state_machine_create_order_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
         ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
@@ -23,14 +23,16 @@ class StateMachineCreateOrderTest(unittest.TestCase):
         for name, _ in sorted_states_defs:
             sorted_states.append(name)
         expected_order = [
+            "example_sm.A.2",
             "example_sm.A.4",
-            "example_sm.A",
+            "example_sm.B",
+            "example_sm.D",
         ]
         self.assertEqual(sorted_states,expected_order)
     def test_get_next_state_machine_to_create(self):
         state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
         name, _ = state_machine_definition.next_state_machine_to_create(self.definition_repo)
-        self.assertEqual(name, "example_sm.A.4")
+        self.assertEqual(name, "example_sm.A.2")
 
 
 if __name__ == '__main__':
