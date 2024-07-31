@@ -27,7 +27,7 @@ class TestNestedStateMachine(unittest.TestCase):
         self.state_machine = None
 
     def test_combined_state_machine(self):
-        commands = self.state_machine.get_state_machine_def().get_validate_command_in_order()
+        commands = self.state_machine.get_state_machine_def().get_validate_commands_in_order()
         self.state_machine.handle(commands[0])
         # Verify middle state machine transitions
         middle_state_machine = self.instance_repo.get("outer_start_instance")

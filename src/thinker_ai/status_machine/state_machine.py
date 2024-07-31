@@ -89,7 +89,7 @@ class MockCompositeAction(CompositeAction):
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> ActionResult:
         if command.name == self.on_command:
             inner_commands = (owner_state_context.get_state_machine()
-                              .get_state_machine_def().get_validate_command_in_order())
+                              .get_state_machine_def().get_validate_commands_in_order())
             for inner_command in inner_commands:
                 owner_state_context.handle_inner(inner_command)
             if owner_state_context.get_state_machine().current_state_context.state_def.is_terminal():
@@ -296,7 +296,7 @@ class StateMachineDefinition:
 
         return sorted_state_defs
 
-    def get_validate_command_in_order(self) -> List[Command]:
+    def get_validate_commands_in_order(self) -> List[Command]:
         paths = self._get_state_validate_paths()
         command_order = []
 
@@ -310,7 +310,7 @@ class StateMachineDefinition:
                 if transition:
                     # Find the action associated with this transition
                     if isinstance(state, StateDefinition):
-                        action = self._get_validate_action_desc_for_transition(state, transition)
+                        action = self._from_event_to_mock_action(state, transition.event)
                         if action:
                             command = Command(
                                 name=action.on_command,
@@ -328,10 +328,10 @@ class StateMachineDefinition:
         return None
 
     @staticmethod
-    def _get_validate_action_desc_for_transition(state: StateDefinition, transition: Transition) -> Optional[
+    def _from_event_to_mock_action(state: StateDefinition, event: str) -> Optional[
         ActionDescription]:
         for action in state.actions_des:
-            if f"{action.on_command}_handled" == transition.event:  # Assuming event name is used as command
+            if f"{action.on_command}_handled" == event:  # Assuming event name is used as command in mock action
                 return action
         return None
 

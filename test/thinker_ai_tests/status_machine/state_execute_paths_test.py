@@ -9,13 +9,13 @@ from thinker_ai.status_machine.status_machine_definition_repository import Defau
 class StateExecutePathsTest(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.dirname(__file__)
-        self.definitions_file_name = 'state_execute_paths_test.json.json'
+        self.definitions_file_name = 'state_execute_paths_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
+        self.state_machine_definition = self.definition_repo.get_root()
 
     def test_get_state_execute_paths(self):
-        state_machine_definition: StateMachineDefinition = self.definition_repo.get_root()
-        execute_paths:List[List[Tuple[str, BaseStateDefinition]]] = state_machine_definition._get_state_validate_paths()
+        execute_paths:List[List[Tuple[str, BaseStateDefinition]]] = self.state_machine_definition._get_state_validate_paths()
         actual_paths=[]
         for path in execute_paths:
             plan = []
@@ -47,6 +47,9 @@ class StateExecutePathsTest(unittest.TestCase):
         for plan in actual_paths:
             self.assertTrue(plan in expected_path)
 
+    def test_get_execute_commands_in_order(self):
+         commands=self.state_machine_definition.get_validate_commands_in_order()
+         expected_order = []
 
 if __name__ == '__main__':
     unittest.main()
