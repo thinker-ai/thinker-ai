@@ -101,10 +101,11 @@ class MockCompositeAction(CompositeAction):
 
     def handle(self, command: Command, owner_state_context: "CompositeStateContext", **kwargs) -> ActionResult:
         if command.name == self.on_command:
-            inner_commands = (owner_state_context.get_state_machine()
+            inner_command_flows = (owner_state_context.get_state_machine()
                               .get_state_machine_def().get_self_validate_commands_in_order())
-            for inner_command in inner_commands:
-                owner_state_context.handle_inner(inner_command)
+            for inner_command_flow in inner_command_flows:
+                for inner_command in inner_command_flow:
+                    owner_state_context.handle_inner(inner_command)
             if owner_state_context.get_state_machine().current_state_context.state_def.is_terminal():
                 result = ActionResult(success=True, event=Event(id=self.on_command, name=command.payload.get("event")))
                 return result
@@ -316,11 +317,11 @@ class StateMachineDefinition:
 
         return sorted_state_defs
 
-    def get_self_validate_commands_in_order(self) -> List[Command]:
+    def get_self_validate_commands_in_order(self) -> List[List[Command]]:
         paths = self._get_state_validate_paths()
-        command_order = []
-
+        command_orders = []
         for path in paths:
+            command_order = []
             for i in range(len(path) - 1):
                 state_def_name, state = path[i]
                 next_state_def_name, next_state = path[i + 1]
@@ -341,8 +342,8 @@ class StateMachineDefinition:
                                 }
                             )
                             command_order.append(command)
-
-        return command_order
+            command_orders.append(command_order)
+        return command_orders
 
     def get_transition(self, source_state_name: str, target_state_name: str) -> Optional[Transition]:
         for transition in self.transitions:
@@ -403,7 +404,7 @@ class StateMachineDefinition:
                 state_def_name = f"{self.name}.{state.name}"
                 current_path.append((state_def_name, state))
                 if state.is_terminal():
-                    return True  # 表示不要递归后续的遍历
+                    return True  # 表示退出上层的for循环
                 for transition in self.transitions:
                     if transition.source.name == state.name:
                         next_state = transition.target
@@ -414,7 +415,7 @@ class StateMachineDefinition:
                                 continue
                             else:
                                 branch.mark_visited(next_state.name)
-                        return visit(next_state)
+                        return visit(next_state)  # 表示退出for循环
 
             start_state = self.get_start_state_def()
             if start_state:
@@ -644,7 +645,7 @@ class StateMachine:
             return self.current_state_context.handle(command, self, **kwargs)
         else:
             raise Exception(
-                f"Illegal command {command.name} for state {self.current_state_context.state_def.name}")
+                f"Terminal State {self.current_state_context.state_def.name} can not handle the command {command.name}!")
 
     def on_event(self, event: Event):
         if not self.state_machine_definition_repository:
@@ -680,11 +681,18 @@ class StateMachine:
         if state_machine_def.inner_end_state_to_outer_event:
             return state_machine_def.to_outer_event(inner_event, self.current_state_context)
 
-    def self_validate(self) -> bool:
-        commands_order = self.get_state_machine_def().get_self_validate_commands_in_order()
-        for command in commands_order:
-            self.handle(command)
-        return self.current_state_context.state_def.is_terminal()
+    def self_validate(self) -> List[Tuple[List[Command], bool]]:
+        commands_orders = self.get_state_machine_def().get_self_validate_commands_in_order()
+        result = []
+        for commands_order in commands_orders:
+            self.reset()
+            for command in commands_order:
+                self.handle(command)
+            result.append((commands_order, self.current_state_context.state_def.is_terminal()))
+        return result
+    def reset(self):
+        self.current_state_context = self.get_state_context(self.get_state_machine_def().get_start_state_def())
+        self.history.clear()
 
 
 class StateMachineRepository(ABC):
