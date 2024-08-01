@@ -1,7 +1,7 @@
 import json
 import uuid
 from abc import abstractmethod, ABC
-from typing import Dict, Optional, List, Tuple, cast, Any
+from typing import Dict, Optional, List, Tuple, cast, Any, Type
 
 from thinker_ai.status_machine.base import from_class_name, ActionDescription
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository, Event, StateDefinition, \
@@ -330,7 +330,7 @@ class StateMachineRepository(ABC):
 class CompositeStateContext(StateContext):
     def __init__(self, id: str,
                  state_def: StateDefinition,
-                 state_context_builder_class: StateContextBuilder.__class__,
+                 state_context_builder_class: Type[StateContextBuilder],
                  state_machine_repository: StateMachineRepository,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
         super().__init__(id, state_def)
