@@ -1,9 +1,9 @@
 import json
 import os
 from typing import Dict, Any, Set
-from thinker_ai.status_machine.state_machine import (StateMachineDefinition,
-                                                     StateMachineDefinitionRepository,
-                                                     StateMachineDefinitionBuilder)
+from thinker_ai.status_machine.state_machine_definition import (StateMachineDefinition,
+                                                                StateMachineDefinitionRepository,
+                                                                StateMachineDefinitionBuilder)
 
 
 class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):

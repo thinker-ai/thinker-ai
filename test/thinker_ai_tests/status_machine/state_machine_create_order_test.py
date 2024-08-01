@@ -2,7 +2,8 @@ import os
 import unittest
 from typing import Tuple, List
 
-from thinker_ai.status_machine.state_machine import ActionRegister, BaseStateDefinition, StateMachineDefinition
+from thinker_ai.status_machine.state_machine_definition import BaseStateDefinition, StateMachineDefinition
+from thinker_ai.status_machine.state_machine_instance import ActionRegister
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import InnerStartAction
 

@@ -6,11 +6,11 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.state_machine import StateDefinition, StateMachineBuilder, DefaultStateContextBuilder
+from thinker_ai.status_machine.state_machine_definition import StateDefinition, StateMachineBuilder, DefaultStateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
-from thinker_ai.status_machine.state_machine_repository import DefaultStateMachineContextRepository
+from thinker_ai.status_machine.state_machine_instance_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \

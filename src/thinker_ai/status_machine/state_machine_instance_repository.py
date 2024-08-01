@@ -1,7 +1,8 @@
 import json
 import os
-from thinker_ai.status_machine.state_machine import StateMachine, StateMachineRepository, StateMachineBuilder, \
-    StateMachineDefinitionRepository
+
+from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository
+from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, StateMachine, StateMachineRepository
 
 
 class DefaultStateMachineContextRepository(StateMachineRepository):

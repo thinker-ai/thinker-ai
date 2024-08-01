@@ -1,6 +1,6 @@
-from thinker_ai.status_machine.state_machine import StateContext, CompositeStateContext,DefaultStateContextBuilder\
-    , StateMachineDefinitionRepository, StateMachineRepository, BaseStateContext, StateDefinition, \
-    BaseStateDefinition
+from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository, StateDefinition, BaseStateDefinition
+from thinker_ai.status_machine.state_machine_instance import BaseStateContext, StateMachineRepository, StateContext, \
+    CompositeStateContext, DefaultStateContextBuilder
 
 
 class EndSampleContext(BaseStateContext):
@@ -16,6 +16,6 @@ class SampleContext(StateContext):
 class CompositeSampleContext(CompositeStateContext):
     def __init__(self, id: str, state_def: StateDefinition,
                  state_context_builder_class: DefaultStateContextBuilder, state_machine_repository: StateMachineRepository,
-                 state_machine_definition_repository: StateMachineDefinitionRepository, *args, **kwargs):
+                 state_machine_definition_repository: StateMachineDefinitionRepository):
         super().__init__(id, state_def, state_context_builder_class, state_machine_repository,
                          state_machine_definition_repository)

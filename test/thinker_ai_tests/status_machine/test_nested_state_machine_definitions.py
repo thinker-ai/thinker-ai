@@ -1,8 +1,8 @@
 import unittest
 import os
 
-from thinker_ai.status_machine.state_machine import Command, ActionRegister, StateMachineBuilder, DefaultStateContextBuilder
-from thinker_ai.status_machine.state_machine_repository import DefaultStateMachineContextRepository
+from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, ActionRegister
+from thinker_ai.status_machine.state_machine_instance_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import InnerStartAction, MiddleStartAction, OuterStartAction
 
