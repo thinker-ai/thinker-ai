@@ -726,7 +726,7 @@ class StateMachine:
         self.state_machine_def_group_name = state_machine_def_group_name
         self.state_machine_def_name = state_machine_def_name
         self.current_state_context_des: StateContextDescription = current_state_context_des
-        self.history: List[BaseStateContext] = history or []
+        self.history: List[StateContextDescription] = history or []
         self.state_machine_repository: StateMachineRepository = state_machine_repository
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
@@ -743,10 +743,9 @@ class StateMachine:
             raise ValueError("Repositories are not set")
         state_machine_definition = self.get_state_machine_def()
         transitions = state_machine_definition.transitions
-        current_state_context = self.current_state_context_des.get_state_context()
         for transition in transitions:
             if transition.event == event.name and transition.source.name == self.current_state_context_des.state_def.name:
-                self.history.append(current_state_context)
+                self.history.append(self.current_state_context_des)
                 self.current_state_context_des = self.creat_state_context_des(transition.target)
                 self.state_machine_repository.set(self)
                 return
@@ -924,10 +923,10 @@ class StateMachineBuilder:
 
         history_data = [
             {
-                "id": context.id,
-                "state_def_name": context.state_def.name,
+                "id": context_des.instance_id,
+                "state_def_name": context_des.state_def.name,
             }
-            for context in state_machine.history
+            for context_des in state_machine.history
         ]
 
         return {
