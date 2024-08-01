@@ -1,5 +1,6 @@
 import json
 import os
+from json import JSONDecodeError
 
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository
 from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, StateMachine, StateMachineRepository
@@ -22,13 +23,16 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
         file_path = os.path.join(base_dir, file_name)
         if os.path.exists(file_path):
             with open(file_path, 'r') as file:
-                instances = json.load(file)
+                try:
+                    instances = json.load(file)
+                except JSONDecodeError:
+                    instances = {}
                 return cls(state_machine_builder, state_machine_def_repo, instances)
 
     @classmethod
     def new(cls, state_machine_builder: StateMachineBuilder,
-               state_machine_def_repo: StateMachineDefinitionRepository
-               ) -> "DefaultStateMachineContextRepository":
+            state_machine_def_repo: StateMachineDefinitionRepository
+            ) -> "DefaultStateMachineContextRepository":
         return cls(state_machine_builder, state_machine_def_repo, {})
 
     @classmethod

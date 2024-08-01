@@ -1,5 +1,6 @@
 import json
 import os
+from json import JSONDecodeError
 from typing import Dict, Any, Set
 from thinker_ai.status_machine.state_machine_definition import (StateMachineDefinition,
                                                                 StateMachineDefinitionRepository,
@@ -29,8 +30,8 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
             try:
                 with open(file_path, 'r') as file:
                     definitions = json.load(file)
-            except Exception:
-                pass
+            except JSONDecodeError:
+                definitions = {}
         return cls(definitions)
 
     def get_root(self, state_machine_def_group_name: str) -> StateMachineDefinition:
