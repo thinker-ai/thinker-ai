@@ -25,8 +25,9 @@ def test_precheck_update_plan_from_rsp():
 async def test_write_plan():
     plan = TaskTree(name ="analysis_dataset",goal="Run data analysis on sklearn Iris dataset, include a plot", role="user")
     rsp = await WritePlan().run(
-        plan_name=plan.name,
-        instruction = plan.instruction
+        goal=plan.goal,
+        task_name=plan.name,
+        instruction=plan.instruction
     )
 
     assert "task_id" in rsp

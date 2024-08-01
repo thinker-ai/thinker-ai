@@ -15,7 +15,7 @@ class SampleContext(StateContext):
 
 class CompositeSampleContext(CompositeStateContext):
     def __init__(self, id: str, state_def: StateDefinition,
-                 state_context_builder_class: DefaultStateContextBuilder, state_machine_repository: StateMachineRepository,
+                 state_context_builder_class: DefaultStateContextBuilder, state_machine_context_repository: StateMachineRepository,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
-        super().__init__(id, state_def, state_context_builder_class, state_machine_repository,
+        super().__init__(id, state_def, state_context_builder_class, state_machine_context_repository,
                          state_machine_definition_repository)

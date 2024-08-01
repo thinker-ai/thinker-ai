@@ -89,6 +89,7 @@ class DataInterpreter(Role):
         requirement = json.loads(content)
         task_tree = TaskTree(
             id=str(uuid.uuid4()),
+            goal=requirement["name"],
             name=requirement["name"],
             instruction=requirement["instruction"],
             use_reflection=self.use_reflection,

@@ -1,6 +1,6 @@
 import os
 import unittest
-from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, ActionRegister
+from thinker_ai.status_machine.state_machine_instance import StateMachineInstanceBuilder, ActionRegister
 from thinker_ai.status_machine.state_machine_instance_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import StartAction, MiddleAction
@@ -16,10 +16,10 @@ class TestSimpleStateMachine(unittest.TestCase):
                                                                                       'test_simple_state_machine_definitions.json')
         self.instance_repo = DefaultStateMachineContextRepository.from_file(self.base_dir,
                                                                             'test_simple_state_machine_instances.json',
-                                                                            StateMachineBuilder(),
+                                                                            StateMachineInstanceBuilder(),
                                                                             self.definition_repo)
         # 读取状态机实例
-        self.state_machine = self.instance_repo.get("simple_instance")
+        self.state_machine = self.instance_repo.get("group_instance","simple_instance")
 
     def tearDown(self):
         self.state_machine = None
