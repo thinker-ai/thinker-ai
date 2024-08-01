@@ -6,7 +6,7 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.state_machine import StateDefinition, StateMachineBuilder, StateContextBuilder
+from thinker_ai.status_machine.state_machine import StateDefinition, StateMachineBuilder, DefaultStateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
@@ -28,7 +28,7 @@ definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(con
                                                                config.state_machine.definition)
 instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
                                                                config.state_machine.instance,
-                                                               StateMachineBuilder(StateContextBuilder()),
+                                                               StateMachineBuilder(DefaultStateContextBuilder()),
                                                                definition_repo)
 
 

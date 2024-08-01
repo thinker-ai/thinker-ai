@@ -3,6 +3,7 @@
     "state_machine_definition_name": {
       "is_root": true,
       "description": "what you should do in this state machine, one short phrase or sentence",
+      "state_context_builder_full_class_name":"Full class name for users to create custom state contexts",
       "states_def": [
         {
           "name": "start_state_name",

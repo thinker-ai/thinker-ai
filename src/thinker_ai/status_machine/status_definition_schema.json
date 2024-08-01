@@ -60,6 +60,7 @@
       "properties": {
         "is_root": { "type": "boolean" },
         "description": { "type": "string" },
+        "state_context_builder_full_class_name":  { "type": "string" },
         "states_def": {
           "type": "array",
           "items": { "$ref": "#/definitions/State_Definition" }

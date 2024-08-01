@@ -2,7 +2,7 @@ import os
 import unittest
 from typing import Tuple, List
 
-from thinker_ai.status_machine.state_machine import ActionFactory, BaseStateDefinition, StateMachineDefinition
+from thinker_ai.status_machine.state_machine import ActionRegister, BaseStateDefinition, StateMachineDefinition
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_actions import InnerStartAction
 
@@ -13,7 +13,7 @@ class StateMachineCreateOrderTest(unittest.TestCase):
         self.definitions_file_name = 'state_machine_create_order_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
-        ActionFactory.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
+        ActionRegister.register_action(InnerStartAction.get_full_class_name(), InnerStartAction)
 
     def test_state_machine_create_order(self):
         state_machine_definition: StateMachineDefinition = self.definition_repo.get_root("state_machine_create_order")

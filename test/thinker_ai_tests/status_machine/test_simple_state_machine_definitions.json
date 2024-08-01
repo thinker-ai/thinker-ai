@@ -2,6 +2,7 @@
   "group_simple":{
       "test_state_machine": {
           "description": "",
+          "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine.DefaultStateContextBuilder",
           "states_def": [
             {
               "name": "start",
