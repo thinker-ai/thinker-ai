@@ -3,9 +3,7 @@ import json
 import uuid
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, cast, TypeVar, Type, Tuple
-
 from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
-
 T = TypeVar('T')
 
 
