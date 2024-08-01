@@ -177,16 +177,9 @@ class StateContext(BaseStateContext):
         self.state_def = value
 
     def get_action(self, on_command: str) -> Optional[Action]:
-        action_des = self.get_action_des(on_command)
-        if action_des:
-            return ActionRegister.create_action(action_des)
-        return None
-
-    def get_action_des(self, on_command: str) -> Optional[ActionDescription]:
         for action_des in self.state_def.actions_des:
             if action_des.on_command == on_command:
-                return action_des
-        return None
+                return ActionRegister.get_action(action_des)
 
     def assert_event(self, event: Event):
         if not event:
@@ -660,9 +653,9 @@ class StateContextDescription:
                                                                    self.instance_id))
             else:
                 state_context = (
-                    state_context_builder.build_end_state_instance(self.state_def,
-                                                                   self.state_def.state_context_class_name,
-                                                                   self.instance_id))
+                    state_context_builder.build_terminal_state_instance(self.state_def,
+                                                                        self.state_def.state_context_class_name,
+                                                                        self.instance_id))
             StateContextRegister.register(self.instance_id, state_context)
         return state_context
 
@@ -674,8 +667,8 @@ class StateContextBuilder(ABC):
         raise NotImplementedError
 
     @staticmethod
-    def build_end_state_instance(state_def: BaseStateDefinition, state_context_class_name: str,
-                                 id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
+    def build_terminal_state_instance(state_def: BaseStateDefinition, state_context_class_name: str,
+                                      id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
         raise NotImplementedError
 
     @classmethod
@@ -694,9 +687,9 @@ class DefaultStateContextBuilder(StateContextBuilder):
         return StateContext(id=id, state_def=state_def)
 
     @staticmethod
-    def build_end_state_instance(state_def: BaseStateDefinition,
-                                 state_context_class_name: str,
-                                 id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
+    def build_terminal_state_instance(state_def: BaseStateDefinition,
+                                      state_context_class_name: str,
+                                      id: Optional[str] = str(uuid.uuid4())) -> BaseStateContext:
         return BaseStateContext(id=id, state_def=state_def)
 
     @classmethod
@@ -990,7 +983,7 @@ class ActionRegister:
         cls._registry[action_class_name] = action_cls
 
     @classmethod
-    def create_action(cls, action_des: ActionDescription) -> Optional[Action]:
+    def get_action(cls, action_des: ActionDescription) -> Optional[Action]:
         action_cls: Action = cls._registry.get(action_des.full_class_name)
         if action_cls is None:
             raise ValueError(f"No Action class registered for class '{action_des.full_class_name}'")
