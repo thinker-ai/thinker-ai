@@ -396,10 +396,38 @@ class StateMachineDefinition:
                         return True
             return False
 
+        def merger_paths(execution_plan: List[List[Tuple[str, BaseStateDefinition]]]) -> List[
+            List[Tuple[str, BaseStateDefinition]]]:
+            terminal_paths = []
+            un_terminal_paths = []
+            for plan in execution_plan:
+                _, state = plan[-1]
+                if state.is_terminal():
+                    terminal_paths.append(plan)
+                else:
+                    un_terminal_paths.append(plan)
+            result_paths=[]
+            result_paths.extend(terminal_paths)
+            for path_a in un_terminal_paths:
+                for path_b in terminal_paths:
+                    tail_name, _ = path_a[-1]
+                    # 找到 path_b 中最后一个与 tail_name 匹配的元素
+                    last_match_idx = -1
+                    for idx, (name, _) in enumerate(path_b):
+                        if name == tail_name:
+                            last_match_idx = idx
+                    if last_match_idx != -1:
+                        # 合并 path_a 和 path_b，从 path_b 的 last_match_idx 位置开始连接到 path_a 的末尾
+                        merged_path = path_a + path_b[last_match_idx + 1:]
+                        result_paths.append(merged_path)
+
+            return result_paths
+
+
+
         execution_plan = []
         while True:
             current_path = []
-
             def visit(state: BaseStateDefinition) -> bool:
                 state_def_name = f"{self.name}.{state.name}"
                 current_path.append((state_def_name, state))
@@ -426,7 +454,7 @@ class StateMachineDefinition:
             if not has_unvisited_branch():
                 break
 
-        return execution_plan
+        return merger_paths(execution_plan)
 
 
 class StateMachineDefinitionRepository(ABC):
