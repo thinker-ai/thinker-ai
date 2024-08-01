@@ -70,11 +70,11 @@ class TaskResult(BaseModel):
 
 class Task(BaseModel):
     id: str
-    name:str
+    name: str
+    parent_name: Optional[str] = None
     instruction: str
-    type:TaskTypeDef = TaskType.OTHER
+    type: TaskTypeDef = TaskType.OTHER
     dependent_task_ids: Optional[List[str]] = None
-    parent_id: Optional[str] = None
     use_reflection: bool = False
     tools: Optional[List[str]] = None
     tool_recommender: Optional[ToolRecommender] = None  # Assuming ToolRecommender is a str for simplicity
@@ -86,9 +86,9 @@ class Task(BaseModel):
     @property
     def task_desc(self) -> TaskDesc:
         map: dict[str, Any] = {
-            "parent_id": self.parent_id,
-            "id": self.id,
-            "dependent_task_ids": self.dependent_task_ids or [],
+            "parent_name": self.parent_name,
+            "name": self.name,
+            "dependent_task_names": self.dependent_task_names or [],
             "instruction": self.instruction,
             "type": self.type.name,
         }
@@ -147,7 +147,7 @@ class Task(BaseModel):
                                               result=data['task_result'])
         return instance
 
-    async def write_and_exec_code(self,first_trial: bool = True)->bool:
+    async def write_and_exec_code(self, first_trial: bool = True) -> bool:
         try:
             code, cause_by = await self._write_code(first_trial)
             exec_logger.add(Message(content=code, role="assistant", cause_by=cause_by))
@@ -202,7 +202,7 @@ class Task(BaseModel):
             task_desc=self.task_desc,
             tool_info=tool_info,
             exec_logs=exec_logger.get(),
-            use_reflection = not first_trial and self.use_reflection
+            use_reflection=not first_trial and self.use_reflection
         )
 
         return code, todo
@@ -227,7 +227,7 @@ class ReviewConst:
 
 class AskReview(Action):
     async def run(
-            self,  task_desc: TaskDesc,exec_logs: list[Message] = None,trigger: str = ReviewConst.TASK_REVIEW_TRIGGER
+            self, task_desc: TaskDesc, exec_logs: list[Message] = None, trigger: str = ReviewConst.TASK_REVIEW_TRIGGER
     ) -> Tuple[str, bool]:
         if task_desc:
             logger.info("Current overall plan:")

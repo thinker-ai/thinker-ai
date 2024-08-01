@@ -6,7 +6,6 @@ from thinker_ai.status_machine.base import Command, Event, ActionDescription
 from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 
 
-
 class BaseStateDefinition:
     def __init__(self,
                  name: str,
@@ -275,28 +274,6 @@ class StateMachineDefinition:
         return merger_paths(execution_plan)
 
 
-class StateMachineDefinitionRepository(ABC):
-    @abstractmethod
-    def get(self, state_machine_def_group_name: str, state_machine_name: str) -> StateMachineDefinition:
-        raise NotImplementedError
-
-    @abstractmethod
-    def set(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
-        raise NotImplementedError
-
-    @abstractmethod
-    def to_file(self, base_dir: str, file_name: str):
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_root_state_machine_name(self, state_machine_def_group_name: str) -> str:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_state_machine_names(self, state_machine_def_group_name: str):
-        raise NotImplementedError
-
-
 class StateMachineDefinitionBuilder:
 
     def root_from_dict(self, group_name: str, state_machine_defs: dict) -> StateMachineDefinition:
@@ -438,3 +415,25 @@ class StateMachineDefinitionBuilder:
             raise ValueError(f"Target state {data['target']} not found")
 
         return Transition(event=data["event"], source=source, target=target)
+
+
+class StateMachineDefinitionRepository(ABC):
+    @abstractmethod
+    def get(self, state_machine_def_group_name: str, state_machine_name: str) -> StateMachineDefinition:
+        raise NotImplementedError
+
+    @abstractmethod
+    def set(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
+        raise NotImplementedError
+
+    @abstractmethod
+    def to_file(self, base_dir: str, file_name: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_root_state_machine_name(self, state_machine_def_group_name: str) -> str:
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_state_machine_names(self, state_machine_def_group_name: str):
+        raise NotImplementedError

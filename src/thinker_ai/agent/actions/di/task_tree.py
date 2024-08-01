@@ -6,7 +6,7 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.state_machine_definition import StateDefinition, StateMachineBuilder, DefaultStateContextBuilder
+from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, DefaultStateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
@@ -25,10 +25,10 @@ Latest data info after previous tasks:
 {info}
 """
 definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
-                                                               config.state_machine.definition)
+                                                                         config.state_machine.definition)
 instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
                                                                config.state_machine.instance,
-                                                               StateMachineBuilder(DefaultStateContextBuilder()),
+                                                               StateMachineBuilder(),
                                                                definition_repo)
 
 
@@ -133,7 +133,7 @@ class TaskTree(Task):
 
     async def update_plan(self) -> bool:
         try:
-            rsp_plan = await WritePlan().run(self.name, self.instruction)
+            rsp_plan = await WritePlan().run(self.parent_name, self.name, self.instruction)
             success, error = precheck_update_plan_from_rsp(rsp_plan, self)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
@@ -408,12 +408,7 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
-    try:
-        state_machine_defs = definition_repo.from_json(rsp)
-        state_machine_defs.get_root().self_validate()
-
-    except Exception as e:
-        return False, str(e)
+    pass
 
 
 class WritePlan(Action):
@@ -421,11 +416,13 @@ class WritePlan(Action):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    async def run(self, plan_name: str, instruction: str) -> str:
-        if not plan_name or not instruction:
-            raise Exception("plan_name and instruction must be provided")
+    async def run(self, task_name, instruction: str, parent_task_name: str = None) -> str:
+        if not task_name or not instruction:
+            raise Exception("task_name and instruction must be provided")
         create_or_update = "create"
-        state_machine_def = definition_repo.get(plan_name)
+        if not parent_task_name:
+            parent_task_name = task_name
+        state_machine_def = definition_repo.get(parent_task_name, task_name)
         if state_machine_def:
             create_or_update = "update"
 
@@ -454,7 +451,7 @@ class WritePlan(Action):
 
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
-            plan_name=plan_name,
+            plan_name=task_name,
             create_or_update=create_or_update,
             instruction=instruction,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
