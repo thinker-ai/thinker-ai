@@ -16,7 +16,7 @@
                   "full_class_name":"thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
                 }
             ],
-            "events": ["inner_start_command_handled"]
+            "events": ["inner_start_command_result_success"]
           },
           {
             "name": "inner_end",
@@ -26,13 +26,13 @@
         ],
         "transitions": [
           {
-            "event": "inner_start_command_handled",
+            "event": "inner_start_command_result_success",
             "source": "inner_start",
             "target": "inner_end"
           }
         ],
         "inner_end_state_to_outer_event": {
-          "inner_end": "middle_start_command_handled"
+          "inner_end": "middle_start_command_result_success"
         }
       },
       "outer_sm.outer_start": {
@@ -51,7 +51,7 @@
                   "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleStartAction"
                 }
             ],
-            "events": ["middle_start_command_handled"]
+            "events": ["middle_start_command_result_success"]
           },
           {
             "name": "middle_end",
@@ -61,13 +61,13 @@
         ],
         "transitions": [
           {
-            "event": "middle_start_command_handled",
+            "event": "middle_start_command_result_success",
             "source": "middle_start",
             "target": "middle_end"
           }
         ],
         "inner_end_state_to_outer_event": {
-          "middle_end": "outer_start_command_handled"
+          "middle_end": "outer_start_command_result_success"
         }
       },
       "outer_sm": {
@@ -87,7 +87,7 @@
                 "full_class_name":"thinker_ai_tests.status_machine.sample_actions.OuterStartAction"
               }
             ],
-            "events": ["outer_start_command_handled"]
+            "events": ["outer_start_command_result_success"]
           },
           {
             "name": "outer_end",
@@ -97,7 +97,7 @@
         ],
         "transitions": [
           {
-            "event": "outer_start_command_handled",
+            "event": "outer_start_command_result_success",
             "source": "outer_start",
             "target": "outer_end"
           }

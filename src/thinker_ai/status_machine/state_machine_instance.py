@@ -187,30 +187,38 @@ class StateContextDescription:
             state_context_builder_class = DefaultStateContextBuilder
         return state_context_builder_class
 
-    def get_state_context(self) -> BaseStateContext:
-        state_context = StateContextRegister.get(self.instance_id)
-        if not state_context:
-            state_context_builder = self.get_state_context_builder_class()
-            if isinstance(self.state_def, StateDefinition):
-                if self.state_def.is_composite:
-                    state_context = (state_context_builder
-                                     .build_composite_state_instance(self.state_def,
-                                                                     self.state_def.state_context_class_name,
-                                                                     self.state_machine_definition_repository,
-                                                                     self.state_machine_repository,
-                                                                     self.instance_group_id,
-                                                                     self.instance_id))
-                else:
-                    state_context = (
-                        state_context_builder.build_state_instance(self.state_def,
-                                                                   self.state_def.state_context_class_name,
-                                                                   self.instance_id))
+    def get_state_context(self,is_validate:bool) -> BaseStateContext:
+        if is_validate:
+            # 模拟过程不用缓存，避免缓存中模拟的state_context替代并占位实际的state_context
+            state_context = self._build_state_context(DefaultStateContextBuilder())
+        else:
+            state_context = StateContextRegister.get(self.instance_id)
+            if not state_context:
+                state_context_builder = self.get_state_context_builder_class()
+                state_context = self._build_state_context(state_context_builder)
+                StateContextRegister.register(self.instance_id, state_context)
+        return state_context
+
+    def _build_state_context(self, state_context_builder:StateContextBuilder):
+        if isinstance(self.state_def, StateDefinition):
+            if self.state_def.is_composite:
+                state_context = (state_context_builder
+                                 .build_composite_state_instance(self.state_def,
+                                                                 self.state_def.state_context_class_name,
+                                                                 self.state_machine_definition_repository,
+                                                                 self.state_machine_repository,
+                                                                 self.instance_group_id,
+                                                                 self.instance_id))
             else:
                 state_context = (
-                    state_context_builder.build_terminal_state_instance(self.state_def,
-                                                                        self.state_def.state_context_class_name,
-                                                                        self.instance_id))
-            StateContextRegister.register(self.instance_id, state_context)
+                    state_context_builder.build_state_instance(self.state_def,
+                                                               self.state_def.state_context_class_name,
+                                                               self.instance_id))
+        else:
+            state_context = (
+                state_context_builder.build_terminal_state_instance(self.state_def,
+                                                                    self.state_def.state_context_class_name,
+                                                                    self.instance_id))
         return state_context
 
 
@@ -263,7 +271,8 @@ class StateMachine:
         self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> ActionResult:
-        current_state_context = self.current_state_context_des.get_state_context()
+        is_validate = command.payload and command.payload.get("self_validate")
+        current_state_context = self.current_state_context_des.get_state_context(is_validate)
         if isinstance(current_state_context, StateContext):
             return current_state_context.handle(command, self, **kwargs)
         else:
@@ -414,12 +423,13 @@ class CompositeStateContext(StateContext):
 class StateMachineInstanceBuilder:
 
     @classmethod
-    def new_from_json_def_json(cls, state_machine_def_group_name: str,
-                               state_machine_def_name: str,
-                               def_json:str,
-                               state_machine_definition_repository: StateMachineDefinitionRepository,
-                               state_machine_context_repository: StateMachineRepository,
-                               instance_group_id: str = str(uuid.uuid4())) -> StateMachine:
+    def new_from_group_def_json(cls, state_machine_def_group_name: str,
+                                state_machine_def_name: str,
+                                def_json:str,
+                                state_machine_definition_repository: StateMachineDefinitionRepository,
+                                state_machine_context_repository: StateMachineRepository,
+                                instance_group_id: str = str(uuid.uuid4()),
+                                ) -> StateMachine:
         state_machine_def = StateMachineDefinitionBuilder.from_group_def_json(state_machine_def_group_name, state_machine_def_name, def_json)
         state_machine = cls.new_from_def(state_machine_def,state_machine_definition_repository,state_machine_context_repository,instance_group_id)
         return state_machine

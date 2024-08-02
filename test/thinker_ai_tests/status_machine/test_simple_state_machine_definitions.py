@@ -33,7 +33,7 @@ class TestSimpleStateMachine(unittest.TestCase):
         # Transition to end state
         result = self.state_machine.handle(commands[0][1])
         self.assertIsNotNone(result.event)
-        self.assertEqual(result.event.name, "middle_command_handled")
+        self.assertEqual(result.event.name, "middle_command_result_success")
         self.assertEqual(self.state_machine.current_state_context_des.state_def.name, "end")
         self.assertEqual(self.state_machine.last_state().state_def.name, "middle")
 

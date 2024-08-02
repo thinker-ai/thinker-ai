@@ -6,21 +6,22 @@
       "state_context_builder_full_class_name": "titanic_survival.TitanicSurvivalStateContextBuilder",
       "states_def": [
         {
-          "name": "eda",
+          "name": "data_analysis",
           "is_start": true,
-          "state_context_class_name": "titanic_survival.eda.contexts.EDAStateContext",
+          "state_context_class_name": "titanic_survival.data_analysis.contexts.DataAnalysisStateContext",
           "description": "Perform exploratory data analysis",
           "task_type": "eda",
           "actions": [
             {
               "on_command": "perform_eda",
-              "pre_check_list": ["Data is loaded", "EDA tools are available"],
-              "full_class_name": "titanic_survival.eda.actions.PerformEDAAction",
-              "post_check_list": ["EDA report generated"]
+              "pre_check_list": ["Ensure data is loaded", "Check for necessary libraries"],
+              "full_class_name": "titanic_survival.data_analysis.actions.PerformEDAAction",
+              "post_check_list": ["EDA results are generated"]
             }
           ],
           "events": [
-            "eda_completed"
+            "perform_eda_result_success",
+            "perform_eda_result_failure"
           ]
         },
         {
@@ -32,13 +33,14 @@
           "actions": [
             {
               "on_command": "preprocess_data",
-              "pre_check_list": ["EDA completed", "Data is loaded"],
+              "pre_check_list": ["EDA results are available"],
               "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction",
-              "post_check_list": ["Data is cleaned and preprocessed"]
+              "post_check_list": ["Data is preprocessed"]
             }
           ],
           "events": [
-            "data_preprocessing_completed"
+            "preprocess_data_result_success",
+            "preprocess_data_result_failure"
           ]
         },
         {
@@ -50,82 +52,115 @@
           "actions": [
             {
               "on_command": "engineer_features",
-              "pre_check_list": ["Data preprocessing completed"],
+              "pre_check_list": ["Data is preprocessed"],
               "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction",
-              "post_check_list": ["New features created"]
+              "post_check_list": ["Features are engineered"]
             }
           ],
           "events": [
-            "feature_engineering_completed"
+            "engineer_features_result_success",
+            "engineer_features_result_failure"
           ]
         },
         {
-          "name": "model_train",
+          "name": "model_training",
           "is_start": false,
-          "state_context_class_name": "titanic_survival.model_train.contexts.ModelTrainStateContext",
+          "state_context_class_name": "titanic_survival.model_training.contexts.ModelTrainingStateContext",
           "description": "Train the model",
           "task_type": "model train",
           "actions": [
             {
               "on_command": "train_model",
-              "pre_check_list": ["Feature engineering completed"],
-              "full_class_name": "titanic_survival.model_train.actions.TrainModelAction",
+              "pre_check_list": ["Features are engineered"],
+              "full_class_name": "titanic_survival.model_training.actions.TrainModelAction",
               "post_check_list": ["Model is trained"]
             }
           ],
           "events": [
-            "model_train_completed"
+            "train_model_result_success",
+            "train_model_result_failure"
           ]
         },
         {
-          "name": "model_evaluate",
+          "name": "model_evaluation",
           "is_start": false,
-          "state_context_class_name": "titanic_survival.model_evaluate.contexts.ModelEvaluateStateContext",
+          "state_context_class_name": "titanic_survival.model_evaluation.contexts.ModelEvaluationStateContext",
           "description": "Evaluate the model",
           "task_type": "model evaluate",
           "actions": [
             {
               "on_command": "evaluate_model",
               "pre_check_list": ["Model is trained"],
-              "full_class_name": "titanic_survival.model_evaluate.actions.EvaluateModelAction",
-              "post_check_list": ["Model evaluation report generated"]
+              "full_class_name": "titanic_survival.model_evaluation.actions.EvaluateModelAction",
+              "post_check_list": ["Model evaluation results are available"]
             }
           ],
           "events": [
-            "model_evaluate_completed"
+            "evaluate_model_result_success",
+            "evaluate_model_result_failure"
           ]
         },
         {
-          "name": "end_state",
-          "description": "End state of the state machine",
-          "state_context_class_name": "titanic_survival.end_state.contexts.EndStateContext"
+          "name": "end_state_success",
+          "description": "End state for successful completion",
+          "state_context_class_name": "titanic_survival.end_state.contexts.EndStateSuccessContext"
+        },
+        {
+          "name": "end_state_failure",
+          "description": "End state for failure",
+          "state_context_class_name": "titanic_survival.end_state.contexts.EndStateFailureContext"
         }
       ],
       "transitions": [
         {
-          "event": "eda_completed",
-          "source": "eda",
+          "event": "perform_eda_result_success",
+          "source": "data_analysis",
           "target": "data_preprocessing"
         },
         {
-          "event": "data_preprocessing_completed",
+          "event": "perform_eda_result_failure",
+          "source": "data_analysis",
+          "target": "end_state_failure"
+        },
+        {
+          "event": "preprocess_data_result_success",
           "source": "data_preprocessing",
           "target": "feature_engineering"
         },
         {
-          "event": "feature_engineering_completed",
+          "event": "preprocess_data_result_failure",
+          "source": "data_preprocessing",
+          "target": "end_state_failure"
+        },
+        {
+          "event": "engineer_features_result_success",
           "source": "feature_engineering",
-          "target": "model_train"
+          "target": "model_training"
         },
         {
-          "event": "model_train_completed",
-          "source": "model_train",
-          "target": "model_evaluate"
+          "event": "engineer_features_result_failure",
+          "source": "feature_engineering",
+          "target": "end_state_failure"
         },
         {
-          "event": "model_evaluate_completed",
-          "source": "model_evaluate",
-          "target": "end_state"
+          "event": "train_model_result_success",
+          "source": "model_training",
+          "target": "model_evaluation"
+        },
+        {
+          "event": "train_model_result_failure",
+          "source": "model_training",
+          "target": "end_state_failure"
+        },
+        {
+          "event": "evaluate_model_result_success",
+          "source": "model_evaluation",
+          "target": "end_state_success"
+        },
+        {
+          "event": "evaluate_model_result_failure",
+          "source": "model_evaluation",
+          "target": "end_state_failure"
         }
       ]
     }

@@ -3,7 +3,7 @@ from __future__ import annotations
 from overrides import overrides
 
 import json
-from typing import Tuple, Optional, List, Any
+from typing import Tuple, Optional, List, Any, Set
 
 from thinker_ai.agent.actions import Action
 from thinker_ai.status_machine.base import Command
@@ -417,11 +417,12 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 def pre_check_plan_from_rsp(rsp: str, goal,task_name) -> Tuple[bool, str]:
     try:
         state_machine = (StateMachineInstanceBuilder
-                         .new_from_json_def_json(state_machine_def_group_name=goal,
-                                                 state_machine_def_name=task_name,
-                                                 def_json=rsp,
-                                                 state_machine_definition_repository=definition_repo,
-                                                 state_machine_context_repository=instance_repo))
+                         .new_from_group_def_json(state_machine_def_group_name=goal,
+                                                  state_machine_def_name=task_name,
+                                                  def_json=rsp,
+                                                  state_machine_definition_repository=definition_repo,
+                                                  state_machine_context_repository=instance_repo)
+                         )
 
         if state_machine:
             results: List[Tuple[List[Command], bool]] = state_machine.self_validate()

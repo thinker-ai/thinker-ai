@@ -19,11 +19,14 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
     def from_json(cls, json_text) -> "DefaultBasedStateMachineDefinitionRepository":
         definitions = json.loads(json_text)
         return cls(definitions)
-
+    def to_json(self) -> str:
+        return json.dumps(self.definitions, indent=2, ensure_ascii=False)
     def group_to_json(self,state_machine_def_group_name: str) -> str:
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
             return json.dumps(state_machine_def_group, indent=2, ensure_ascii=False)
+        else:
+            return ""
 
     @classmethod
     def from_file(cls, base_dir: str, file_name: str) -> "DefaultBasedStateMachineDefinitionRepository":
@@ -68,7 +71,7 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
                 return (StateMachineDefinitionBuilder.from_dict(
                     group_def_name=state_machine_def_group_name,
                     state_machine_def_name=state_machine_name,
-                    state_machine_def_data=data,
+                    state_machine_def_dict=data,
                     exist_state_machine_names=self.get_state_machine_names(state_machine_def_group_name)))
 
     def set(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):

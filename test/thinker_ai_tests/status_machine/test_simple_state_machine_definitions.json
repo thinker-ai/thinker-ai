@@ -16,7 +16,7 @@
                     "full_class_name":"thinker_ai_tests.status_machine.sample_actions.StartAction"
                   }
               ],
-              "events": ["start_command_handled"]
+              "events": ["start_command_result_success"]
             },
             {
               "name": "middle",
@@ -29,7 +29,7 @@
                     "full_class_name":"thinker_ai_tests.status_machine.sample_actions.MiddleAction"
                   }
               ],
-              "events": ["middle_command_handled"]
+              "events": ["middle_command_result_success"]
             },
             {
               "name": "end",
@@ -39,12 +39,12 @@
           ],
           "transitions": [
             {
-              "event": "start_command_handled",
+              "event": "start_command_result_success",
               "source": "start",
               "target": "middle"
             },
             {
-              "event": "middle_command_handled",
+              "event": "middle_command_result_success",
               "source": "middle",
               "target": "end"
             }

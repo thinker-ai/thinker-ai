@@ -16,7 +16,7 @@
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": ["start_to_A_handled"]
+            "events": ["start_to_A_result_success"]
           },
           {
             "name": "A",
@@ -30,7 +30,7 @@
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": ["A_to_B_handled"]
+            "events": ["A_to_B_result_success"]
           },
           {
             "name": "B",
@@ -48,7 +48,7 @@
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": ["B_to_C_handled","B_to_D_handled"]
+            "events": ["B_to_C_result_success","B_to_D_result_success"]
           },
           {
             "name": "C",
@@ -62,7 +62,7 @@
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": ["C_to_A_handled"]
+            "events": ["C_to_A_result_success"]
           },
           {
             "name": "D",
@@ -76,7 +76,7 @@
                 "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
               }
             ],
-            "events": ["D_to_E_handled"]
+            "events": ["D_to_E_result_success"]
           },
           {
             "name": "E",
@@ -90,32 +90,32 @@
         ],
         "transitions": [
           {
-            "event": "start_to_A_handled",
+            "event": "start_to_A_result_success",
             "source": "start",
             "target": "A"
           },
           {
-            "event": "A_to_B_handled",
+            "event": "A_to_B_result_success",
             "source": "A",
             "target": "B"
           },
           {
-            "event": "B_to_C_handled",
+            "event": "B_to_C_result_success",
             "source": "B",
             "target": "C"
           },
           {
-            "event": "C_to_A_handled",
+            "event": "C_to_A_result_success",
             "source": "C",
             "target": "A"
           },
           {
-            "event": "B_to_D_handled",
+            "event": "B_to_D_result_success",
             "source": "B",
             "target": "D"
           },
           {
-            "event": "D_to_E_handled",
+            "event": "D_to_E_result_success",
             "source": "D",
             "target": "E"
           }

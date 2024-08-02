@@ -21,7 +21,7 @@ def test_pre_check_update_plan_from_rsp():
     )
     definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
                                                                              config.state_machine.definition)
-    rsp = definition_repo.group_to_json(plan.goal)
+    rsp = definition_repo.to_json()
     success, _ = pre_check_plan_from_rsp(rsp, plan.goal,plan.name)
     assert success
     invalid_rsp = "wrong"

@@ -56,6 +56,8 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
         group_data = self.instances.get(instance_group_id)
         if group_data:
             return json.dumps(group_data, indent=2, ensure_ascii=False)
+        else:
+            return ""
 
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)

@@ -173,7 +173,7 @@ class StateMachineDefinition:
     @staticmethod
     def _from_event_to_mock_action(state: StateDefinition, event: str) -> Optional[ActionDescription]:
         for action in state.actions_des:
-            if f"{action.on_command}_handled" == event:  # Assuming event name is used as command in mock action
+            if event.startswith(f"{action.on_command}_result"):  # Assuming event name is used as command in mock action
                 return action
         return None
 
@@ -186,9 +186,9 @@ class StateMachineDefinition:
             def add_to_state(self, to_state: str):
                 self.to[to_state] = False  # Initially, set the visited status to False
 
-            def mark_visited(self, to_state: str):
+            def mark_visited(self, to_state: str, visited: bool):
                 if to_state in self.to:
-                    self.to[to_state] = True
+                    self.to[to_state] = visited
 
         def find_all_branches() -> dict:
             branches = {}
@@ -207,12 +207,30 @@ class StateMachineDefinition:
         # Initialize branches
         branches = find_all_branches()
 
+        def is_unvisited(branch) -> bool:
+            for to_state, visited in branch.to.items():
+                if not visited:
+                    return True
+            return False
+
         def has_unvisited_branch() -> bool:
             for branch in branches.values():
-                for to_state, visited in branch.to.items():
-                    if not visited:
-                        return True
+                if is_unvisited(branch):
+                    return True
             return False
+
+        def un_mark_path(path: List[Tuple[str, BaseStateDefinition]]) -> bool:
+            un_mark_next = False
+            to = None
+            for _, state in path[::-1]:
+                branch: Branch = branches.get(state.name)
+                if branch:
+                    if un_mark_next:
+                        branch.mark_visited(to, False)
+                    elif is_unvisited(branch):
+                        un_mark_next = True
+                to = state.name
+            return True
 
         def merger_paths(execution_plan: List[List[Tuple[str, BaseStateDefinition]]]) -> List[
             List[Tuple[str, BaseStateDefinition]]]:
@@ -245,11 +263,12 @@ class StateMachineDefinition:
         while True:
             current_path = []
 
-            def visit(state: BaseStateDefinition) -> bool:
+            def visit(state: BaseStateDefinition):
                 state_def_name = f"{self.name}.{state.name}"
                 current_path.append((state_def_name, state))
                 if state.is_terminal():
-                    return True  # 表示退出上层的for循环
+                    un_mark_path(current_path)
+                    return
                 for transition in self.transitions:
                     if transition.source.name == state.name:
                         next_state = transition.target
@@ -259,7 +278,7 @@ class StateMachineDefinition:
                             if visited:  # 且访问过
                                 continue
                             else:
-                                branch.mark_visited(next_state.name)
+                                branch.mark_visited(next_state.name, True)
                         return visit(next_state)  # 表示退出for循环
 
             start_state = self.get_start_state_def()
@@ -282,39 +301,49 @@ class StateMachineDefinitionBuilder:
         group_def_data = groups_def_dict.get(group_def_name)
         if group_def_data:
             return cls.root_from_group_def_dict(group_def_name, group_def_data)
-    @classmethod
-    def root_from_group_def_dict(cls, group_def_name: str, group_def_data: dict) -> StateMachineDefinition:
-        for name, state_machine_def in iter(group_def_data.items()):
-            if state_machine_def.get("is_root"):
-                return cls.from_dict(group_def_name, name, state_machine_def, set(group_def_data.keys()))
 
     @classmethod
-    def from_group_def_json(cls, group_def_name: str, state_machine_def_name: str, groups_def_json_data: str) -> StateMachineDefinition:
-        groups_def_dict_data = json.loads(groups_def_json_data)
+    def root_from_group_def_dict(cls, group_def_name: str, group_def_dict: dict) -> StateMachineDefinition:
+        for name, state_machine_def in iter(group_def_dict.items()):
+            if state_machine_def.get("is_root"):
+                return cls.from_dict(group_def_name, name, state_machine_def, set(group_def_dict.keys()))
+
+    @classmethod
+    def from_group_def_json(cls, group_def_name: str, state_machine_def_name: str,
+                            groups_def_json: str) -> StateMachineDefinition:
+        groups_def_dict_data = json.loads(groups_def_json)
         group_def_data = groups_def_dict_data.get(group_def_name)
         if group_def_data:
             state_machine_def_data = group_def_data.get(state_machine_def_name)
             if state_machine_def_data:
-                return cls.from_dict(group_def_name, state_machine_def_name, state_machine_def_data, set(group_def_data.keys()))
+                return cls.from_dict(group_def_name, state_machine_def_name, state_machine_def_data,
+                                     set(group_def_data.keys()))
 
     @classmethod
-    def from_dict(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_data: Dict[str, Any],
+    def from_json(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_json: str,
+                  exist_state_machine_names: Set):
+        groups_def_dict_data = json.loads(state_machine_def_json)
+        return cls.from_dict(group_def_name, state_machine_def_name, groups_def_dict_data, exist_state_machine_names)
+
+    @classmethod
+    def from_dict(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_dict: Dict[str, Any],
                   exist_state_machine_names: Set) -> StateMachineDefinition:
         states = {cls._state_def_from_dict(data=sd,
                                            group_def_name=group_def_name,
                                            state_machine_def_name=state_machine_def_name,
                                            exist_state_machine_names=exist_state_machine_names)
-                  for sd in state_machine_def_data["states_def"]}
-        transitions = {cls._transition_from_dict(t, states) for t in state_machine_def_data["transitions"]}
-        is_root = True if state_machine_def_data.get("is_root") else False
+                  for sd in state_machine_def_dict["states_def"]}
+        transitions = {cls._transition_from_dict(t, states) for t in state_machine_def_dict["transitions"]}
+        is_root = True if state_machine_def_dict.get("is_root") else False
         return StateMachineDefinition(
             name=state_machine_def_name,
             group_def_name=group_def_name,
             is_root=is_root,
-            state_context_builder_full_class_name=state_machine_def_data.get("state_context_builder_full_class_name"),
+            state_context_builder_full_class_name=state_machine_def_dict.get("state_context_builder_full_class_name"),
             states_def=states,
             transitions=transitions,
-            inner_end_state_to_outer_event=state_machine_def_data.get("inner_end_state_to_outer_event") if not is_root else None
+            inner_end_state_to_outer_event=state_machine_def_dict.get(
+                "inner_end_state_to_outer_event") if not is_root else None
         )
 
     @classmethod
