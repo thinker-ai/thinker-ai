@@ -139,7 +139,7 @@ class TaskTree(Task):
                 task_name=self.name,
                 instruction=self.instruction
             )
-            success, error = pre_check_plan_from_rsp(rsp,self)
+            success, error = pre_check_plan_from_rsp(rsp,self.goal,self.name)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
                 error_msg = f"The generated plan is not valid with error: {error}, try regenerating, remember to generate either the whole plan or the single changed task only"
@@ -414,11 +414,11 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
         task_tree.add_tasks(tasks)
 
 
-def pre_check_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
+def pre_check_plan_from_rsp(rsp: str, goal,task_name) -> Tuple[bool, str]:
     try:
         state_machine = (StateMachineInstanceBuilder
-                         .new_from_json_def_json(state_machine_def_group_name=task_tree.goal,
-                                                 state_machine_def_name=task_tree.name,
+                         .new_from_json_def_json(state_machine_def_group_name=goal,
+                                                 state_machine_def_name=task_name,
                                                  def_json=rsp,
                                                  state_machine_definition_repository=definition_repo,
                                                  state_machine_context_repository=instance_repo))
@@ -490,8 +490,8 @@ class WritePlan(Action):
             instruction=instruction,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
             task_type_desc=task_type_desc,
-            exist_status_definition=replace_curly_braces(definition_repo.to_json()),
-            exist_status_instance=replace_curly_braces(instance_repo.to_json()),
+            exist_status_definition=replace_curly_braces(definition_repo.group_to_json(goal)),
+            exist_status_instance=replace_curly_braces(instance_repo.group_to_json(goal)),
             guidance=TaskType.STATE_MACHINE_PLAN.value.guidance
         )
         rsp = await self._aask(prompt)

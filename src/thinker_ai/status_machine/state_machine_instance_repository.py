@@ -52,27 +52,29 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
                    state_machine_def_repo=state_machine_def_repo,
                    instances=instances)
 
-    def to_json(self) -> str:
-        return json.dumps(self.instances, indent=2, ensure_ascii=False)
+    def group_to_json(self,instance_group_id: str) -> str:
+        group_data = self.instances.get(instance_group_id)
+        if group_data:
+            return json.dumps(group_data, indent=2, ensure_ascii=False)
 
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)
         with open(file_path, 'w') as file:
             json.dump(self.instances, file, indent=2)
 
-    def set(self, root_instance_id: str, state_machine_instance: StateMachine):
-        group_data = self.instances.get(root_instance_id)
+    def set(self, instance_group_id: str, state_machine_instance: StateMachine):
+        group_data = self.instances.get(instance_group_id)
         if not group_data:
             group_data={}
-            self.instances[root_instance_id]=group_data
+            self.instances[instance_group_id]=group_data
         group_data[state_machine_instance.instance_id] = self.state_machine_builder.state_machine_to_dict(state_machine_instance)
 
-    def get(self, root_instance_id: str, instance_id: str) -> StateMachine:
-        group_data = self.instances.get(root_instance_id)
+    def get(self, instance_group_id: str, instance_id: str) -> StateMachine:
+        group_data = self.instances.get(instance_group_id)
         if group_data:
             data = group_data.get(instance_id)
             if data:
-                return self.state_machine_builder.state_machine_from_dict(root_instance_id,instance_id,
+                return self.state_machine_builder.state_machine_from_dict(instance_group_id,instance_id,
                                                                           data,
                                                                           self.state_machine_def_repo,
                                                                           self)

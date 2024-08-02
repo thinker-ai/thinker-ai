@@ -20,8 +20,10 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
         definitions = json.loads(json_text)
         return cls(definitions)
 
-    def to_json(self) -> str:
-        return json.dumps(self.definitions, indent=2, ensure_ascii=False)
+    def group_to_json(self,state_machine_def_group_name: str) -> str:
+        state_machine_def_group = self.definitions.get(state_machine_def_group_name)
+        if state_machine_def_group:
+            return json.dumps(state_machine_def_group, indent=2, ensure_ascii=False)
 
     @classmethod
     def from_file(cls, base_dir: str, file_name: str) -> "DefaultBasedStateMachineDefinitionRepository":

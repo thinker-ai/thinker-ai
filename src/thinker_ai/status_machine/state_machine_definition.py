@@ -292,9 +292,10 @@ class StateMachineDefinitionBuilder:
     def from_group_def_json(cls, group_def_name: str, state_machine_def_name: str, groups_def_json_data: str) -> StateMachineDefinition:
         groups_def_dict_data = json.loads(groups_def_json_data)
         group_def_data = groups_def_dict_data.get(group_def_name)
-        state_machine_def_data = group_def_data.get(state_machine_def_name)
         if group_def_data:
-            return cls.from_dict(group_def_name, state_machine_def_name, state_machine_def_data, set(group_def_data.keys()))
+            state_machine_def_data = group_def_data.get(state_machine_def_name)
+            if state_machine_def_data:
+                return cls.from_dict(group_def_name, state_machine_def_name, state_machine_def_data, set(group_def_data.keys()))
 
     @classmethod
     def from_dict(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_data: Dict[str, Any],

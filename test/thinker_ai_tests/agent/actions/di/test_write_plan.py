@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 
 from thinker_ai.agent.actions.di.task_tree import (
@@ -6,24 +8,30 @@ from thinker_ai.agent.actions.di.task_tree import (
     WritePlan,
     pre_check_plan_from_rsp,
 )
+from thinker_ai.configs.config import config
+from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 
 
-def test_precheck_update_plan_from_rsp():
-    plan = TaskTree(name="",goal="")
-    plan.add_tasks([Task(task_id="1")])
-    rsp = '[{"task_id": "2"}]'
-    success, _ = pre_check_plan_from_rsp(rsp, plan)
+def test_pre_check_update_plan_from_rsp():
+    plan = TaskTree(
+        id=str(uuid.uuid4()),
+        goal="titanic_survival",
+        name="titanic_survival",
+        instruction="instruction"
+    )
+    definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
+                                                                             config.state_machine.definition)
+    rsp = definition_repo.group_to_json(plan.goal)
+    success, _ = pre_check_plan_from_rsp(rsp, plan.goal,plan.name)
     assert success
-    assert len(plan.tasks) == 1 and plan.tasks[0].id == "1"  # precheck should not change the original one
-
     invalid_rsp = "wrong"
-    success, _ = pre_check_plan_from_rsp(invalid_rsp, plan)
+    success, _ = pre_check_plan_from_rsp(invalid_rsp,  plan.goal,plan.name)
     assert not success
 
 
 @pytest.mark.asyncio
 async def test_write_plan():
-    plan = TaskTree(name ="analysis_dataset",goal="Run data analysis on sklearn Iris dataset, include a plot", role="user")
+    plan = TaskTree(name ="analysis_dataset",goal="data_analysis", role="user")
     rsp = await WritePlan().run(
         goal=plan.root_name,
         task_name=plan.name,
