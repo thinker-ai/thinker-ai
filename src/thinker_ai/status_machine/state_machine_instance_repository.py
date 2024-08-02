@@ -60,19 +60,19 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
         with open(file_path, 'w') as file:
             json.dump(self.instances, file, indent=2)
 
-    def set(self, group_id: str, state_machine_instance: StateMachine):
-        group_data = self.instances.get(group_id)
+    def set(self, root_instance_id: str, state_machine_instance: StateMachine):
+        group_data = self.instances.get(root_instance_id)
         if not group_data:
             group_data={}
-            self.instances[group_id]=group_data
-        group_data[state_machine_instance.id] = self.state_machine_builder.state_machine_to_dict(state_machine_instance)
+            self.instances[root_instance_id]=group_data
+        group_data[state_machine_instance.instance_id] = self.state_machine_builder.state_machine_to_dict(state_machine_instance)
 
-    def get(self, group_id: str, instance_id: str) -> StateMachine:
-        group_data = self.instances.get(group_id)
+    def get(self, root_instance_id: str, instance_id: str) -> StateMachine:
+        group_data = self.instances.get(root_instance_id)
         if group_data:
             data = group_data.get(instance_id)
             if data:
-                return self.state_machine_builder.state_machine_from_dict(group_id,instance_id,
+                return self.state_machine_builder.state_machine_from_dict(root_instance_id,instance_id,
                                                                           data,
                                                                           self.state_machine_def_repo,
                                                                           self)

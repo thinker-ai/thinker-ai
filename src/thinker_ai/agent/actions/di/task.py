@@ -70,8 +70,8 @@ class TaskResult(BaseModel):
 
 class Task(BaseModel):
     id: str
+    goal: str
     name: str
-    parent_name: Optional[str] = None
     instruction: str
     type: TaskTypeDef = TaskType.OTHER
     dependent_task_ids: Optional[List[str]] = None

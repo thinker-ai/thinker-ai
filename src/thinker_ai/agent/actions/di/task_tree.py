@@ -6,7 +6,8 @@ import json
 from typing import Tuple, Optional, List, Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.state_machine_instance import StateMachineBuilder, DefaultStateContextBuilder
+from thinker_ai.status_machine.base import Command
+from thinker_ai.status_machine.state_machine_instance import StateMachineInstanceBuilder, DefaultStateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
@@ -28,7 +29,7 @@ definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(con
                                                                          config.state_machine.definition)
 instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
                                                                config.state_machine.instance,
-                                                               StateMachineBuilder(),
+                                                               StateMachineInstanceBuilder(),
                                                                definition_repo)
 
 
@@ -70,7 +71,7 @@ class TaskTree(Task):
         plan_update_count = 0
         while plan_update_count < max_retry:
             plan_update_count += 1
-            if await self.update_plan():
+            if await self.write_plan():
                 return True
         logger.info("更新计划次数超限，任务失败")
         return False
@@ -131,9 +132,13 @@ class TaskTree(Task):
         """
         return self.task_map.get(self.current_task_id, None)
 
-    async def update_plan(self) -> bool:
+    async def write_plan(self) -> bool:
         try:
-            rsp_plan = await WritePlan().run(self.parent_name, self.name, self.instruction)
+            rsp_plan = await WritePlan().run(
+                goal=self.goal,
+                task_name=self.name,
+                instruction=self.instruction
+            )
             success, error = precheck_update_plan_from_rsp(rsp_plan, self)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
@@ -384,9 +389,10 @@ def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    state_machine_def = definition_repo.from_json(rsp)
+    state_machine_def = StateMachineInstanceBuilder.state_machine_from_json(rsp,
+                                                                            state_machine_definition_repository=definition_repo,
+                                                                            state_machine_context_repository=instance_repo)
     tasks = [Task(**task_config) for task_config in rsp]
-
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
         if tasks[0].dependent_task_ids and len(tasks) > 1:
             # tasks[0].dependent_task_ids means the generated tasks are not a complete plan
@@ -408,7 +414,26 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
-    pass
+    try:
+        state_machine = StateMachineInstanceBuilder.state_machine_from_json(task_tree.goal, task_tree.name, rsp,
+                                                                            state_machine_definition_repository=definition_repo,
+                                                                            state_machine_context_repository=instance_repo)
+        results: List[Tuple[List[Command], bool]] = state_machine.self_validate()
+        success = True
+        fail_paths = []
+        for command_list, result in results:
+            if not result:
+                fail_path=[]
+                for command in command_list:
+                    fail_path.append((command.name,command.target))
+                    fail_paths.append(fail_path)
+                success = result
+        if success:
+            return True, "状态机验证成功。"
+        else:
+            return False, str(fail_paths)
+    except Exception as e:
+        return False, str(e)
 
 
 class WritePlan(Action):
@@ -416,17 +441,19 @@ class WritePlan(Action):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    async def run(self, task_name, instruction: str, parent_task_name: str = None) -> str:
+    async def run(self, goal: str, task_name, instruction: str) -> str:
         if not task_name or not instruction:
             raise Exception("task_name and instruction must be provided")
         create_or_update = "create"
-        if not parent_task_name:
-            parent_task_name = task_name
-        state_machine_def = definition_repo.get(parent_task_name, task_name)
+        if not goal:
+            goal = task_name
+        state_machine_def = definition_repo.get(goal, task_name)
         if state_machine_def:
             create_or_update = "update"
 
         PROMPT_TEMPLATE: str = """
+        #The Name Of State Machine Group:
+        {goal}
         #The Name Of State Machine:
         {plan_name}
         # Create Or Update
@@ -452,6 +479,7 @@ class WritePlan(Action):
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
             plan_name=task_name,
+            goal=goal,
             create_or_update=create_or_update,
             instruction=instruction,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
