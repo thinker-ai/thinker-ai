@@ -1,0 +1,133 @@
+{
+  "titanic_survival": {
+    "titanic_survival": {
+      "is_root": true,
+      "description": "Predict passenger survival outcome based on Titanic dataset",
+      "state_context_builder_full_class_name": "titanic_survival.TitanicSurvivalStateContextBuilder",
+      "states_def": [
+        {
+          "name": "eda",
+          "is_start": true,
+          "state_context_class_name": "titanic_survival.eda.contexts.EDAStateContext",
+          "description": "Perform exploratory data analysis",
+          "task_type": "eda",
+          "actions": [
+            {
+              "on_command": "perform_eda",
+              "pre_check_list": ["Data is loaded", "EDA tools are available"],
+              "full_class_name": "titanic_survival.eda.actions.PerformEDAAction",
+              "post_check_list": ["EDA report generated"]
+            }
+          ],
+          "events": [
+            "eda_completed"
+          ]
+        },
+        {
+          "name": "data_preprocessing",
+          "is_start": false,
+          "state_context_class_name": "titanic_survival.data_preprocessing.contexts.DataPreprocessingStateContext",
+          "description": "Preprocess the dataset",
+          "task_type": "data preprocessing",
+          "actions": [
+            {
+              "on_command": "preprocess_data",
+              "pre_check_list": ["EDA completed", "Data is loaded"],
+              "full_class_name": "titanic_survival.data_preprocessing.actions.PreprocessDataAction",
+              "post_check_list": ["Data is cleaned and preprocessed"]
+            }
+          ],
+          "events": [
+            "data_preprocessing_completed"
+          ]
+        },
+        {
+          "name": "feature_engineering",
+          "is_start": false,
+          "state_context_class_name": "titanic_survival.feature_engineering.contexts.FeatureEngineeringStateContext",
+          "description": "Create new features for the dataset",
+          "task_type": "feature engineering",
+          "actions": [
+            {
+              "on_command": "engineer_features",
+              "pre_check_list": ["Data preprocessing completed"],
+              "full_class_name": "titanic_survival.feature_engineering.actions.EngineerFeaturesAction",
+              "post_check_list": ["New features created"]
+            }
+          ],
+          "events": [
+            "feature_engineering_completed"
+          ]
+        },
+        {
+          "name": "model_train",
+          "is_start": false,
+          "state_context_class_name": "titanic_survival.model_train.contexts.ModelTrainStateContext",
+          "description": "Train the model",
+          "task_type": "model train",
+          "actions": [
+            {
+              "on_command": "train_model",
+              "pre_check_list": ["Feature engineering completed"],
+              "full_class_name": "titanic_survival.model_train.actions.TrainModelAction",
+              "post_check_list": ["Model is trained"]
+            }
+          ],
+          "events": [
+            "model_train_completed"
+          ]
+        },
+        {
+          "name": "model_evaluate",
+          "is_start": false,
+          "state_context_class_name": "titanic_survival.model_evaluate.contexts.ModelEvaluateStateContext",
+          "description": "Evaluate the model",
+          "task_type": "model evaluate",
+          "actions": [
+            {
+              "on_command": "evaluate_model",
+              "pre_check_list": ["Model is trained"],
+              "full_class_name": "titanic_survival.model_evaluate.actions.EvaluateModelAction",
+              "post_check_list": ["Model evaluation report generated"]
+            }
+          ],
+          "events": [
+            "model_evaluate_completed"
+          ]
+        },
+        {
+          "name": "end_state",
+          "description": "End state of the state machine",
+          "state_context_class_name": "titanic_survival.end_state.contexts.EndStateContext"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "eda_completed",
+          "source": "eda",
+          "target": "data_preprocessing"
+        },
+        {
+          "event": "data_preprocessing_completed",
+          "source": "data_preprocessing",
+          "target": "feature_engineering"
+        },
+        {
+          "event": "feature_engineering_completed",
+          "source": "feature_engineering",
+          "target": "model_train"
+        },
+        {
+          "event": "model_train_completed",
+          "source": "model_train",
+          "target": "model_evaluate"
+        },
+        {
+          "event": "model_evaluate_completed",
+          "source": "model_evaluate",
+          "target": "end_state"
+        }
+      ]
+    }
+  }
+}

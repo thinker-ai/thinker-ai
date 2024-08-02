@@ -134,12 +134,12 @@ class TaskTree(Task):
 
     async def write_plan(self) -> bool:
         try:
-            rsp_plan = await WritePlan().run(
+            rsp = rsp_plan = await WritePlan().run(
                 goal=self.goal,
                 task_name=self.name,
                 instruction=self.instruction
             )
-            success, error = precheck_update_plan_from_rsp(rsp_plan, self)
+            success, error = pre_check_plan_from_rsp(rsp,self)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
             if not success:
                 error_msg = f"The generated plan is not valid with error: {error}, try regenerating, remember to generate either the whole plan or the single changed task only"
@@ -389,7 +389,8 @@ def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    state_machine_def = StateMachineInstanceBuilder.state_machine_from_json(rsp,
+    state_machine_def = StateMachineInstanceBuilder.state_machine_from_json(task_tree.root_name, task_tree.nameask_tree,
+                                                                            rsp,
                                                                             state_machine_definition_repository=definition_repo,
                                                                             state_machine_context_repository=instance_repo)
     tasks = [Task(**task_config) for task_config in rsp]
@@ -413,25 +414,30 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
         task_tree.add_tasks(tasks)
 
 
-def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
+def pre_check_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
     try:
-        state_machine = StateMachineInstanceBuilder.state_machine_from_json(task_tree.goal, task_tree.name, rsp,
-                                                                            state_machine_definition_repository=definition_repo,
-                                                                            state_machine_context_repository=instance_repo)
-        results: List[Tuple[List[Command], bool]] = state_machine.self_validate()
-        success = True
-        fail_paths = []
-        for command_list, result in results:
-            if not result:
-                fail_path=[]
-                for command in command_list:
-                    fail_path.append((command.name,command.target))
-                    fail_paths.append(fail_path)
-                success = result
-        if success:
-            return True, "状态机验证成功。"
-        else:
-            return False, str(fail_paths)
+        state_machine = (StateMachineInstanceBuilder
+                         .new_from_json_def_json(state_machine_def_group_name=task_tree.goal,
+                                                 state_machine_def_name=task_tree.name,
+                                                 def_json=rsp,
+                                                 state_machine_definition_repository=definition_repo,
+                                                 state_machine_context_repository=instance_repo))
+
+        if state_machine:
+            results: List[Tuple[List[Command], bool]] = state_machine.self_validate()
+            success = True
+            fail_paths = []
+            for command_list, result in results:
+                if not result:
+                    fail_path = []
+                    for command in command_list:
+                        fail_path.append((command.name, command.target))
+                        fail_paths.append(fail_path)
+                    success = result
+            if success:
+                return True, "状态机验证成功。"
+            else:
+                return False, str(fail_paths)
     except Exception as e:
         return False, str(e)
 

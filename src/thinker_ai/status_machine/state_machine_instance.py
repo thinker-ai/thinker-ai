@@ -5,7 +5,7 @@ from typing import Dict, Optional, List, Tuple, cast, Any, Type
 
 from thinker_ai.status_machine.base import from_class_name, ActionDescription
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository, Event, StateDefinition, \
-    BaseStateDefinition, Command, StateMachineDefinition
+    BaseStateDefinition, Command, StateMachineDefinition, StateMachineDefinitionBuilder
 
 
 class ActionResult:
@@ -385,7 +385,7 @@ class CompositeStateContext(StateContext):
         result_state_machine = self.state_machine_repository.get(self.root_instance_id, self.instance_id)
         if not result_state_machine:
             state_machine_definition = self.state_machine_definition_repository.get(
-                self.get_state_def().group_name, self.get_state_def().name)
+                self.get_state_def().group_def_name, self.get_state_def().name)
             start_state_context_description = StateContextDescription(
                 state_context_builder_full_class_name=state_machine_definition.state_context_builder_full_class_name,
                 state_def=state_machine_definition.get_start_state_def(),
@@ -397,7 +397,7 @@ class CompositeStateContext(StateContext):
             result_state_machine = StateMachine(instance_id=self.instance_id,
                                                 root_instance_id=self.root_instance_id,
                                                 state_machine_def_name=state_machine_definition.name,
-                                                state_machine_def_group_name=state_machine_definition.group_name,
+                                                state_machine_def_group_name=state_machine_definition.group_def_name,
                                                 current_state_context_des=start_state_context_description,
                                                 state_machine_repository=self.state_machine_repository,
                                                 state_machine_definition_repository=self.state_machine_definition_repository,
@@ -412,18 +412,37 @@ class CompositeStateContext(StateContext):
 
 
 class StateMachineInstanceBuilder:
-    @staticmethod
-    def new(state_machine_def_group_name: str,
-            state_machine_def_name: str,
-            state_machine_definition_repository: StateMachineDefinitionRepository,
-            state_machine_context_repository: StateMachineRepository,
-            root_instance_id: str = str(uuid.uuid4())) -> StateMachine:
+
+    @classmethod
+    def new_from_json_def_json(cls, state_machine_def_group_name: str,
+                               state_machine_def_name: str,
+                               def_json:str,
+                               state_machine_definition_repository: StateMachineDefinitionRepository,
+                               state_machine_context_repository: StateMachineRepository,
+                               root_instance_id: str = str(uuid.uuid4())) -> StateMachine:
+        state_machine_def = StateMachineDefinitionBuilder.from_group_def_json(state_machine_def_group_name, state_machine_def_name, def_json)
+        state_machine = cls.new_from_def(state_machine_def,state_machine_definition_repository,state_machine_context_repository,root_instance_id)
+        return state_machine
+    @classmethod
+    def new_from_def_name(cls, state_machine_def_group_name: str,
+                          state_machine_def_name: str,
+                          state_machine_definition_repository: StateMachineDefinitionRepository,
+                          state_machine_context_repository: StateMachineRepository,
+                          root_instance_id: str = str(uuid.uuid4())) -> StateMachine:
+
         state_machine_def = (state_machine_definition_repository
                              .get(state_machine_def_group_name, state_machine_def_name))
-        start_state_def = state_machine_def.get_start_state_def()
+        state_machine = cls.new_from_def(state_machine_def,state_machine_definition_repository,state_machine_context_repository,root_instance_id)
+        return state_machine
+
+    @classmethod
+    def new_from_def(cls, state_machine_def: StateMachineDefinition,
+                     state_machine_definition_repository: StateMachineDefinitionRepository,
+                     state_machine_context_repository: StateMachineRepository,
+                     root_instance_id: str = str(uuid.uuid4())) -> StateMachine:
         start_state_context = StateContextDescription(
             state_context_builder_full_class_name=state_machine_def.state_context_builder_full_class_name,
-            state_def=start_state_def,
+            state_def=state_machine_def.get_start_state_def(),
             state_machine_definition_repository=state_machine_definition_repository,
             state_machine_repository=state_machine_context_repository,
             root_instance_id=root_instance_id,
@@ -432,7 +451,7 @@ class StateMachineInstanceBuilder:
         state_machine = StateMachine(
             instance_id=str(uuid.uuid4()),
             root_instance_id=root_instance_id,
-            state_machine_def_group_name=state_machine_def_group_name,
+            state_machine_def_group_name=state_machine_def.group_def_name,
             state_machine_def_name=state_machine_def.name,
             current_state_context_des=start_state_context,
             history=[],
@@ -458,7 +477,7 @@ class StateMachineInstanceBuilder:
 
         return {
             "state_machine_def_name": state_machine.state_machine_def_name,
-            "state_machine_def_group_name": state_machine.get_state_machine_def().group_name,
+            "state_machine_def_group_name": state_machine.get_state_machine_def().group_def_name,
             "current_state_context": current_state_context,
             "history": history_data
         }
@@ -509,7 +528,7 @@ class StateMachineInstanceBuilder:
         return json.dumps(state_machine_dict, indent=2, ensure_ascii=False)
 
     @classmethod
-    def state_machine_from_json(cls, goal: str, task_name: str,
+    def state_machine_from_json(cls, root_instance_id: str, instance_id: str,
                                 json_text: str,
                                 state_machine_definition_repository: StateMachineDefinitionRepository,
                                 state_machine_context_repository: StateMachineRepository
@@ -517,14 +536,14 @@ class StateMachineInstanceBuilder:
         data = json.loads(json_text)
         # 状态机的name和状态机json节点是kv关系，json_text只有状态机自身的信息，没有group_id和id的信息，所以，要把group_id和id独立传入，
         # 所以，TODO：key方式存储name,也许不是最好的方式，待改进
-        return cls.state_machine_from_dict(goal, task_name, data, state_machine_definition_repository,
+        return cls.state_machine_from_dict(root_instance_id, instance_id, data, state_machine_definition_repository,
                                            state_machine_context_repository)
 
     @classmethod
     def state_machine_group_from_json(cls, json_text: str,
                                       state_machine_definition_repository: StateMachineDefinitionRepository,
                                       state_machine_context_repository: StateMachineRepository
-                                      ) -> dict:
+                                      ) -> dict[str, dict[str, StateMachine]]:
         data = json.loads(json_text)
         return cls.state_machine_group_from_dict(data, state_machine_definition_repository,
                                                  state_machine_context_repository)
@@ -533,7 +552,7 @@ class StateMachineInstanceBuilder:
     def state_machine_group_from_dict(cls, data: Dict[str, Any],
                                       state_machine_definition_repository: StateMachineDefinitionRepository,
                                       state_machine_context_repository: StateMachineRepository
-                                      ) -> dict:
+                                      ) -> dict[str, dict[str, StateMachine]]:
         result = {}
         for root_instance_id in data.keys():
             group_data = data.get(root_instance_id)
