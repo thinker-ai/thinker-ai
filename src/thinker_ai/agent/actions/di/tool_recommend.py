@@ -7,12 +7,12 @@ from overrides import overrides
 from pydantic import BaseModel, field_validator
 from rank_bm25 import BM25Okapi
 
-from thinker_ai.agent.actions.di.task import TaskDesc
 from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.common.logs import logger
 from thinker_ai.agent.tools import TOOL_REGISTRY
 from thinker_ai.agent.tools.tool_data_type import Tool
 from thinker_ai.agent.tools.tool_registry import get_register_tools
+from thinker_ai.status_machine.task_desc import TaskDesc
 from thinker_ai.utils.code_parser import CodeParser
 
 TOOL_INFO_PROMPT = """

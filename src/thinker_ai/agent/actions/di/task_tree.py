@@ -1,18 +1,14 @@
 from __future__ import annotations
 
+from copy import deepcopy
+
 from overrides import overrides
 
 import json
-from typing import Tuple, Optional, List, Any, Set
+from typing import Tuple, Optional, List
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.status_machine.base import Command
-from thinker_ai.status_machine.state_machine_context import StateMachineContextBuilder, DefaultStateContextBuilder
-from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
-from thinker_ai.common.common import replace_curly_braces
-from thinker_ai.configs.config import config
-from thinker_ai.status_machine.state_machine_context_repository import DefaultStateMachineContextRepository
-from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
+from thinker_ai.status_machine.task_desc import TaskType, PlanStatus, TaskDesc
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \
     TaskResult
@@ -25,12 +21,6 @@ DATA_INFO: str = """
 Latest data info after previous tasks:
 {info}
 """
-definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(config.workspace.path / "data"),
-                                                                         config.state_machine.definition)
-instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
-                                                               config.state_machine.instance,
-                                                               StateMachineContextBuilder(),
-                                                               definition_repo)
 
 
 async def confirm_review(review: str) -> bool:
@@ -48,38 +38,36 @@ class TaskTree(Task):
     task_map: dict[str, Task] = {}
     current_task_id: Optional[str] = None
     plan_update_max_retry: int = 3
-    type: TaskTypeDef = TaskType.STATE_MACHINE_PLAN.value
+    type: str = "plan"
 
-    def __init__(self,
-                 tasks: Optional[List[Task]] = None, **kwargs):
+    def __init__(self, tasks: Optional[List[Task]] = None, **kwargs):
         super().__init__(**kwargs)
         self.add_tasks(tasks)
 
-    async def plan_and_act(self, plan_update_max_retry: Optional[int] = None,
+    async def execute_plan(self, plan_update_max_retry: Optional[int] = None,
                            task_execute_max_retry: Optional[int] = None):
         if not tasks_storage.load(self.id):
-            tasks_storage.save(self)
-        if await self.try_plan(plan_update_max_retry):
-            execute_plan_success = await self.try_act(task_execute_max_retry)
+            tasks_storage.save(self)  #用于子任务的查询访问
+        plan_update_max_retry = plan_update_max_retry if plan_update_max_retry else self.plan_update_max_retry
+        plan_update_count = 0
+        while plan_update_count < plan_update_max_retry:
+            plan_update_count += 1
+            if not await self.update_plan():
+                continue
+            execute_plan_success = await self.execute_plan_once(task_execute_max_retry)
             if execute_plan_success:
                 self.task_result = await AskPlanResult().run(self)
+                return
             else:
-                logger.info("计划执行失败")
+                logger.info("计划执行失败，更新计划")
 
-    async def try_plan(self, max_retry) -> bool:
-        max_retry = max_retry if max_retry else self.plan_update_max_retry
-        plan_update_count = 0
-        while plan_update_count < max_retry:
-            plan_update_count += 1
-            if await self.write_plan():
-                return True
         logger.info("更新计划次数超限，任务失败")
-        return False
+        self.task_result = await AskPlanResult().run(self)
 
-    async def try_act(self, max_retry: Optional[int] = None) -> bool:
-        max_retry = max_retry if max_retry else self.task_execute_max_retry
+    async def execute_plan_once(self, task_execute_max_retry: Optional[int] = None) -> bool:
+        task_execute_max_retry = task_execute_max_retry if task_execute_max_retry else self.task_execute_max_retry
         current_task_retry_counter = 0
-        while self.current_task and current_task_retry_counter < max_retry:
+        while self.current_task and current_task_retry_counter < task_execute_max_retry:
             current_task_retry_counter += 1
             await self._check_data()
             await self.current_task.write_and_exec_code(first_trial=current_task_retry_counter == 1)
@@ -132,15 +120,11 @@ class TaskTree(Task):
         """
         return self.task_map.get(self.current_task_id, None)
 
-    async def write_plan(self) -> bool:
+    async def update_plan(self) -> bool:
         try:
-            rsp = rsp_plan = await WritePlan().run(
-                goal=self.goal,
-                task_name=self.name,
-                instruction=self.instruction
-            )
-            success, error = pre_check_plan_from_rsp(rsp,self.goal,self.name)
+            rsp_plan = await WritePlan().run(self)
             exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=WritePlan))
+            success, error = precheck_update_plan_from_rsp(rsp_plan, self)
             if not success:
                 error_msg = f"The generated plan is not valid with error: {error}, try regenerating, remember to generate either the whole plan or the single changed task only"
                 logger.error(error_msg)
@@ -365,35 +349,10 @@ class TaskTree(Task):
             exec_logger.add(Message(content=data_info, role="user", cause_by=CheckData))
 
 
-def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    tasks = [Task(**task_config) for task_config in rsp]
-
-    if len(tasks) == 1 or tasks[0].dependent_task_ids:
-        if tasks[0].dependent_task_ids and len(tasks) > 1:
-            # tasks[0].dependent_task_ids means the generated tasks are not a complete plan
-            # for they depend on tasks in the current plan, in this case, we only support updating one task each time
-            logger.warning(
-                "Current plan will take only the first generated task if the generated tasks are not a complete plan"
-            )
-        # handle a single task
-        if task_tree.has_task_id(tasks[0].id):
-            # replace an existing task
-            task_tree.replace_task(tasks[0])
-        else:
-            # append one task
-            task_tree.append_task(tasks[0])
-
-    else:
-        # add tasks in general
-        task_tree.add_tasks(tasks)
-
-
 def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    state_machine_def = StateMachineContextBuilder.state_machine_from_json(task_tree.root_name, task_tree.nameask_tree,
-                                                                           rsp,
-                                                                           state_machine_definition_repository=definition_repo,
-                                                                           state_machine_context_repository=instance_repo)
+    rsp = json.loads(rsp)
     tasks = [Task(**task_config) for task_config in rsp]
+
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
         if tasks[0].dependent_task_ids and len(tasks) > 1:
             # tasks[0].dependent_task_ids means the generated tasks are not a complete plan
@@ -414,57 +373,18 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
         task_tree.add_tasks(tasks)
 
 
-def pre_check_plan_from_rsp(rsp: str, goal,task_name) -> Tuple[bool, str]:
+def precheck_update_plan_from_rsp(rsp: str, task_tree: TaskTree) -> Tuple[bool, str]:
+    temp_tree = deepcopy(task_tree)
     try:
-        state_machine = (StateMachineContextBuilder
-                         .new_from_group_def_json(state_machine_def_group_name=goal,
-                                                  state_machine_def_name=task_name,
-                                                  def_json=rsp,
-                                                  state_machine_definition_repository=definition_repo,
-                                                  state_machine_context_repository=instance_repo)
-                         )
-
-        if state_machine:
-            results: List[Tuple[List[Command], bool]] = state_machine.self_validate()
-            success = True
-            fail_paths = []
-            for command_list, result in results:
-                if not result:
-                    fail_path = []
-                    for command in command_list:
-                        fail_path.append((command.name, command.target))
-                        fail_paths.append(fail_path)
-                    success = result
-            if success:
-                return True, "状态机验证成功。"
-            else:
-                return False, str(fail_paths)
+        update_plan_from_rsp(rsp, temp_tree)
+        return True, ""
     except Exception as e:
         return False, str(e)
 
 
 class WritePlan(Action):
-
-    def __init__(self, **data: Any):
-        super().__init__(**data)
-
-    async def run(self, goal: str, task_name, instruction: str) -> str:
-        if not task_name or not instruction:
-            raise Exception("task_name and instruction must be provided")
-        create_or_update = "create"
-        if not goal:
-            goal = task_name
-        state_machine_def = definition_repo.get(goal, task_name)
-        if state_machine_def:
-            create_or_update = "update"
-
+    async def run(self, task_tree: TaskTree) -> str:
         PROMPT_TEMPLATE: str = """
-        #The Name Of State Machine Group:
-        {goal}
-        #The Name Of State Machine:
-        {plan_name}
-        # Create Or Update
-         you will {create_or_update} this State Machine
         # Instruction:
         {instruction}
         # Context:
@@ -472,28 +392,16 @@ class WritePlan(Action):
         # Available Task Types:
         {task_type_desc}
         # Guidance:
-        the exist state machine definitions are here,they are related to the current state machine and are the context of the current state machine:
-        ```json
-         {exist_status_definition}
-        ```
-        the exist state machine instances are here,they are related to the current state machine and are the context of the current state machine:
-        ```json
-         {exist_status_instance}
-        ```
+        the sub_task's parent id is '{parent_id}'
         {guidance}
         """
-
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
-            plan_name=task_name,
-            goal=goal,
-            create_or_update=create_or_update,
-            instruction=instruction,
+            instruction=task_tree.instruction,
             context="\n".join([str(ct) for ct in exec_logger.get()]),
+            parent_id=task_tree.id,
             task_type_desc=task_type_desc,
-            exist_status_definition=replace_curly_braces(definition_repo.group_to_json(goal)),
-            exist_status_instance=replace_curly_braces(instance_repo.group_to_json(goal)),
-            guidance=TaskType.STATE_MACHINE_PLAN.value.guidance
+            guidance=TaskType.get_type(task_tree.type).guidance
         )
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)

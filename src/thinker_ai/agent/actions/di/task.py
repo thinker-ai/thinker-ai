@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 from typing import Tuple, Dict, Any
 
-from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, TaskTypeDef
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.common.logs import logger
@@ -15,6 +14,7 @@ from thinker_ai.agent.actions.di.tool_recommend import ToolRecommender
 
 from typing import List
 from thinker_ai.agent.actions import Action
+from thinker_ai.status_machine.task_desc import TaskDesc
 
 
 class TaskRepository:
@@ -70,11 +70,10 @@ class TaskResult(BaseModel):
 
 class Task(BaseModel):
     id: str
-    goal: str
-    name: str
     instruction: str
-    type: TaskTypeDef = TaskType.OTHER
+    type: str = "other"
     dependent_task_ids: Optional[List[str]] = None
+    parent_id: Optional[str] = None
     use_reflection: bool = False
     tools: Optional[List[str]] = None
     tool_recommender: Optional[ToolRecommender] = None  # Assuming ToolRecommender is a str for simplicity
@@ -86,11 +85,11 @@ class Task(BaseModel):
     @property
     def task_desc(self) -> TaskDesc:
         map: dict[str, Any] = {
-            "parent_name": self.parent_name,
-            "name": self.name,
-            "dependent_task_names": self.dependent_task_names or [],
+            "parent_id": self.parent_id,
+            "id": self.id,
+            "dependent_task_ids": self.dependent_task_ids or [],
             "instruction": self.instruction,
-            "type": self.type.name,
+            "type": self.type,
         }
         return TaskDesc(map=map)
 
@@ -117,7 +116,7 @@ class Task(BaseModel):
         return {
             'id': self.id,
             'parent_id': self.parent_id,
-            'type': self.type.name,
+            'type': self.type,
             'instruction': self.instruction,
             'dependent_task_ids': self.dependent_task_ids,
             'use_reflection': self.use_reflection,
@@ -136,7 +135,7 @@ class Task(BaseModel):
         instance = cls(
             id=data.get('id'),
             parent_id=data.get('parent_id'),
-            type=TaskType.get_type(data.get('type')),
+            type=data.get('type'),
             instruction=data.get('instruction'),
             dependent_task_ids=data.get('dependent_task_ids'),
             use_reflection=bool(data.get('use_reflection', False)),
@@ -147,7 +146,7 @@ class Task(BaseModel):
                                               result=data['task_result'])
         return instance
 
-    async def write_and_exec_code(self, first_trial: bool = True) -> bool:
+    async def write_and_exec_code(self,first_trial: bool = True)->bool:
         try:
             code, cause_by = await self._write_code(first_trial)
             exec_logger.add(Message(content=code, role="assistant", cause_by=cause_by))
@@ -202,7 +201,7 @@ class Task(BaseModel):
             task_desc=self.task_desc,
             tool_info=tool_info,
             exec_logs=exec_logger.get(),
-            use_reflection=not first_trial and self.use_reflection
+            use_reflection = not first_trial and self.use_reflection
         )
 
         return code, todo
@@ -227,7 +226,7 @@ class ReviewConst:
 
 class AskReview(Action):
     async def run(
-            self, task_desc: TaskDesc, exec_logs: list[Message] = None, trigger: str = ReviewConst.TASK_REVIEW_TRIGGER
+            self,  task_desc: TaskDesc,exec_logs: list[Message] = None,trigger: str = ReviewConst.TASK_REVIEW_TRIGGER
     ) -> Tuple[str, bool]:
         if task_desc:
             logger.info("Current overall plan:")

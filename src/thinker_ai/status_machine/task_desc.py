@@ -9,7 +9,7 @@ from thinker_ai.status_machine.task_type import (
     FEATURE_ENGINEERING_PROMPT,
     IMAGE2WEBPAGE_PROMPT,
     MODEL_EVALUATE_PROMPT,
-    MODEL_TRAIN_PROMPT, STATE_MACHINE_PLAN_PROMPT,
+    MODEL_TRAIN_PROMPT, STATE_MACHINE_PLAN_PROMPT, PLAN_PROMPT,
 )
 
 
@@ -63,11 +63,11 @@ class TaskTypeDef(BaseModel):
 
 class TaskType(Enum):
     """By identifying specific types of tasks, we can inject human priors (guidance) to help task solving"""
-    # PLAN = TaskTypeDef(
-    #     name="plan",
-    #     desc="Make a plan, decompose the given task according to the Single Level of Abstraction (SLOA) principle",
-    #     guidance=PLAN_PROMPT,
-    # )
+    PLAN = TaskTypeDef(
+        name="plan",
+        desc="Make a plan, decompose the given task according to the Single Level of Abstraction (SLOA) principle",
+        guidance=PLAN_PROMPT,
+    )
 
     STATE_MACHINE_PLAN = TaskTypeDef(
         name="state machine plan",
