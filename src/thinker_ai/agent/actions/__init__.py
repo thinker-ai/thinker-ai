@@ -17,7 +17,7 @@ from thinker_ai.agent.actions.write_prd_review import WritePRDReview
 from thinker_ai.agent.actions.write_test import WriteTest
 from thinker_ai.agent.actions.di.execute_nb_code import ExecuteNbCode
 from thinker_ai.agent.actions.di.write_analysis_code import WriteAnalysisCode
-from thinker_ai.agent.actions.di.task_tree import WritePlan
+from thinker_ai.agent.actions.di.task_tree import StateMachineTaskPlanAction
 
 
 class ActionType(Enum):
@@ -40,7 +40,7 @@ class ActionType(Enum):
     CONDUCT_RESEARCH = ConductResearch
     EXECUTE_NB_CODE = ExecuteNbCode
     WRITE_ANALYSIS_CODE = WriteAnalysisCode
-    WRITE_PLAN = WritePlan
+    WRITE_PLAN = StateMachineTaskPlanAction
 
 
 __all__ = [

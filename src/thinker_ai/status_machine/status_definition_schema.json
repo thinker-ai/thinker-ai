@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "name": { "type": "string" },
   "definitions": {
-    "Action": {
+    "Executor": {
       "type": "object",
       "properties": {
         "on_command": { "type": "string" },
@@ -17,28 +17,28 @@
       "properties": {
         "name": { "type": "string" },
         "is_start": { "type": "boolean" },
-        "state_context_class_name": { "type": "string" },
+        "state_scenario_class_name": { "type": "string" },
         "description": { "type": "string" },
         "task_type": { "type": "string" },
-        "actions": {
+        "executors": {
           "type": "array",
-          "items": { "$ref": "#/definitions/Action" }
+          "items": { "$ref": "#/definitions/Executor" }
         },
         "events": {
           "type": "array",
           "items": { "type": "string" }
         }
       },
-      "required": ["id", "name", "description", "task_type", "actions", "events", "state_context_class_name"]
+      "required": ["id", "name", "description", "task_type", "executors", "events", "state_scenario_class_name"]
     },
     "BaseStateDefinition": {
       "type": "object",
       "properties": {
         "name": { "type": "string" },
         "description": { "type": "string" },
-        "state_context_class_name": { "type": "string" }
+        "state_scenario_class_name": { "type": "string" }
       },
-      "required": ["name", "description", "state_context_class_name"]
+      "required": ["name", "description", "state_scenario_class_name"]
     },
     "State_Definition": {
       "oneOf": [
@@ -60,7 +60,7 @@
       "properties": {
         "is_root": { "type": "boolean" },
         "description": { "type": "string" },
-        "state_context_builder_full_class_name":  { "type": "string" },
+        "state_scenario_builder_full_class_name":  { "type": "string" },
         "states_def": {
           "type": "array",
           "items": { "$ref": "#/definitions/State_Definition" }

@@ -9,18 +9,18 @@ def get_class_from_full_class_name(full_class_name: str):
     if '.' in full_class_name:
         module_name, class_name = full_class_name.rsplit('.', 1)
         module = importlib.import_module(module_name)
-        context_class = getattr(module, class_name)
+        scenario_class = getattr(module, class_name)
     else:
         # 假设类名在当前命名空间中
-        context_class = globals().get(full_class_name)
-        if context_class is None:
+        scenario_class = globals().get(full_class_name)
+        if scenario_class is None:
             raise ValueError(f"Class '{full_class_name}' not found in the current namespace.")
-    return context_class
+    return scenario_class
 
 
 def from_class_name(cls: Type[T], full_class_name: str, **kwargs: Any) -> T:
-    context_class = get_class_from_full_class_name(full_class_name)
-    instance = context_class(**kwargs)
+    scenario_class = get_class_from_full_class_name(full_class_name)
+    instance = scenario_class(**kwargs)
     if not isinstance(instance, cls):
         raise TypeError(f"Class {full_class_name} is not a subclass of {cls.__name__}")
     return instance
@@ -43,7 +43,7 @@ class Command:
         self.payload = payload
 
 
-class ActionDescription:
+class ExecutorDescription:
     def __init__(self, data: dict):
         self.on_command = data["on_command"]
         if data.get("pre_check_list"):

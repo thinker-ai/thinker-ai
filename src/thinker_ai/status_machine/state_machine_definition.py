@@ -2,7 +2,7 @@ import json
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, Tuple
 
-from thinker_ai.status_machine.base import Command, Event, ActionDescription
+from thinker_ai.status_machine.base import Command, Event, ExecutorDescription
 from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 
 
@@ -10,11 +10,11 @@ class BaseStateDefinition:
     def __init__(self,
                  name: str,
                  description: str,
-                 state_context_class_name: str
+                 state_scenario_class_name: str
                  ):
         self.name = name
         self.description = description
-        self.state_context_class_name = state_context_class_name
+        self.state_scenario_class_name = state_scenario_class_name
 
     def is_terminal(self):
         return type(self) is BaseStateDefinition
@@ -22,15 +22,15 @@ class BaseStateDefinition:
 
 class StateDefinition(BaseStateDefinition):
     def __init__(self, name: str, group_def_name: str, description: str, task_type: TaskTypeDef,
-                 state_context_class_name: str,
-                 actions_des: Set[ActionDescription], result_events: Set[str], is_start: bool = False,
+                 state_scenario_class_name: str,
+                 executors_des: Set[ExecutorDescription], result_events: Set[str], is_start: bool = False,
                  is_composite: bool = False):
-        super().__init__(name, description, state_context_class_name)
+        super().__init__(name, description, state_scenario_class_name)
         self.group_def_name = group_def_name
         self.task_type = task_type
         self.is_start = is_start
         self.events: Set[str] = result_events
-        self.actions_des: Set[ActionDescription] = actions_des
+        self.executors_des: Set[ExecutorDescription] = executors_des
         self.is_composite = is_composite
 
 
@@ -47,11 +47,11 @@ class StateMachineDefinition:
                  name: str,
                  states_def: Set[BaseStateDefinition],
                  transitions: Set[Transition],
-                 state_context_builder_full_class_name: Optional[str],
+                 state_scenario_builder_full_class_name: Optional[str],
                  is_root: bool = False,
                  inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.name = name
-        self.state_context_builder_full_class_name = state_context_builder_full_class_name
+        self.state_scenario_builder_full_class_name = state_scenario_builder_full_class_name
         self.group_def_name = group_def_name
         self.is_root = is_root
         self.states_def: Set[BaseStateDefinition] = states_def
@@ -148,12 +148,12 @@ class StateMachineDefinition:
                 # Find the transition that matches this state to the next state
                 transition = self.get_transition(state.name, next_state.name)
                 if transition:
-                    # Find the action associated with this transition
+                    # Find the executor associated with this transition
                     if isinstance(state, StateDefinition):
-                        action = self._from_event_to_mock_action(state, transition.event)
-                        if action:
+                        executor = self._from_event_to_mock_executor(state, transition.event)
+                        if executor:
                             command = Command(
-                                name=action.on_command,
+                                name=executor.on_command,
                                 target=transition.source.name,
                                 payload={
                                     "self_validate": True,
@@ -171,10 +171,10 @@ class StateMachineDefinition:
         return None
 
     @staticmethod
-    def _from_event_to_mock_action(state: StateDefinition, event: str) -> Optional[ActionDescription]:
-        for action in state.actions_des:
-            if event.startswith(f"{action.on_command}_result"):  # Assuming event name is used as command in mock action
-                return action
+    def _from_event_to_mock_executor(state: StateDefinition, event: str) -> Optional[ExecutorDescription]:
+        for executor in state.executors_des:
+            if event.startswith(f"{executor.on_command}_result"):  # Assuming event name is used as command in mock executor
+                return executor
         return None
 
     def _get_state_validate_paths(self) -> List[List[Tuple[str, BaseStateDefinition]]]:
@@ -339,7 +339,7 @@ class StateMachineDefinitionBuilder:
             name=state_machine_def_name,
             group_def_name=group_def_name,
             is_root=is_root,
-            state_context_builder_full_class_name=state_machine_def_dict.get("state_context_builder_full_class_name"),
+            state_scenario_builder_full_class_name=state_machine_def_dict.get("state_scenario_builder_full_class_name"),
             states_def=states,
             transitions=transitions,
             inner_end_state_to_outer_event=state_machine_def_dict.get(
@@ -350,7 +350,7 @@ class StateMachineDefinitionBuilder:
     def to_dict(cls, state_machine_def: StateMachineDefinition) -> Dict[str, Any]:
         result = {
             "is_root": state_machine_def.is_root,
-            "state_context_builder_full_class_name": state_machine_def.state_context_builder_full_class_name,
+            "state_scenario_builder_full_class_name": state_machine_def.state_scenario_builder_full_class_name,
             "states_def": [cls._state_def_to_dict(sd) for sd in
                            state_machine_def.states_def],
             "transitions": [cls._transition_to_dict(t) for t in
@@ -363,17 +363,17 @@ class StateMachineDefinitionBuilder:
     @classmethod
     def _state_def_to_dict(cls, state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
-            actions_des = [{"on_command": a.on_command,
+            executors_des = [{"on_command": a.on_command,
                             "full_class_name": a.full_class_name,
                             "pre_check_list": a.pre_check_list,
                             "post_check_list": a.post_check_list
-                            } for a in state_def.actions_des]
+                            } for a in state_def.executors_des]
             return {
                 "name": state_def.name,
                 "description": state_def.description,
-                "state_context_class_name": state_def.state_context_class_name,
+                "state_scenario_class_name": state_def.state_scenario_class_name,
                 "task_type": state_def.task_type.name,
-                "actions": actions_des,
+                "executors": executors_des,
                 "events": list(state_def.events),
                 "is_start": state_def.is_start
             }
@@ -381,7 +381,7 @@ class StateMachineDefinitionBuilder:
             return {
                 "name": state_def.name,
                 "description": state_def.description,
-                "state_context_class_name": state_def.state_context_class_name
+                "state_scenario_class_name": state_def.state_scenario_class_name
             }
 
     @classmethod
@@ -392,14 +392,14 @@ class StateMachineDefinitionBuilder:
         is_composite = cls.is_composite_state(parent_state_machine_def_name=state_machine_def_name,
                                               state_def_name=data["name"],
                                               exist_state_machine_names=exist_state_machine_names)
-        if data.get("actions"):
+        if data.get("executors"):
             return StateDefinition(
                 name=data["name"],
                 group_def_name=group_def_name,
-                state_context_class_name=data["state_context_class_name"],
+                state_scenario_class_name=data["state_scenario_class_name"],
                 description=data.get("description", ""),
                 task_type=TaskType.get_type(data.get("task_type", "")),
-                actions_des={ActionDescription(a) for a in data["actions"]},
+                executors_des={ExecutorDescription(a) for a in data["executors"]},
                 result_events=set(data["events"]),
                 is_composite=is_composite,
                 is_start=data.get("is_start")
@@ -408,7 +408,7 @@ class StateMachineDefinitionBuilder:
             return BaseStateDefinition(
                 name=data["name"],
                 description=data.get("description", ""),
-                state_context_class_name=data.get("state_context_class_name")
+                state_scenario_class_name=data.get("state_scenario_class_name")
             )
 
     @classmethod

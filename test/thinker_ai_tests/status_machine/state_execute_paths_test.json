@@ -7,13 +7,13 @@
           {
             "name": "start",
             "is_start": true,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "Start state",
             "task_type": "other",
-            "actions": [
+            "executors": [
               {
                 "on_command": "start_to_A",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               }
             ],
             "events": ["start_to_A_result_success"]
@@ -21,13 +21,13 @@
           {
             "name": "A",
             "is_start": false,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "State A description",
             "task_type": "state machine plan",
-            "actions": [
+            "executors": [
               {
                 "on_command": "A_to_B",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               }
             ],
             "events": ["A_to_B_result_success"]
@@ -35,17 +35,17 @@
           {
             "name": "B",
             "is_start": false,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "State B description",
             "task_type": "other",
-            "actions": [
+            "executors": [
               {
                 "on_command":"B_to_C",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               },
               {
                 "on_command": "B_to_D",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               }
             ],
             "events": ["B_to_C_result_success","B_to_D_result_success"]
@@ -53,13 +53,13 @@
           {
             "name": "C",
             "is_start": false,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "State C description",
             "task_type": "other",
-            "actions": [
+            "executors": [
               {
                 "on_command": "C_to_A",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               }
             ],
             "events": ["C_to_A_result_success"]
@@ -67,13 +67,13 @@
           {
             "name": "D",
             "is_start": false,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "State D description",
             "task_type": "other",
-            "actions": [
+            "executors": [
               {
                 "on_command": "D_to_E",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
               }
             ],
             "events": ["D_to_E_result_success"]
@@ -81,10 +81,10 @@
           {
             "name": "E",
             "is_start": false,
-            "state_context_class_name": "XXXContext",
+            "state_scenario_class_name": "XXXContext",
             "description": "State E description",
             "task_type": "other",
-            "actions": [],
+            "executors": [],
             "events": []
           }
         ],

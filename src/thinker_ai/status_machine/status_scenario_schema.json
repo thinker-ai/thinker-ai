@@ -14,13 +14,13 @@
       "properties": {
         "state_machine_def_name": { "type": "string" },
         "state_machine_def_group_name": { "type": "string" },
-        "current_state_context": { "$ref": "#/definitions/StateContext" },
+        "current_state_scenario": { "$ref": "#/definitions/StateContext" },
         "history": {
           "type": "array",
           "items": { "$ref": "#/definitions/StateContext" }
         }
       },
-      "required": ["state_machine_def_name", "current_state_context", "history"]
+      "required": ["state_machine_def_name", "current_state_scenario", "history"]
     }
   },
   "type": "object",

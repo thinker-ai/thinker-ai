@@ -3,57 +3,57 @@ import os
 from json import JSONDecodeError
 
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository
-from thinker_ai.status_machine.state_machine_context import StateMachineContextBuilder, StateMachine, \
+from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder, StateMachine, \
     StateMachineRepository
 
 
-class DefaultStateMachineContextRepository(StateMachineRepository):
+class DefaultStateMachineScenarioRepository(StateMachineRepository):
 
     def __init__(self, state_machine_builder: StateMachineContextBuilder,
                  state_machine_def_repo: StateMachineDefinitionRepository,
-                 contexts: dict = None):
-        if not contexts:
-            self.contexts = {}
+                 scenarios: dict = None):
+        if not scenarios:
+            self.scenarios = {}
         else:
-            self.contexts = contexts
+            self.scenarios = scenarios
         self.state_machine_builder = state_machine_builder
         self.state_machine_def_repo = state_machine_def_repo
 
     @classmethod
     def from_file(cls, base_dir: str, file_name: str, state_machine_builder: StateMachineContextBuilder,
-                  state_machine_def_repo: StateMachineDefinitionRepository) -> "DefaultStateMachineContextRepository":
+                  state_machine_def_repo: StateMachineDefinitionRepository) -> "DefaultStateMachineScenarioRepository":
         file_path = os.path.join(base_dir, file_name)
         if os.path.exists(file_path):
             with open(file_path, 'r') as file:
                 try:
-                    contexts = json.load(file)
+                    scenarios = json.load(file)
                 except JSONDecodeError:
-                    contexts = {}
+                    scenarios = {}
                 return cls(state_machine_builder=state_machine_builder,
                            state_machine_def_repo=state_machine_def_repo,
-                           contexts=contexts)
+                           scenarios=scenarios)
 
     @classmethod
     def new(cls, state_machine_builder: StateMachineContextBuilder,
             state_machine_def_repo: StateMachineDefinitionRepository
-            ) -> "DefaultStateMachineContextRepository":
+            ) -> "DefaultStateMachineScenarioRepository":
         return cls(state_machine_builder=state_machine_builder,
                    state_machine_def_repo=state_machine_def_repo)
 
     @classmethod
     def form_json(cls, state_machine_builder: StateMachineContextBuilder,
                   state_machine_def_repo: StateMachineDefinitionRepository,
-                  json_text: str) -> "DefaultStateMachineContextRepository":
+                  json_text: str) -> "DefaultStateMachineScenarioRepository":
         if json_text:
-            contexts: dict = json.loads(json_text)
+            scenarios: dict = json.loads(json_text)
         else:
-            contexts = {}
+            scenarios = {}
         return cls(state_machine_builder=state_machine_builder,
                    state_machine_def_repo=state_machine_def_repo,
-                   contexts=contexts)
+                   scenarios=scenarios)
 
-    def group_to_json(self,context_group_id: str) -> str:
-        group_data = self.contexts.get(context_group_id)
+    def group_to_json(self,scenario_group_id: str) -> str:
+        group_data = self.scenarios.get(scenario_group_id)
         if group_data:
             return json.dumps(group_data, indent=2, ensure_ascii=False)
         else:
@@ -62,21 +62,21 @@ class DefaultStateMachineContextRepository(StateMachineRepository):
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)
         with open(file_path, 'w') as file:
-            json.dump(self.contexts, file, indent=2)
+            json.dump(self.scenarios, file, indent=2)
 
-    def set(self, context_group_id: str, state_machine_context: StateMachine):
-        group_data = self.contexts.get(context_group_id)
+    def set(self, scenario_group_id: str, state_machine_scenario: StateMachine):
+        group_data = self.scenarios.get(scenario_group_id)
         if not group_data:
             group_data={}
-            self.contexts[context_group_id]=group_data
-        group_data[state_machine_context.context_id] = self.state_machine_builder.state_machine_to_dict(state_machine_context)
+            self.scenarios[scenario_group_id]=group_data
+        group_data[state_machine_scenario.scenario_id] = self.state_machine_builder.state_machine_to_dict(state_machine_scenario)
 
-    def get(self, context_group_id: str, context_id: str) -> StateMachine:
-        group_data = self.contexts.get(context_group_id)
+    def get(self, scenario_group_id: str, scenario_id: str) -> StateMachine:
+        group_data = self.scenarios.get(scenario_group_id)
         if group_data:
-            data = group_data.get(context_id)
+            data = group_data.get(scenario_id)
             if data:
-                return self.state_machine_builder.state_machine_from_dict(context_group_id,context_id,
+                return self.state_machine_builder.state_machine_from_dict(scenario_group_id,scenario_id,
                                                                           data,
                                                                           self.state_machine_def_repo,
                                                                           self)

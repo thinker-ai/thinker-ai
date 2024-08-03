@@ -3,8 +3,8 @@ import unittest
 from typing import List, Tuple
 
 from thinker_ai.status_machine.state_machine_definition import BaseStateDefinition, Command
-from thinker_ai.status_machine.state_machine_context import StateMachineContextBuilder
-from thinker_ai.status_machine.state_machine_context_repository import DefaultStateMachineContextRepository
+from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder
+from thinker_ai.status_machine.state_machine_scenario_repository import DefaultStateMachineScenarioRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 
 
@@ -14,8 +14,8 @@ class StateExecutePathsTest(unittest.TestCase):
         self.definitions_file_name = 'state_execute_paths_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
-        self.context_repo = DefaultStateMachineContextRepository.new(StateMachineContextBuilder(),
-                                                                      self.definition_repo)
+        self.scenario_repo = DefaultStateMachineScenarioRepository.new(StateMachineContextBuilder(),
+                                                                       self.definition_repo)
         self.state_machine_definition = self.definition_repo.get_root("paths_test")
 
     def test_get_state_execute_paths(self):
@@ -62,7 +62,7 @@ class StateExecutePathsTest(unittest.TestCase):
         state_machine = StateMachineContextBuilder.new_from_def_name("paths_test",
                                                                       "example_sm",
                                                                      self.definition_repo,
-                                                                     self.context_repo
+                                                                     self.scenario_repo
                                                                      )
         results: list[tuple[list[Command], bool]] = state_machine.self_validate()
         success = True

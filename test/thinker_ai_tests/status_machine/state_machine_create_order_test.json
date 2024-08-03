@@ -7,13 +7,13 @@
                 {
                     "name": "start",
                     "is_start": true,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "Start state",
                     "task_type": "other",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -21,13 +21,13 @@
                 {
                     "name": "A",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State A description",
                     "task_type": "state machine plan",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -35,13 +35,13 @@
                 {
                     "name": "B",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State B description",
                     "task_type": "state machine plan",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -49,13 +49,13 @@
                 {
                     "name": "C",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State C description",
                     "task_type": "other",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -63,13 +63,13 @@
                 {
                     "name": "D",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State D description",
                     "task_type": "state machine plan",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -77,10 +77,10 @@
                 {
                     "name": "E",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State E description",
                     "task_type": "other",
-                    "actions": [],
+                    "executors": [],
                     "events": []
                 }
             ],
@@ -123,13 +123,13 @@
                 {
                     "name": "start",
                     "is_start": true,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "Start state",
                     "task_type": "other",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -137,13 +137,13 @@
                 {
                     "name": "1",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State 1 description",
                     "task_type": "other",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -151,13 +151,13 @@
                 {
                     "name": "2",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State 2 description",
                     "task_type": "state machine plan",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": [],
@@ -166,13 +166,13 @@
                 {
                     "name": "3",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State 3 description",
                     "task_type": "other",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -180,13 +180,13 @@
                 {
                     "name": "4",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State 4 description",
                     "task_type": "state machine plan",
-                    "actions": [
+                    "executors": [
                         {
                             "on_command": "inner_start_command",
-                            "full_class_name": "thinker_ai_tests.status_machine.sample_actions.InnerStartAction"
+                            "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
                         }
                     ],
                     "events": []
@@ -194,10 +194,10 @@
                 {
                     "name": "5",
                     "is_start": false,
-                    "state_context_class_name": "StateContext",
+                    "state_scenario_class_name": "StateContext",
                     "description": "State 5 description",
                     "task_type": "other",
-                    "actions": [],
+                    "executors": [],
                     "events": []
                 }
             ],
