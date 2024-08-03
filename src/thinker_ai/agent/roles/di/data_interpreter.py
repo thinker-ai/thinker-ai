@@ -5,7 +5,7 @@ import uuid
 from typing import Literal
 
 from pydantic import model_validator
-from thinker_ai.agent.actions.di.task_tree import TaskTree
+from thinker_ai.agent.actions.di.task_tree import PlanTask
 from thinker_ai.agent.actions.di.tool_recommend import ToolRecommender
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.agent.actions.di.write_analysis_code import WriteAnalysisCode
@@ -87,7 +87,7 @@ class DataInterpreter(Role):
         # create initial plan and update it until confirmation
         content = self.rc.memory.get()[-1].content  # retreive latest user requirement
         requirement = json.loads(content)
-        task_tree = TaskTree(
+        task_tree = PlanTask(
             id=str(uuid.uuid4()),
             goal=requirement["name"],
             name=requirement["name"],

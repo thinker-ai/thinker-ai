@@ -1,4 +1,4 @@
-from thinker_ai.status_machine.state_machine_instance import MockAction, MockCompositeAction
+from thinker_ai.status_machine.state_machine_context import MockAction, MockCompositeAction
 
 
 class StartAction(MockAction):

@@ -5,7 +5,7 @@ model_size_threshold : "500 * 1024 * 1024"
 PYTORCH_ENABLE_MPS_FALLBACK: "user_1"
 state_machine:
   definition : "state_machine_definitions.json"
-  instance : "state_machine_instances.json"
+  instance : "state_machine_contexts.json"
 
 
 llm:

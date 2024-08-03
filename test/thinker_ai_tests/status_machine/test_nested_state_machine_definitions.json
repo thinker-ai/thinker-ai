@@ -2,7 +2,7 @@
   "group_nested": {
     "outer_sm.outer_start.middle_start": {
         "description": "",
-        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_instance.DefaultStateContextBuilder",
+        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_context.DefaultStateContextBuilder",
         "states_def": [
           {
             "name": "inner_start",
@@ -37,7 +37,7 @@
       },
       "outer_sm.outer_start": {
         "description": "",
-        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_instance.DefaultStateContextBuilder",
+        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_context.DefaultStateContextBuilder",
         "states_def": [
           {
             "name": "middle_start",
@@ -73,7 +73,7 @@
       "outer_sm": {
         "is_root": true,
         "description": "",
-        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_instance.DefaultStateContextBuilder",
+        "state_context_builder_full_class_name":"thinker_ai.status_machine.state_machine_context.DefaultStateContextBuilder",
         "states_def": [
           {
             "name": "outer_start",

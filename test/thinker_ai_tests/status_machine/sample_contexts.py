@@ -1,5 +1,5 @@
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository, StateDefinition, BaseStateDefinition
-from thinker_ai.status_machine.state_machine_instance import BaseStateContext, StateMachineRepository, StateContext, \
+from thinker_ai.status_machine.state_machine_context import BaseStateContext, StateMachineRepository, StateContext, \
     CompositeStateContext, DefaultStateContextBuilder
 
 

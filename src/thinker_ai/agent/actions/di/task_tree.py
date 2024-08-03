@@ -7,11 +7,11 @@ from typing import Tuple, Optional, List, Any, Set
 
 from thinker_ai.agent.actions import Action
 from thinker_ai.status_machine.base import Command
-from thinker_ai.status_machine.state_machine_instance import StateMachineInstanceBuilder, DefaultStateContextBuilder
+from thinker_ai.status_machine.state_machine_context import StateMachineContextBuilder, DefaultStateContextBuilder
 from thinker_ai.status_machine.task_desc import TaskType, TaskDesc, PlanStatus, TaskTypeDef
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.configs.config import config
-from thinker_ai.status_machine.state_machine_instance_repository import DefaultStateMachineContextRepository
+from thinker_ai.status_machine.state_machine_context_repository import DefaultStateMachineContextRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.agent.actions.di.task import Task, AskReview, ReviewConst, exec_logger, tasks_storage, code_executor, \
@@ -29,7 +29,7 @@ definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(str(con
                                                                          config.state_machine.definition)
 instance_repo = DefaultStateMachineContextRepository.from_file(str(config.workspace.path / "data"),
                                                                config.state_machine.instance,
-                                                               StateMachineInstanceBuilder(),
+                                                               StateMachineContextBuilder(),
                                                                definition_repo)
 
 
@@ -389,10 +389,10 @@ def update_state_flow_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 
 def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
-    state_machine_def = StateMachineInstanceBuilder.state_machine_from_json(task_tree.root_name, task_tree.nameask_tree,
-                                                                            rsp,
-                                                                            state_machine_definition_repository=definition_repo,
-                                                                            state_machine_context_repository=instance_repo)
+    state_machine_def = StateMachineContextBuilder.state_machine_from_json(task_tree.root_name, task_tree.nameask_tree,
+                                                                           rsp,
+                                                                           state_machine_definition_repository=definition_repo,
+                                                                           state_machine_context_repository=instance_repo)
     tasks = [Task(**task_config) for task_config in rsp]
     if len(tasks) == 1 or tasks[0].dependent_task_ids:
         if tasks[0].dependent_task_ids and len(tasks) > 1:
@@ -416,7 +416,7 @@ def update_plan_from_rsp(rsp: str, task_tree: TaskTree):
 
 def pre_check_plan_from_rsp(rsp: str, goal,task_name) -> Tuple[bool, str]:
     try:
-        state_machine = (StateMachineInstanceBuilder
+        state_machine = (StateMachineContextBuilder
                          .new_from_group_def_json(state_machine_def_group_name=goal,
                                                   state_machine_def_name=task_name,
                                                   def_json=rsp,
