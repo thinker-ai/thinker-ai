@@ -44,30 +44,31 @@ class TaskTree(Task):
         super().__init__(**kwargs)
         self.add_tasks(tasks)
 
-    async def execute_plan(self, plan_update_max_retry: Optional[int] = None,
+    async def plan_and_act(self, plan_update_max_retry: Optional[int] = None,
                            task_execute_max_retry: Optional[int] = None):
         if not tasks_storage.load(self.id):
-            tasks_storage.save(self)  #用于子任务的查询访问
-        plan_update_max_retry = plan_update_max_retry if plan_update_max_retry else self.plan_update_max_retry
-        plan_update_count = 0
-        while plan_update_count < plan_update_max_retry:
-            plan_update_count += 1
-            if not await self.update_plan():
-                continue
-            execute_plan_success = await self.execute_plan_once(task_execute_max_retry)
+            tasks_storage.save(self)
+        if await self.try_plan(plan_update_max_retry):
+            execute_plan_success = await self.try_act(task_execute_max_retry)
             if execute_plan_success:
                 self.task_result = await AskPlanResult().run(self)
-                return
             else:
-                logger.info("计划执行失败，更新计划")
+                logger.info("计划执行失败")
 
+    async def try_plan(self, max_retry) -> bool:
+        max_retry = max_retry if max_retry else self.plan_update_max_retry
+        plan_update_count = 0
+        while plan_update_count < max_retry:
+            plan_update_count += 1
+            if await self.update_plan():
+                return True
         logger.info("更新计划次数超限，任务失败")
-        self.task_result = await AskPlanResult().run(self)
+        return False
 
-    async def execute_plan_once(self, task_execute_max_retry: Optional[int] = None) -> bool:
-        task_execute_max_retry = task_execute_max_retry if task_execute_max_retry else self.task_execute_max_retry
+    async def try_act(self, max_retry: Optional[int] = None) -> bool:
+        max_retry = max_retry if max_retry else self.task_execute_max_retry
         current_task_retry_counter = 0
-        while self.current_task and current_task_retry_counter < task_execute_max_retry:
+        while self.current_task and current_task_retry_counter < max_retry:
             current_task_retry_counter += 1
             await self._check_data()
             await self.current_task.write_and_exec_code(first_trial=current_task_retry_counter == 1)

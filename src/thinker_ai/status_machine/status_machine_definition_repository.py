@@ -9,7 +9,9 @@ from thinker_ai.status_machine.state_machine_definition import (StateMachineDefi
 
 class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
 
-    def __init__(self, definitions: Dict[str, Dict[str, Any]] = None):
+    def __init__(self, definitions: Dict[str, Dict[str, Any]] = None, base_dir: str = None, file_name: str = None):
+        self.base_dir = base_dir
+        self.file_name = file_name
         if not definitions:
             self.definitions = {}
         else:
@@ -19,9 +21,11 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
     def from_json(cls, json_text) -> "DefaultBasedStateMachineDefinitionRepository":
         definitions = json.loads(json_text)
         return cls(definitions)
+
     def to_json(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)
-    def group_to_json(self,state_machine_def_group_name: str) -> str:
+
+    def group_to_json(self, state_machine_def_group_name: str) -> str:
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
             return json.dumps(state_machine_def_group, indent=2, ensure_ascii=False)
@@ -51,6 +55,12 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
         with open(file_path, 'w', encoding='utf-8') as file:
             json.dump(self.definitions, file, indent=2, ensure_ascii=False)
 
+    def save(self):
+        if self.base_dir and self.file_name:
+            self.to_file(self.base_dir, self.file_name)
+        else:
+            raise Exception('No base dir or file_name specified')
+
     def get_root_state_machine_name(self, state_machine_def_group_name: str) -> str:
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
@@ -74,13 +84,14 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
                     state_machine_def_dict=data,
                     exist_state_machine_names=self.get_state_machine_names(state_machine_def_group_name)))
 
-    def set(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
-        state_machine_def_group = self.definitions.get(state_machine_def_group_name)
-        if not state_machine_def_group:
-            state_machine_def_group = {}
-            state_machine_def.is_root = True
-            state_machine_def_dict = StateMachineDefinitionBuilder.to_dict(state_machine_def)
-            state_machine_def_group.update(state_machine_def_dict)
-        else:
-            state_machine_def_dict = StateMachineDefinitionBuilder.to_dict(state_machine_def)
-            state_machine_def_group.update(state_machine_def_dict)
+    def set_def(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
+        state_machine_def_dict = StateMachineDefinitionBuilder.to_dict(state_machine_def)
+        self.set_dict(state_machine_def_group_name,state_machine_def_dict)
+
+    def set_dict(self, state_machine_def_group_name: str, state_machine_def_dict: dict):
+        state_machine_def_group_dict = self.definitions.get(state_machine_def_group_name)
+        if not state_machine_def_group_dict:
+            state_machine_def_group_dict = {}
+            self.definitions[state_machine_def_group_name] = state_machine_def_group_dict
+            state_machine_def_dict["is_root"] = True
+        state_machine_def_group_dict.update(state_machine_def_dict)

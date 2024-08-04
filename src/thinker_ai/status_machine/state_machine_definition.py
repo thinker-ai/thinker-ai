@@ -456,7 +456,11 @@ class StateMachineDefinitionRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def set(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
+    def set_def(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
+        raise NotImplementedError
+
+    @abstractmethod
+    def set_dict(self, state_machine_def_group_name: str, data: dict):
         raise NotImplementedError
 
     @abstractmethod
@@ -469,4 +473,7 @@ class StateMachineDefinitionRepository(ABC):
 
     @abstractmethod
     def get_state_machine_names(self, state_machine_def_group_name: str):
+        raise NotImplementedError
+    @abstractmethod
+    def save(self):
         raise NotImplementedError

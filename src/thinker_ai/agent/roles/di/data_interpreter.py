@@ -97,7 +97,7 @@ class DataInterpreter(Role):
             auto_run=self.auto_run,
             tool_recommender=self.tool_recommender
         )
-        await task_tree.update_plan()
+        await task_tree.plan_and_act()
         result_msg=Message(role="assistant", content=task_tree.task_result.result if task_tree.task_result else "")
         self.rc.memory.add(result_msg)  # add to persistent memory
         return result_msg
