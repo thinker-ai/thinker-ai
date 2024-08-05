@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from starlette.templating import Jinja2Templates
 
-from thinker_ai.agent.openai_assistant_agent import AssistantAgent
+from thinker_ai.agent.openai_assistant import OpenAiAssistant
 from thinker_ai.login import get_session
 from thinker_ai.configs.const import PROJECT_ROOT
 
@@ -39,8 +39,11 @@ def to_assistant_id(user_id, topic) -> str:
 @chat_router.post("/chat", response_model=str)
 async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> str:
     user_id = session.get("user_id")
-    agent = AssistantAgent.from_id(to_assistant_id(user_id, request.topic))
-    return agent.ask(request.content)
+    if user_id:
+        agent = OpenAiAssistant.from_id(user_id=user_id, assistant_id=to_assistant_id(user_id, request.topic))
+        return agent.ask(request.content)
+    else:
+        return "user_id not found"
 
 
 

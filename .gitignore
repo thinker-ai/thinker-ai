@@ -11,3 +11,4 @@
 /src/thinker_ai/tasks/dynamic/gradio/gradio_test.py
 /test/data/math_tutor-image-0.png
 /src/thinker_ai/tasks/dynamic/gradio/flagged/log.csv
+/test/thinker_ai_tests/agent/openai_assistant/test_assistants.json

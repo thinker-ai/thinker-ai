@@ -1,11 +1,10 @@
 from typing import Optional, List, cast
-
-import asynctest
+import unittest
 import numpy as np
 import pandas as pd
 from pydantic import field_validator
 
-from thinker_ai.agent.openai_assistant_agent import AssistantAgent
+from thinker_ai.agent.openai_assistant.openai_assistant import OpenAiAssistant
 from langchain.pydantic_v1 import BaseModel, Field
 
 
@@ -93,51 +92,59 @@ def create_correlated_data():
     return data
 
 
-class AgentWithToolsTestCase(asynctest.TestCase):
-    agent = AssistantAgent.from_id("asst_zBrqXNoQIvnX1TyyVry9UveZ")
+class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
+    assistant = OpenAiAssistant.from_id(user_id="user_1", assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
 
-    def test_chat_with_function_call(self):
+    async def test_chat_with_function_call(self):
         try:
-            self.agent.register_function(quiz_instance.display_quiz, QuizArgs)
-            generated_result = self.agent.ask(topic="quiz",
-                                              content="Make a quiz with 2 questions: One open ended, one multiple choice. Then, give me feedback for the responses.")
+            self.assistant.register_function(quiz_instance.display_quiz, QuizArgs)
+            generated_result = self.assistant.ask(topic="quiz",
+                                                  content="Make a quiz with 2 questions: One open ended, one multiple choice. Then, give me feedback for the responses.")
             self.assertIsNotNone(generated_result)
             print(generated_result)
         finally:
-            self.agent.remove_functions()
-            print(self.agent.tools)
+            self.assistant.remove_functions()
+            print(self.assistant.tools)
 
-    def test_chat_with_code_interpreter_1(self):
-        ask= "Category_A的自变量是1到100的自然数，求Category_A数据的函数表达式，并绘制这个函数的图形,输出得到这个函数的python源代码。"
-        self.chat_with_code_interpreter(ask)
+    async def test_chat_with_code_interpreter_1(self):
+        ask = "Category_A的自变量是1到100的自然数，求Category_A数据的函数表达式，并绘制这个函数的图形,输出得到这个函数的python源代码。"
+        await self.chat_with_code_interpreter(ask)
 
-    def test_chat_with_code_interpreter_2(self):
-        ask= "Category_A数据是Category_B数据的自变量，求它们的函数关系，并绘制这个函数的图形,输出得到这个函数的python源代码。"
-        self.chat_with_code_interpreter(ask)
+    async def test_chat_with_code_interpreter_2(self):
+        ask = "Category_A数据是Category_B数据的自变量，求它们的函数关系，并绘制这个函数的图形,输出得到这个函数的python源代码。"
+        await self.chat_with_code_interpreter(ask)
 
-    def chat_with_code_interpreter(self, ask):
+    async def chat_with_code_interpreter(self, ask):
         data = create_correlated_data()
         try:
             json_data = data.to_json(orient='records')
-            self.agent.set_instructions("你是一个数学老师，负责回答数学问题")
-            self.agent.register_code_interpreter()
-            generated_result = self.agent.ask(topic="math_tutor",
-                                              content=f"问题：{ask}。具体数据如下：{json_data}")
+            self.assistant.set_instructions("你是一个数学老师，负责回答数学问题")
+            self.assistant.register_code_interpreter()
+            generated_result = self.assistant._ask_for_messages(topic="math_tutor",
+                                                                content=f"问题：{ask}。具体数据如下：{json_data}")
             self.assertIsNotNone(generated_result)
+            results = {}
+            text_index = 0
             img_index = 0
-            for result in generated_result:
-                if result.get("text"):
-                    print(result.get("text"))
-                if result.get("image_file"):
-                    with open(f"data/math_tutor-image-{img_index}.png", "wb") as file:
-                        file.write(result.get("image_file"))
-                        img_index = img_index + 1
+            for content in generated_result.content:
+                if content.type == "text":
+                    results[f"text_{text_index}"] = self.assistant._do_with_text_result(content.text)
+                    text_index += 1
+                if content.type == "image_file":
+                    results[f"image_file_{img_index}"] = self.assistant._do_with_image_result(content.image_file)
+                    img_index += 1
+            for key,content in results.items():
+                if key.startswith("text_"):
+                    print(content)
+                if key.startswith("image_file_"):
+                    with open(f"data/math_tutor-{key}.png", "wb") as file:
+                        file.write(content)
         finally:
-            self.agent.remove_functions()
-            print(self.agent.tools)
+            self.assistant.remove_functions()
+            print(self.assistant.tools)
 
-    def test_chat_with_file_search(self):
-        file = self.agent.client.files.create(
+    async def test_chat_with_file_search(self):
+        file = self.assistant.client.files.create(
             file=open(
                 "data/diy_llm.pdf",
                 "rb",
@@ -145,18 +152,18 @@ class AgentWithToolsTestCase(asynctest.TestCase):
             purpose="assistants",
         )
         try:
-            self.agent.register_file_search()
-            self.agent.register_file_id(file.id)
+            self.assistant.register_file_search()
+            self.assistant.register_file_id(file.id)
 
-            generated_result = self.agent.ask(topic="file",
-                                              content="解释知识库中的内容包含了什么")
+            generated_result = self.assistant.ask(topic="file",
+                                                  content="解释知识库中的内容包含了什么")
             self.assertIsNotNone(generated_result)
             print(generated_result)
         finally:
-            self.agent.remove_file_id(file.id)
-            self.agent.remove_file_search()
-            self.agent.client.files.delete(file.id)
+            self.assistant.remove_file_id(file.id)
+            self.assistant.remove_file_search()
+            self.assistant.client.files.delete(file.id)
 
 
 if __name__ == '__main__':
-    asynctest.main()
+    unittest.main()

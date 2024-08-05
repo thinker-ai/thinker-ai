@@ -2,6 +2,7 @@ from typing import List, Dict, Callable, Optional, Type
 
 from langchain.agents import load_tools
 from langchain_community.tools import format_tool_to_openai_function, BaseTool, StructuredTool
+from langchain_core.utils.function_calling import convert_to_openai_function
 from pydantic import BaseModel
 
 
@@ -17,7 +18,7 @@ class FunctionsRegister:
     def functions_schema(self) -> List[Dict]:
         results: List[Dict] = []
         for tool_description in self.functions_dict.values():
-            result = format_tool_to_openai_function(tool_description)
+            result = convert_to_openai_function(tool_description)
             results.append(result)
         return results
 

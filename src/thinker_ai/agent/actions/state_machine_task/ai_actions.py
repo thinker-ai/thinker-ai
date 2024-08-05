@@ -1,17 +1,13 @@
-import json
-from typing import Any, List, Tuple
+from typing import Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.agent.actions.state_machine_task.composite_task import CompositeTask
-from thinker_ai.agent.actions.state_machine_task.task import TaskResult
 from thinker_ai.agent.actions.state_machine_task.task_repository import state_machine_definition_repository, \
     state_machine_scenario_repository
 from thinker_ai.agent.memory.memory import Memory
-from thinker_ai.agent.provider.llm_schema import Message
 from thinker_ai.common.common import replace_curly_braces
-from thinker_ai.common.logs import logger
-from thinker_ai.status_machine.task_desc import TaskType, TaskDesc
+from thinker_ai.status_machine.task_desc import TaskType
 from thinker_ai.utils.code_parser import CodeParser
+
 
 class ReviewConst:
     TASK_REVIEW_TRIGGER = "task"
@@ -28,6 +24,8 @@ class ReviewConst:
         f"If you want to leave it as is, type: {CONTINUE_WORDS[0]} or {CONTINUE_WORDS[1]}"
     )
     EXIT_INSTRUCTION = f"If you want to terminate the process, type: {EXIT_WORDS[0]}"
+
+
 class PlanAction(Action):
 
     def __init__(self, **data: Any):
@@ -83,60 +81,3 @@ class PlanAction(Action):
         rsp = await self._aask(prompt)
         rsp = CodeParser.parse_code(block=None, text=rsp)
         return rsp
-
-
-class AskPlanResult(Action):
-    async def run(
-            self, composite_task: CompositeTask
-    ) -> TaskResult:
-        PROMPT = """
-        # Task Goal
-        {user_requirement}
-
-        ## Plan Status
-        {plan_status}
-
-        # Instruction
-        Summery the plan execution status to answer the goal result
-        """
-        user_requirement = composite_task.state_def.description
-        plan_execution_status = [task.to_dict() for task in composite_task.tasks]
-        plan_status = json.dumps(obj=plan_execution_status, indent=4, ensure_ascii=False)
-        prompt = PROMPT.format(user_requirement=user_requirement, plan_status=plan_status)
-        rsp = await self._aask(prompt)
-        return TaskResult(is_success=composite_task.is_finished, result=rsp)
-
-
-class AskReview(Action):
-    async def run(
-            self,  task_desc: str,exec_logs: list[Message] = None,trigger: str = ReviewConst.TASK_REVIEW_TRIGGER
-    ) -> Tuple[str, bool]:
-        if task_desc:
-            logger.info("Current overall plan:")
-            logger.info(task_desc)
-
-        logger.info("Most recent context:")
-        if exec_logs:
-            latest_action = exec_logs[-1].cause_by if exec_logs and exec_logs[-1].cause_by else ""
-        review_instruction = (
-            ReviewConst.TASK_REVIEW_INSTRUCTION
-            if trigger == ReviewConst.TASK_REVIEW_TRIGGER
-            else ReviewConst.CODE_REVIEW_INSTRUCTION
-        )
-        prompt = (
-            f"This is a <{trigger}> review. Please review output from {latest_action}\n"
-            f"{review_instruction}\n"
-            f"{ReviewConst.EXIT_INSTRUCTION}\n"
-            "Please type your review below:\n"
-        )
-
-        rsp = input(prompt)
-
-        if rsp.lower() in ReviewConst.EXIT_WORDS:
-            exit()
-
-        # Confirmation can be one of "confirm", "continue", "c", "yes", "y" exactly, or sentences containing "confirm".
-        # One could say "confirm this task, but change the next task to ..."
-        confirmed = rsp.lower() in ReviewConst.CONTINUE_WORDS or ReviewConst.CONTINUE_WORDS[0] in rsp.lower()
-
-        return rsp, confirmed

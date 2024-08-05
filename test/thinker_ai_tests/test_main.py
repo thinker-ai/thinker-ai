@@ -2,7 +2,7 @@ import unittest
 from pprint import pprint
 from typing import List, Dict, Any
 
-from thinker_ai.agent.openai_agent_repository import AgentRepository
+from thinker_ai.agent.assistant_repository import AssistantRepository
 from thinker_ai.agent.main import create_agent, del_agent, ask
 
 user_id = "test_user"
@@ -37,11 +37,11 @@ class MainTest(unittest.TestCase):
 
     def test_teardown_agent(self):
         agent_id = setup_customer_support_agent()
-        agent = AgentRepository.get_agent(user_id, agent_id)
+        agent = AssistantRepository.get_assistant(user_id, agent_id)
         self.assertIsNotNone(agent)
         deleted = teardown_agent(agent_id)
         self.assertTrue(deleted)
-        agent = AgentRepository.get_agent(user_id, agent_id)
+        agent = AssistantRepository.get_assistant(user_id, agent_id)
         self.assertIsNone(agent)
 
     def test_ask_for_customer_support(self):

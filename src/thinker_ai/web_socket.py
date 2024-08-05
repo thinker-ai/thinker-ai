@@ -3,6 +3,7 @@ import json
 from collections import deque
 
 from fastapi import WebSocket, APIRouter
+from starlette.websockets import WebSocketState
 
 from thinker_ai.common.common import run_async
 
@@ -23,7 +24,8 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
         print(f"Exception: {e}")
     finally:
         del socket_clients[user_id]
-        await websocket.close()
+        if not websocket.application_state == WebSocketState.DISCONNECTED:
+            await websocket.close()
 
 
 # 主动向客户端发送消息的示例函数
