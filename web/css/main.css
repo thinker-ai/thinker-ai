@@ -3,7 +3,7 @@
     padding: 0;
     box-sizing: border-box;
     outline: none;
-    resize:none;
+    resize: none;
 }
 
 body {
@@ -14,7 +14,6 @@ body {
     margin: 0;
     padding: 20px;
 }
-
 
 .title {
     font-size: 2em;
@@ -30,11 +29,10 @@ body {
     max-width: 1200px;
 }
 
-/* 新增的浮动面板样式 */
 #floating-panel {
     z-index: 1000;
     position: fixed;
-    border: 2px solid #ccc; /* 外部边框 */
+    border: 2px solid #ccc;
     right: 0;
     top: 100px;
     height: 620px;
@@ -45,13 +43,13 @@ body {
     resize: both;
 }
 
-#chat-container{
+#chat-container {
     display: flex;
     height: 100%;
     width: 100%;
-    box-sizing: border-box; /* 确保内部边框不超出外部边框 */
+    box-sizing: border-box;
     background-color: #ffffff;
-    flex-direction:row;
+    flex-direction: row;
     border-top: 2px solid #000;
     border-bottom: 2px solid #000;
     border-right: 2px solid #000;
@@ -67,9 +65,9 @@ body {
 }
 
 #sidebar {
-    display: flex;  /* 默认显示 */
+    display: flex;
     height: 100%;
-    width: 30px;  /* 设置一个固定的宽度 */
+    width: 30px;
     background-color: #ccc;
     border-left: 2px solid black;
     border-right: 2px solid black;
@@ -78,8 +76,8 @@ body {
 
 .vertical-text-wrapper {
     display: flex;
-    align-items: center;  /* 垂直居中 */
-    cursor: move; /* 设置鼠标样式为移动 */
+    align-items: center;
+    cursor: move;
     height: 100%;
 }
 
@@ -88,21 +86,20 @@ body {
     text-orientation: upright;
 }
 
-
 #panel-content {
-    display: none;  /* 默认是不显示的 */
+    display: none;
     width: 100%;
     overflow-y: auto;
-    overflow-x: hidden; /* 确保不出现横向滚动条 */
+    overflow-x: hidden;
 }
 
 #chat, #input-container {
     width: 100%;
     max-width: 100%;
-    margin: 0 auto;  // 使其在水平方向上居中
+    margin: 0 auto;
 }
 
-#input-container{
+#input-container {
     height: 20%;
     display: flex;
     flex-direction: column;
@@ -120,31 +117,28 @@ body {
     align-items: flex-end;
 }
 
-
 #input {
     flex: 3;
-    height: auto; /* 适应内容高度 */
-
+    height: auto;
 }
 
 #button-container {
-    flex: 1; /* 调整 flex 值，使按钮占用更少的空间 */
-    height: auto; /* 适应内容高度 */
+    flex: 1;
+    height: auto;
     display: flex;
     flex-direction: column;
-    justify-content: center; /* 垂直居中按钮 */
+    justify-content: center;
     align-items: center;
 }
 
-#send
-{
+#send {
     width: 80%;
     height: 80%;
 }
 
 .message-container {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 10px;
 }
 
@@ -153,8 +147,9 @@ body {
 }
 
 .ai-container {
+    display: flex;
     justify-content: flex-start;
-    align-self: flex-start;
+    align-items: flex-start;
 }
 
 .human_avatar, .ai_avatar {
@@ -164,10 +159,8 @@ body {
 }
 
 .human_message, .ai_message {
-    white-space: pre-wrap;       /* CSS3 */
-    white-space: -moz-pre-wrap;  /* Firefox */
-    white-space: -o-pre-wrap;    /* Opera 7 */
-    word-wrap: break-word;       /* IE */
+    white-space: pre-wrap;
+    word-wrap: break-word;
     padding: 10px;
     margin-bottom: 10px;
     border-radius: 10px;
@@ -184,13 +177,10 @@ body {
 }
 
 pre {
-    max-width: 100%; /* 设置最大宽度 */
-    overflow: auto;  /* 添加滚动条 */
-    /* 其他样式 */
+    max-width: 100%;
+    overflow: auto;
 }
 
-
-/* Tab container styles */
 .tab-container {
     display: flex;
     flex-direction: row;
@@ -229,24 +219,23 @@ pre {
     display: block;
 }
 
-/* Frame styles */
 .tab-frame {
     width: 100%;
     height: 700px;
     border: none;
 }
 
-.add-tab
-{
+.add-tab {
     width: 10%;
     height: 40px;
 }
-.close-tab
-{
+
+.close-tab {
     margin-left: 10px;
     cursor: pointer;
     color: red;
 }
+
 .responsive-image {
     max-width: 100%;
     height: auto;
