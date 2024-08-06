@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Callable, Type
 
 
-class AssistantInterface(ABC):
+class AssistantApi(ABC):
     user_id: str
 
     @property

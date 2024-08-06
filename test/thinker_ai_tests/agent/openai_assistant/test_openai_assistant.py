@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pydantic import field_validator
 
-from thinker_ai.agent.openai_assistant.openai_assistant import OpenAiAssistant
+from thinker_ai.agent.openai_assistant_api.openai_assistant_api import OpenAiAssistantApi
 from langchain.pydantic_v1 import BaseModel, Field
 
 
@@ -93,7 +93,7 @@ def create_correlated_data():
 
 
 class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
-    assistant = OpenAiAssistant.from_id(user_id="user_1", assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
+    assistant = OpenAiAssistantApi.from_id(user_id="user_1", assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
 
     async def test_chat_with_function_call(self):
         try:

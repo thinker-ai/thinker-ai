@@ -6,14 +6,14 @@ import time
 from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
 
 from langchain_core.tools import BaseTool
-from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, FunctionTool, AssistantTool
+from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, FunctionTool
 from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message, Text, Run
 from openai.types.shared_params import FunctionDefinition
 from pydantic import BaseModel
 
-from thinker_ai.agent.assistant import AssistantInterface
-from thinker_ai.agent.openai_assistant import client
+from thinker_ai.agent.assistant_api import AssistantApi
+from thinker_ai.agent.openai_assistant_api import openai_client
 from thinker_ai.agent.tools.openai_functions_register import FunctionsRegister
 
 from thinker_ai.agent.tools.embeddings import get_most_similar_strings
@@ -23,7 +23,7 @@ from thinker_ai.common.common import show_json
 from thinker_ai.context_mixin import ContextMixin
 
 
-class OpenAiAssistant(AssistantInterface, ContextMixin):
+class OpenAiAssistantApi(AssistantApi, ContextMixin):
     assistant: Assistant
     topic_threads: Dict[str, str] = {}
     functions_register: FunctionsRegister = FunctionsRegister()
@@ -50,11 +50,11 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
 
     @classmethod
     def from_id(cls, user_id: str, assistant_id: str):
-        assistant = client.beta.assistants.retrieve(assistant_id)
+        assistant = openai_client.beta.assistants.retrieve(assistant_id)
         return cls(user_id=user_id, assistant=assistant)
 
     def set_instructions(self, instructions: str):
-        client.beta.assistants.update(self.assistant.id, instructions=instructions)
+        openai_client.beta.assistants.update(self.assistant.id, instructions=instructions)
 
     def register_file_id(self, file_id: str):
         exist_file_ids: List[str] = self.assistant.tool_resources.code_interpreter.file_ids
@@ -62,7 +62,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
             if exist_file_id == file_id:
                 return
         exist_file_ids.append(file_id)
-        client.beta.assistants.update(assistant_id=self.assistant.id,
+        openai_client.beta.assistants.update(assistant_id=self.assistant.id,
                                       tool_resources={
                                           "code_interpreter": {
                                               "file_ids": exist_file_ids
@@ -76,7 +76,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
             if exist_vector_store_id == vector_store_id:
                 return
         exist_vector_store_ids.append(vector_store_id)
-        client.beta.assistants.update(assistant_id=self.assistant.id,
+        openai_client.beta.assistants.update(assistant_id=self.assistant.id,
                                       tool_resources={
                                           "file_search": {
                                               "vector_store_ids": exist_vector_store_ids
@@ -89,7 +89,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
         for exist_file_id in exist_file_ids:
             if exist_file_id == file_id:
                 exist_file_ids.remove(exist_file_id)
-                client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
+                openai_client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
                     "code_interpreter": {
                         "file_ids": exist_file_ids
                     }
@@ -100,7 +100,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
         for exist_vector_store_id in exist_vector_store_ids:
             if exist_vector_store_id == vector_store_id:
                 exist_vector_store_ids.remove(exist_vector_store_id)
-                client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
+                openai_client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
                     "file_search": {
                         "vector_store_ids": exist_vector_store_ids
                     }
@@ -149,7 +149,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
         return message
 
     def _print_step_details(self, run, thread_id: str):
-        run_steps = client.beta.threads.runs.steps.list(
+        run_steps = openai_client.beta.threads.runs.steps.list(
             thread_id=thread_id, run_id=run.id, order="asc"
         )
         for step in run_steps.data:
@@ -158,7 +158,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
 
     def _wait_on_run(self, run, thread_id: str):
         while run.status == "queued" or run.status == "in_progress":
-            run = client.beta.threads.runs.retrieve(
+            run = openai_client.beta.threads.runs.retrieve(
                 thread_id=thread_id,
                 run_id=run.id,
             )
@@ -183,7 +183,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
                     "tool_call_id": tool_call.id,
                     "output": json.dumps(result),
                 })
-            run = client.beta.threads.runs.submit_tool_outputs(
+            run = openai_client.beta.threads.runs.submit_tool_outputs(
                 thread_id=thread_id,
                 run_id=run.id,
                 tool_outputs=tool_outputs,
@@ -194,9 +194,9 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
     def _get_or_create_thread_and_run(self, topic: str, content: str) -> [Thread, Run]:
         thread_id = self.topic_threads.get(topic)
         if thread_id:
-            topic_thread = self.client.beta.threads.retrieve(thread_id)
+            topic_thread = self.openai_client.beta.threads.retrieve(thread_id)
         else:
-            topic_thread = client.beta.threads.create()
+            topic_thread = openai_client.beta.threads.create()
             self.topic_threads[topic] = topic_thread.id
         run = self._submit_message(topic_thread, content)
         run = self._wait_on_run(run, topic_thread.id)
@@ -214,23 +214,23 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
                     "file_id": file_id,
                     "tools": [{"type": "code_interpreter"}]
                 })
-        client.beta.threads.messages.create(
+        openai_client.beta.threads.messages.create(
             thread_id=thread.id,
             role="user",
             content=content,
             attachments=attachments
         )
-        return client.beta.threads.runs.create(
+        return openai_client.beta.threads.runs.create(
             model=self.assistant.model,
             thread_id=thread.id,
             assistant_id=self.assistant.id,
             instructions=self.assistant.instructions,
             tools=self.assistant.tools,
-            timeout=client.timeout
+            timeout=openai_client.timeout
         )
 
     def _get_response(self, thread: Thread) -> Message:
-        messages = client.beta.threads.messages.list(thread_id=thread.id, order="asc")
+        messages = openai_client.beta.threads.messages.list(thread_id=thread.id, order="asc")
         return messages.data[-1]
 
     @staticmethod
@@ -244,19 +244,20 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
             # Gather citations based on annotation attributes
             file_citation = getattr(annotation, 'file_citation', None)
             if file_citation:
-                cited_file = client.files.retrieve(file_citation.file_id)
+                cited_file = openai_client.files.retrieve(file_citation.file_id)
                 citations.append(f'[{index}] {file_citation.quote} from {cited_file.filename}')
             else:
                 file_path = getattr(annotation, 'file_path', None)
                 if file_path:
-                    cited_file = client.files.retrieve(file_path.file_id)
+                    cited_file = openai_client.files.retrieve(file_path.file_id)
                     citations.append(f'[{index}] Click <here> to download {cited_file.filename}')
         # Add footnotes to the end of the message before displaying to user
         message_content.value += '\n' + '\n'.join(citations)
         return message_content.value
 
-    def _do_with_image_result(self, image_file) -> bytes:
-        image_data = client.files.content(image_file.file_id)
+    @staticmethod
+    def _do_with_image_result(image_file) -> bytes:
+        image_data = openai_client.files.content(image_file.file_id)
         image_data_bytes = image_data.read()
         return image_data_bytes
 
@@ -278,12 +279,12 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
             if tool.type == native_tool.type:
                 return
         tools.append(native_tool)
-        client.beta.assistants.update(self.assistant.id, tools=tools)
+        openai_client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def _remove_native_tool(self, tool_type: Literal["code_interpreter", "file_search"]):
         tools = self.assistant.tools
         tools = [tool for tool in tools if tool.type != tool_type]
-        client.beta.assistants.update(self.assistant.id, tools=tools)
+        openai_client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def register_code_interpreter(self):
         self._register_native_tool(CodeInterpreterTool(type="code_interpreter"))
@@ -309,7 +310,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
                 update = True
         # 使用更新后的工具列表更新助手
         if update:
-            client.beta.assistants.update(self.assistant.id, tools=tools)
+            openai_client.beta.assistants.update(self.assistant.id, tools=tools)
 
     def remove_functions(self):
         tools = self.assistant.tools
@@ -317,7 +318,7 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
         for tool in tools:
             if tool.type != "function":
                 new_tools.append(tool)
-        client.beta.assistants.update(self.assistant.id, tools=new_tools)
+        openai_client.beta.assistants.update(self.assistant.id, tools=new_tools)
 
     def is_function_registered(self, name: str) -> bool:
         tools = self.assistant.tools
@@ -340,5 +341,5 @@ class OpenAiAssistant(AssistantInterface, ContextMixin):
                                    k: int = 1,
                                    embedding_model="text-embedding-3-small",
                                    ) -> list[tuple[str, float]]:
-        source_strings = client.files.retrieve(file_id)
+        source_strings = openai_client.files.retrieve(file_id)
         return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
