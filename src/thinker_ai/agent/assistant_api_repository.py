@@ -17,7 +17,7 @@ class AssistantRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_assistant_api(self, user_id: str, assistant_id: str) -> Optional[AssistantApi]:
+    def get_assistant_api_by_id(self, user_id: str, assistant_id: str) -> Optional[AssistantApi]:
         raise NotImplementedError
 
     @abstractmethod

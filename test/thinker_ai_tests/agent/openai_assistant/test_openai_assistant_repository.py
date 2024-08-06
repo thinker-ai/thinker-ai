@@ -16,8 +16,16 @@ class TestOpenAiAssistantRepository(unittest.TestCase):
 
     def test_assistant_creation_and_retrieval(self):
         # Add the assistant
-        retrieved_assistant = self.assistant_repo.get_assistant_api(user_id=self.user_id,
-                                                                    assistant_id=self.assistant_id)
+        retrieved_assistant = self.assistant_repo.get_assistant_api_by_id(user_id=self.user_id,
+                                                                          assistant_id=self.assistant_id)
+
+        # Verify the assistant is retrieved and the assistant id matches
+        self.assertIsNotNone(retrieved_assistant)
+        self.assertEqual(self.assistant_id, retrieved_assistant.id)
+    def test_get_assistant_api_by_name(self):
+        # Add the assistant
+        retrieved_assistant = self.assistant_repo.get_assistant_api_by_name(user_id=self.user_id,
+                                                                            name="new_assistant")
 
         # Verify the assistant is retrieved and the assistant id matches
         self.assertIsNotNone(retrieved_assistant)
@@ -29,7 +37,7 @@ class TestOpenAiAssistantRepository(unittest.TestCase):
         self.assistant_repo.update_assistant_name(self.user_id, self.assistant.id, assistant_name)
 
         # Retrieve the updated assistant and verify the changes
-        updated_assistant = self.assistant_repo.get_assistant_api(self.user_id, self.assistant_id)
+        updated_assistant = self.assistant_repo.get_assistant_api_by_id(self.user_id, self.assistant_id)
         self.assertIsNotNone(updated_assistant)
         self.assertEqual(assistant_name, updated_assistant.name)
 

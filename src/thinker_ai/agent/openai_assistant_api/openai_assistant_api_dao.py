@@ -74,7 +74,7 @@ class OpenAiAssistantApiDAO(metaclass=SingletonMeta):
     # 不同用户的assistant name可以相同
     def get_assistant_api_by_name(self, user_id: str, name: str) -> Optional[OpenAiAssistantApiPO]:
         with self._lock:
-            for assistant_api_dict in self.assistant_apis:
+            for assistant_api_dict in self.assistant_apis.values():
                 if assistant_api_dict.get("name") == name and assistant_api_dict.get("user_id") == user_id:
                     return OpenAiAssistantApiPO(**assistant_api_dict)
         return None

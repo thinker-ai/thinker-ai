@@ -79,6 +79,7 @@ function sendMessage() {
         // 从 localStorage 中获取 user_id 和 topic
     // 发送消息到服务器
     axios.post('/chat', {
+        assistant_name:"assistant_1",
         topic:"default",
         content: message
     }, {

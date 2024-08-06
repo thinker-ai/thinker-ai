@@ -36,7 +36,7 @@ class OpenAiAssistantRepository(AssistantRepository):
             assistant_api_po = OpenAiAssistantApiPO.from_assistant_api(assistant_api)
             self.assistant_api_dao.add_assistant_api(assistant_api_po)
 
-    def get_assistant_api(self, user_id: str, assistant_id: str) -> Optional[AssistantApi]:
+    def get_assistant_api_by_id(self, user_id: str, assistant_id: str) -> Optional[AssistantApi]:
         with self._lock:
             assistant_api_po = self.assistant_api_dao.get_assistant_api_by_id(assistant_id)
             if assistant_api_po is not None and assistant_api_po.user_id == user_id:
@@ -65,7 +65,7 @@ class OpenAiAssistantRepository(AssistantRepository):
             return None
 
     def delete_assistant_api(self, user_id: str, assistant_id: str):
-        agent = self.get_assistant_api(user_id=user_id, assistant_id=assistant_id)
+        agent = self.get_assistant_api_by_id(user_id=user_id, assistant_id=assistant_id)
         if agent is None:
             raise PermissionError("Cannot delete an agent for another user.")
         with self._lock:

@@ -3,7 +3,9 @@ import asyncio
 import uvicorn
 
 from thinker_ai.app_instance import app
+
 main_loop = asyncio.get_event_loop()
+
 
 @app.on_event("startup")
 async def startup():
@@ -12,6 +14,6 @@ async def startup():
     app.include_router(loader_router)
     app.include_router(service_loader_router)
 
+
 if __name__ == '__main__':
     uvicorn.run("demo_main:app", host="0.0.0.0", port=8000, reload=True)
-

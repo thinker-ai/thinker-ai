@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from starlette.responses import HTMLResponse
 
-from thinker_ai.agent.openai_assistant_api import OpenAiAssistant
+from thinker_ai.agent.openai_assistant_api.openai_assistant_api import OpenAiAssistantApi
 from thinker_ai.tasks.dynamic.service_deployer import is_service_exist, deploy_service
 from langchain.pydantic_v1 import BaseModel, Field
 
@@ -38,7 +38,7 @@ class LoadArgs(BaseModel):
 
 @service_loader_router.get("/code_generate", response_class=HTMLResponse)
 def test_chat_with_gradio_code_generate():
-    agent = OpenAiAssistant.from_id("asst_zBrqXNoQIvnX1TyyVry9UveZ")
+    agent = OpenAiAssistantApi.from_id(user_id="abc",assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
     try:
         agent.register_function(deploy_service, DeployArgs)
         content = "请为我生成一个新的计算器，能进行加减乘除运算，我的用户id是“abc”，计算器名称叫“calculator”"
@@ -52,7 +52,7 @@ def test_chat_with_gradio_code_generate():
 
 @service_loader_router.get("/code_load", response_class=HTMLResponse)
 def test_chat_with_gradio_code_load():
-    agent = OpenAiAssistant.from_id("asst_zBrqXNoQIvnX1TyyVry9UveZ")
+    agent = OpenAiAssistantApi.from_id(user_id="abc",assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
     try:
         agent.register_function(load_service_and_push_to_user, LoadArgs)
         content = "请给我提供一个已有的计算器，我的用户id是“abc”，计算器名称叫“calculator”"

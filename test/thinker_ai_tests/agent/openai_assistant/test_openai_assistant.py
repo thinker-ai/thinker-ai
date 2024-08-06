@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from pydantic import field_validator
 
+from thinker_ai.agent.openai_assistant_api import openai_client
 from thinker_ai.agent.openai_assistant_api.openai_assistant_api import OpenAiAssistantApi
 from langchain.pydantic_v1 import BaseModel, Field
 
@@ -144,7 +145,7 @@ class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
             print(self.assistant.tools)
 
     async def test_chat_with_file_search(self):
-        file = self.assistant.client.files.create(
+        file = openai_client.files.create(
             file=open(
                 "data/diy_llm.pdf",
                 "rb",
@@ -162,7 +163,7 @@ class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
         finally:
             self.assistant.remove_file_id(file.id)
             self.assistant.remove_file_search()
-            self.assistant.client.files.delete(file.id)
+            openai_client.files.delete(file.id)
 
 
 if __name__ == '__main__':
