@@ -32,6 +32,21 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
     def name(self) -> str:
         return self.assistant.name
 
+    @name.setter
+    def name(self, new_value):
+        self.assistant = openai_client.beta.assistants.update(self.assistant.id, name=new_value)
+
+    def add_topic(self, topic_name) -> Thread:
+        topic_thread = openai_client.beta.threads.create()
+        self.topic_threads[topic_name] = topic_thread
+        return topic_thread
+
+    def del_topic(self, topic_name):
+        thread_id = self.topic_threads.get(topic_name)
+        if thread_id:
+            self.topic_threads[topic_name] = openai_client.beta.threads.delete(thread_id)
+            del self.topic_threads[topic_name]
+
     @property
     def id(self) -> str:
         return self.assistant.id
@@ -63,12 +78,12 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                 return
         exist_file_ids.append(file_id)
         openai_client.beta.assistants.update(assistant_id=self.assistant.id,
-                                      tool_resources={
-                                          "code_interpreter": {
-                                              "file_ids": exist_file_ids
-                                          }
-                                      }
-                                      )
+                                             tool_resources={
+                                                 "code_interpreter": {
+                                                     "file_ids": exist_file_ids
+                                                 }
+                                             }
+                                             )
 
     def register_vector_store_id(self, vector_store_id: str):
         exist_vector_store_ids: List[str] = self.assistant.tool_resources.file_search.vector_store_ids
@@ -77,12 +92,12 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                 return
         exist_vector_store_ids.append(vector_store_id)
         openai_client.beta.assistants.update(assistant_id=self.assistant.id,
-                                      tool_resources={
-                                          "file_search": {
-                                              "vector_store_ids": exist_vector_store_ids
-                                          }
-                                      }
-                                      )
+                                             tool_resources={
+                                                 "file_search": {
+                                                     "vector_store_ids": exist_vector_store_ids
+                                                 }
+                                             }
+                                             )
 
     def remove_file_id(self, file_id: str):
         exist_file_ids: List[str] = self.assistant.tool_resources.code_interpreter.file_ids
@@ -106,10 +121,10 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                     }
                 })
 
-    def ask(self, content: str, topic: str = "default") -> str:
-        message: Message = self._ask_for_messages(topic, content)
+    def ask(self, content: str, topic: str = "default") -> [str, str]:
+        message, thread_id = self._ask_for_messages(topic, content)
         response_content = self._do_with_result(message)
-        return self._to_markdown(response_content)
+        return self._to_markdown(response_content), thread_id
 
     def _to_markdown(self, content: Dict[str, Any]) -> str:
         markdown_lines = []
@@ -146,7 +161,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
         self._execute_function(run, topic_thread.id)
         message = self._get_response(topic_thread)
         show_json(message)
-        return message
+        return topic_thread
 
     def _print_step_details(self, run, thread_id: str):
         run_steps = openai_client.beta.threads.runs.steps.list(
@@ -191,16 +206,15 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
             run = self._wait_on_run(run, thread_id)
         return run
 
-    def _get_or_create_thread_and_run(self, topic: str, content: str) -> [Thread, Run]:
+    def _get_or_create_thread_and_run(self, topic: str, content: str) -> Run:
         thread_id = self.topic_threads.get(topic)
         if thread_id:
             topic_thread = self.openai_client.beta.threads.retrieve(thread_id)
         else:
-            topic_thread = openai_client.beta.threads.create()
-            self.topic_threads[topic] = topic_thread.id
+            topic_thread = self.add_topic(topic)
         run = self._submit_message(topic_thread, content)
         run = self._wait_on_run(run, topic_thread.id)
-        return topic_thread, run
+        return run
 
     def _submit_message(self, thread: Thread, content: str) -> Run:
         """在thread中创建message，然后创建Run，它负责向assistant提交thread"""

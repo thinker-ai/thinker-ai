@@ -8,7 +8,7 @@ from starlette.templating import Jinja2Templates
 from thinker_ai.agent.assistant_api_factory import AssistantApiFactory, PROVIDER
 from thinker_ai.agent.assistant_api_repository import AssistantRepository
 from thinker_ai.agent.openai_assistant_api.openai_assistant_api_repository import OpenAiAssistantRepository
-from thinker_ai.agent.provider import llm
+from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.login import get_session
 from thinker_ai.configs.const import PROJECT_ROOT
 
@@ -52,6 +52,6 @@ async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> st
                 assistant_repository.add_assistant_api(assistant_api=assistant_api, user_id=user_id)
             return assistant_api.ask(content=request.content, topic=request.topic)
         else:
-            return await llm.LLM().aask(request.content)
+            return await LLM().aask(request.content)
     else:
         return f"user_id {user_id} not found"

@@ -19,7 +19,11 @@ class AssistantApi(ABC):
         """Returns the name of the assistant."""
         raise NotImplementedError
 
-    @property
+    @name.setter
+    @abstractmethod
+    def name(self, new_value):
+        raise NotImplementedError
+
     @abstractmethod
     def tools(self) -> List[Dict]:
         """Returns the list of tools enabled on the assistant."""

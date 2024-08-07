@@ -143,7 +143,9 @@ body {
 }
 
 .human-container {
+    display: flex;
     justify-content: flex-end;
+    align-items: flex-end;
 }
 
 .ai-container {

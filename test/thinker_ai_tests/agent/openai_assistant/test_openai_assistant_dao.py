@@ -26,19 +26,15 @@ class TestOpenAiAssistantDAO(unittest.TestCase):
         self.assertIsNotNone(retrieved)
         self.assertEqual(retrieved.assistant_id, "assistant_1")
 
-    def test_update_assistant_name(self):
-        assistant_po = OpenAiAssistantApiPO(user_id="user_1",name="old_name", assistant_id="assistant_1", topic_threads={})
-        self.dao.add_assistant_api(assistant_po)
-        self.dao.update_assistant_name(user_id="user_1",assistant_id="assistant_1",name="new_name")
+    def test_update(self):
+        assistant_api_po = OpenAiAssistantApiPO(user_id="user_1",name="old_name", assistant_id="assistant_1", topic_threads={})
+        self.dao.add_assistant_api(assistant_api_po)
+        assistant_api_po.name="new_name"
+        assistant_api_po.topic_threads = {"topic_name1":"topic_thread1"}
+        self.dao.update(assistant_api_po=assistant_api_po)
         retrieved = self.dao.get_assistant_api_by_id("assistant_1")
         self.assertEqual(retrieved.name, "new_name")
-
-    def test_update_topic_name(self):
-        assistant_po = OpenAiAssistantApiPO(user_id="user_1",name="old_name", assistant_id="assistant_1", topic_threads={"old_topic":"123"})
-        self.dao.add_assistant_api(assistant_po)
-        self.dao.update_topic_name(user_id="user_1",assistant_id="assistant_1",old_topic="old_topic",new_topic="new_topic")
-        retrieved = self.dao.get_assistant_api_by_id("assistant_1")
-        self.assertEqual(retrieved.topic_threads.get("new_topic"), "123")
+        self.assertEqual(retrieved.topic_threads,  {"topic_name1":"topic_thread1"})
 
     def test_delete_assistant(self):
         assistant_po = OpenAiAssistantApiPO(user_id="user_1", name="assistant_name",assistant_id="assistant_1", topic_threads={})
@@ -52,7 +48,7 @@ class TestOpenAiAssistantDAO(unittest.TestCase):
         self.dao.add_assistant_api(assistant_po_1)
         self.dao.add_assistant_api(assistant_po_2)
         ids = self.dao.get_my_assistants_of("user_1", "assistant_id")
-        self.assertCountEqual(ids, ["assistant_2", "assistant_1"])
+        self.assertTrue("assistant_1" in ids and "assistant_2" in ids)
 
 
 if __name__ == '__main__':

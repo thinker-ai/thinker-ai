@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List, Literal
+from typing import List
 
 from openai.types.beta import AssistantToolParam
 
@@ -24,7 +24,7 @@ class PROVIDER(Enum):
 class AssistantApiFactory:
     @staticmethod
     def create(user_id: str, name: str, instructions: str, description: str = None,
-               tools: List[AssistantToolParam] = None, file_ids: List[str] = None,
+               tools: List[AssistantToolParam] = None,
                provider: PROVIDER = PROVIDER.OpenAILLM,
                model: str = config.llm.model) -> AssistantApi:
         if provider == PROVIDER.OpenAILLM:
@@ -34,5 +34,4 @@ class AssistantApiFactory:
                 instructions=instructions,
                 description=description,
                 tools=tools,
-                file_ids=file_ids,
                 model=model)

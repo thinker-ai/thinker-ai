@@ -79,37 +79,15 @@ class OpenAiAssistantApiDAO(metaclass=SingletonMeta):
                     return OpenAiAssistantApiPO(**assistant_api_dict)
         return None
 
-    def update_assistant_name(self, user_id: str, assistant_id: str, name: str):
+    def update(self, assistant_api_po: OpenAiAssistantApiPO):
         with self._lock:
-            assistant_api_dict = self.assistant_apis.get(assistant_id)
+            assistant_api_dict = self.assistant_apis.get(assistant_api_po.assistant_id)
             if assistant_api_dict:
-                if assistant_api_dict.get("user_id") != user_id:
-                    raise PermissionError("Cannot update an assistant for another user.")
-                assistant_api_dict["name"] = name
-                self.assistant_apis[assistant_id] = assistant_api_dict
+                self.assistant_apis[assistant_api_po.assistant_id] = assistant_api_po.model_dump()
                 self._save()
-                return
             else:
                 raise ValueError(
-                    f"assistant_api with assistant_id {assistant_id} not found")
-
-    def update_topic_name(self, user_id: str, assistant_id, old_topic, new_topic):
-        with self._lock:
-            assistant_api_dict = self.assistant_apis.get(assistant_id)
-            if assistant_api_dict:
-                if assistant_api_dict.get("user_id") != user_id:
-                    raise PermissionError("Cannot update an topic for another user.")
-                thread_id = assistant_api_dict["topic_threads"].get(old_topic)
-                if thread_id:
-                    assistant_api_dict["topic_threads"].pop(old_topic)
-                    assistant_api_dict["topic_threads"][new_topic] = thread_id
-                    self.assistant_apis[assistant_id] = assistant_api_dict
-                    self._save()
-                else:
-                    f"thread with topic {old_topic} not found"
-            else:
-                raise ValueError(
-                    f"assistant_api with assistant_id {assistant_id} not found")
+                    f"assistant_api with assistant_id {assistant_api_po.assistant_id} not found")
 
     def delete_assistant_api(self, assistant_id):
         with self._lock:
@@ -120,6 +98,34 @@ class OpenAiAssistantApiDAO(metaclass=SingletonMeta):
         with self._lock:
             result: List[str] = []
             for assistant_api_dict in self.assistant_apis.values():
-                if assistant_api_dict.get('user_id') == user_id:
+                if assistant_api_dict["user_id"] == user_id:
                     result.append(assistant_api_dict.get(of))
             return result
+
+    def add_topic(self, user_id, assistant_id, topic_name, thread_id):
+        with self._lock:
+            assistant_api_dict = self.assistant_apis.get(assistant_id)
+            if assistant_api_dict:
+                if assistant_api_dict["user_id"] != user_id:
+                    raise PermissionError("Cannot update an topic for another user.")
+                topic_threads = assistant_api_dict["topic_threads"]
+                topic_threads[topic_name] = thread_id
+                self._save()
+
+    def del_topic(self, user_id: str, assistant_id: str, topic_name: str) -> Optional[str]:
+        with self._lock:
+            assistant_api_dict = self.assistant_apis.get(assistant_id)
+            if assistant_api_dict:
+                if assistant_api_dict["user_id"] != user_id:
+                    raise PermissionError("Cannot update a topic for another user.")
+                topic_threads = assistant_api_dict.get("topic_threads", {})
+                thread_id = topic_threads.get(topic_name)
+                if thread_id is not None:
+                    del topic_threads[topic_name]
+                    self._save()
+                    return thread_id
+                else:
+                    return None  # Topic name does not exist
+            else:
+                return None  # Assistant ID does not exist
+
