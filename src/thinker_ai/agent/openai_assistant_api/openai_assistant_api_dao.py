@@ -2,6 +2,7 @@ import json
 from threading import Lock
 from typing import List, Optional, Dict, Literal
 
+from thinker_ai.agent.assistant_api import AssistantApi
 from thinker_ai.agent.openai_assistant_api import openai_client
 from thinker_ai.agent.openai_assistant_api.openai_assistant_api import OpenAiAssistantApi
 from thinker_ai.configs.const import PROJECT_ROOT
@@ -16,9 +17,10 @@ class OpenAiAssistantApiPO(Serializable):
     topic_threads: Dict[str, str]
 
     @classmethod
-    def from_assistant_api(cls, assistant_api: OpenAiAssistantApi) -> "OpenAiAssistantApiPO":
-        return OpenAiAssistantApiPO(user_id=assistant_api.user_id, assistant_id=assistant_api.assistant.id,
-                                    name=assistant_api.name, topic_threads=assistant_api.topic_threads)
+    def from_assistant_api(cls, assistant_api: AssistantApi) -> "OpenAiAssistantApiPO":
+        if isinstance(assistant_api, OpenAiAssistantApi):
+            return OpenAiAssistantApiPO(user_id=assistant_api.user_id, assistant_id=assistant_api.assistant.id,
+                                        name=assistant_api.name, topic_threads=assistant_api.topic_threads)
 
     def to_assistant_api(self) -> OpenAiAssistantApi:
         assistant = openai_client.beta.assistants.retrieve(self.assistant_id)

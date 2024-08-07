@@ -6,6 +6,7 @@ import time
 from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
 
 from langchain_core.tools import BaseTool
+from openai import OpenAI
 from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, FunctionTool
 from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message, Text, Run
@@ -38,7 +39,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
 
     def add_topic(self, topic_name) -> Thread:
         topic_thread = openai_client.beta.threads.create()
-        self.topic_threads[topic_name] = topic_thread
+        self.topic_threads[topic_name] = topic_thread.id
         return topic_thread
 
     def del_topic(self, topic_name):

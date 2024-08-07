@@ -46,7 +46,7 @@ class OpenAiAssistantRepository(AssistantRepository):
         with self._lock:
             return self.assistant_api_dao.get_my_assistants_of(user_id=user_id, of=of)
 
-    def update(self,assistant_api: OpenAiAssistantApi):
+    def update(self,assistant_api: AssistantApi):
         with self._lock:
             assistant_api_po = OpenAiAssistantApiPO.from_assistant_api(assistant_api)
             self.assistant_api_dao.update(assistant_api_po)
