@@ -3,22 +3,21 @@ from __future__ import annotations
 import base64
 import json
 import time
-from typing import List, Any, Dict, Callable, Optional, Type, Union, Literal
+from typing import List, Any, Dict, Union, Literal, cast
 
-from langchain_core.tools import BaseTool
-from openai import OpenAI
-from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, FunctionTool
+from httpx import HTTPStatusError
+from openai import BadRequestError
+from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool
 from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message, Text, Run
-from openai.types.shared_params import FunctionDefinition
-from pydantic import BaseModel
 
 from thinker_ai.agent.assistant_api import AssistantApi
-from thinker_ai.agent.openai_assistant_api import openai_client
-from thinker_ai.agent.tools.openai_functions_register import FunctionsRegister
+from thinker_ai.agent.openai_assistant_api import openai
 
 from thinker_ai.agent.tools.embeddings import get_most_similar_strings
-from thinker_ai.agent.tools.function_call import FunctionCall
+from thinker_ai.agent.topic_repository.openai_topic_repository import OpenAiTopicInfoRepository
+from thinker_ai.agent.topic_repository.topic_builder import OpenAiTopic
+from thinker_ai.agent.topic_repository.topic_repository import TopicInfo
 from thinker_ai.common.common import show_json
 
 from thinker_ai.context_mixin import ContextMixin
@@ -26,8 +25,7 @@ from thinker_ai.context_mixin import ContextMixin
 
 class OpenAiAssistantApi(AssistantApi, ContextMixin):
     assistant: Assistant
-    topic_threads: Dict[str, str] = {}
-    functions_register: FunctionsRegister = FunctionsRegister()
+    topic_info_repository:OpenAiTopicInfoRepository = OpenAiTopicInfoRepository.get_instance()
 
     @property
     def name(self) -> str:
@@ -35,18 +33,29 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
 
     @name.setter
     def name(self, new_value):
-        self.assistant = openai_client.beta.assistants.update(self.assistant.id, name=new_value)
+        try:
+            self.assistant = openai.client.beta.assistants.update(self.assistant.id, name=new_value)
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def add_topic(self, topic_name) -> Thread:
-        topic_thread = openai_client.beta.threads.create()
-        self.topic_threads[topic_name] = topic_thread.id
-        return topic_thread
+    def add_topic(self, user_id: str, topic_name: str) -> Thread:
+        try:
+            topic_thread = openai.client.beta.threads.create()
+            topic = OpenAiTopic(name=topic_name, assistant_id=self.id, thread_id=topic_thread.id)
+            self.topic_info_repository.add(TopicInfo(user_id=user_id, topic=topic))
+            return topic_thread
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def del_topic(self, topic_name):
-        thread_id = self.topic_threads.get(topic_name)
-        if thread_id:
-            self.topic_threads[topic_name] = openai_client.beta.threads.delete(thread_id)
-            del self.topic_threads[topic_name]
+    def del_topic(self, user_id: str, topic_name):
+        topic_info = self.topic_info_repository.get_by(user_id, topic_name)
+        if topic_info:
+            topic = cast(OpenAiTopic,topic_info.topic)
+            try:
+                openai.client.beta.threads.delete(topic.thread_id)
+                self.topic_info_repository.delete(user_id, topic_name)
+            except (HTTPStatusError, BadRequestError) as e:
+                print(str(e))
 
     @property
     def id(self) -> str:
@@ -61,73 +70,92 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
         return self.assistant.file_ids
 
     @classmethod
-    def from_instance(cls, user_id: str, assistant: Assistant):
-        return cls(user_id=user_id, assistant=assistant)
+    def from_instance(cls, assistant: Assistant):
+        return cls(assistant=assistant)
 
     @classmethod
-    def from_id(cls, user_id: str, assistant_id: str):
-        assistant = openai_client.beta.assistants.retrieve(assistant_id)
-        return cls(user_id=user_id, assistant=assistant)
+    def from_id(cls, assistant_id: str):
+        try:
+            assistant = openai.client.beta.assistants.retrieve(assistant_id)
+            return cls(assistant=assistant)
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def set_instructions(self, instructions: str):
-        openai_client.beta.assistants.update(self.assistant.id, instructions=instructions)
+        try:
+            openai.client.beta.assistants.update(self.assistant.id, instructions=instructions)
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def register_file_id(self, file_id: str):
         exist_file_ids: List[str] = self.assistant.tool_resources.code_interpreter.file_ids
         for exist_file_id in exist_file_ids:
             if exist_file_id == file_id:
                 return
-        exist_file_ids.append(file_id)
-        openai_client.beta.assistants.update(assistant_id=self.assistant.id,
-                                             tool_resources={
-                                                 "code_interpreter": {
-                                                     "file_ids": exist_file_ids
+        try:
+            exist_file_ids.append(file_id)
+            openai.client.beta.assistants.update(assistant_id=self.assistant.id,
+                                                 tool_resources={
+                                                     "code_interpreter": {
+                                                         "file_ids": exist_file_ids
+                                                     }
                                                  }
-                                             }
-                                             )
+                                                 )
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def register_vector_store_id(self, vector_store_id: str):
         exist_vector_store_ids: List[str] = self.assistant.tool_resources.file_search.vector_store_ids
         for exist_vector_store_id in exist_vector_store_ids:
             if exist_vector_store_id == vector_store_id:
                 return
-        exist_vector_store_ids.append(vector_store_id)
-        openai_client.beta.assistants.update(assistant_id=self.assistant.id,
-                                             tool_resources={
-                                                 "file_search": {
-                                                     "vector_store_ids": exist_vector_store_ids
+        try:
+            exist_vector_store_ids.append(vector_store_id)
+            openai.client.beta.assistants.update(assistant_id=self.assistant.id,
+                                                 tool_resources={
+                                                     "file_search": {
+                                                         "vector_store_ids": exist_vector_store_ids
+                                                     }
                                                  }
-                                             }
-                                             )
+                                                 )
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def remove_file_id(self, file_id: str):
         exist_file_ids: List[str] = self.assistant.tool_resources.code_interpreter.file_ids
         for exist_file_id in exist_file_ids:
             if exist_file_id == file_id:
-                exist_file_ids.remove(exist_file_id)
-                openai_client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
-                    "code_interpreter": {
-                        "file_ids": exist_file_ids
-                    }
-                })
+                try:
+                    exist_file_ids.remove(exist_file_id)
+                    openai.client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
+                        "code_interpreter": {
+                            "file_ids": exist_file_ids
+                        }
+                    })
+                except (HTTPStatusError, BadRequestError) as e:
+                    print(str(e))
 
     def remove_vector_store_id(self, vector_store_id: str):
         exist_vector_store_ids: List[str] = self.assistant.tool_resources.file_search.vector_store_ids
         for exist_vector_store_id in exist_vector_store_ids:
             if exist_vector_store_id == vector_store_id:
-                exist_vector_store_ids.remove(exist_vector_store_id)
-                openai_client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
-                    "file_search": {
-                        "vector_store_ids": exist_vector_store_ids
-                    }
-                })
+                try:
+                    exist_vector_store_ids.remove(exist_vector_store_id)
+                    openai.client.beta.assistants.update(assistant_id=self.assistant.id, tool_resources={
+                        "file_search": {
+                            "vector_store_ids": exist_vector_store_ids
+                        }
+                    })
+                except (HTTPStatusError, BadRequestError) as e:
+                    print(str(e))
 
-    def ask(self, content: str, topic: str = "default") -> [str, str]:
-        message, thread_id = self._ask_for_messages(topic, content)
+    def ask(self, user_id: str, content: str, topic_name: str = "default") -> [str, str]:
+        message = self._ask_for_messages(user_id=user_id, topic_name=topic_name, content=content)
         response_content = self._do_with_result(message)
-        return self._to_markdown(response_content), thread_id
+        return self._to_markdown(response_content)
 
-    def _to_markdown(self, content: Dict[str, Any]) -> str:
+    @staticmethod
+    def _to_markdown(content: Dict[str, Any]) -> str:
         markdown_lines = []
         markdown_line = ""
         for key, value in content.items():
@@ -157,65 +185,77 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                 image_index += 1
         return result
 
-    def _ask_for_messages(self, topic: str, content: str) -> Message:
-        topic_thread, run = self._get_or_create_thread_and_run(topic, content)
-        self._execute_function(run, topic_thread.id)
-        message = self._get_response(topic_thread)
+    def _ask_for_messages(self, user_id: str, topic_name: str, content: str) -> Message:
+        thread_id, run = self._get_or_create_thread_and_run(user_id=user_id, topic_name=topic_name, content=content)
+        self._execute_function(run, thread_id)
+        message = self._get_response(thread_id)
         show_json(message)
-        return topic_thread
+        return message
 
-    def _print_step_details(self, run, thread_id: str):
-        run_steps = openai_client.beta.threads.runs.steps.list(
-            thread_id=thread_id, run_id=run.id, order="asc"
-        )
-        for step in run_steps.data:
-            step_details = step.step_details
-            print(json.dumps(show_json(step_details), indent=4))
-
-    def _wait_on_run(self, run, thread_id: str):
-        while run.status == "queued" or run.status == "in_progress":
-            run = openai_client.beta.threads.runs.retrieve(
-                thread_id=thread_id,
-                run_id=run.id,
+    @staticmethod
+    def _print_step_details(run, thread_id: str):
+        try:
+            run_steps = openai.client.beta.threads.runs.steps.list(
+                thread_id=thread_id, run_id=run.id, order="asc"
             )
-            time.sleep(0.5)
-        self._print_step_details(run, thread_id)
-        return run
+            for step in run_steps.data:
+                step_details = step.step_details
+                print(json.dumps(show_json(step_details), indent=4))
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def _execute_function(self, run, thread_id):
-        if run.status == "requires_action":
-            tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
-            tool_outputs: List[Dict] = []
-            for tool_call in tool_calls:
-                function_call = FunctionCall(name=tool_call.function.name,
-                                             arguments=json.loads(tool_call.function.arguments))
-                print("Function Name:", function_call.name)
-                print("Function Arguments:", function_call.arguments)
-                function = self.functions_register.get_function(function_call.name)
-                if function is None:
-                    raise Exception(f"function {function_call.name} not found")
-                result = function.invoke(function_call.arguments)
-                tool_outputs.append({
-                    "tool_call_id": tool_call.id,
-                    "output": json.dumps(result),
-                })
-            run = openai_client.beta.threads.runs.submit_tool_outputs(
-                thread_id=thread_id,
-                run_id=run.id,
-                tool_outputs=tool_outputs,
-            )
-            run = self._wait_on_run(run, thread_id)
-        return run
+    def _wait_on_run(self, run, thread_id: str) -> Run:
+        try:
+            while run.status == "queued" or run.status == "in_progress":
+                run = openai.client.beta.threads.runs.retrieve(
+                    thread_id=thread_id,
+                    run_id=run.id,
+                )
+                time.sleep(0.5)
+            self._print_step_details(run, thread_id)
+            return run
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def _get_or_create_thread_and_run(self, topic: str, content: str) -> Run:
-        thread_id = self.topic_threads.get(topic)
-        if thread_id:
-            topic_thread = self.openai_client.beta.threads.retrieve(thread_id)
-        else:
-            topic_thread = self.add_topic(topic)
-        run = self._submit_message(topic_thread, content)
-        run = self._wait_on_run(run, topic_thread.id)
-        return run
+    def _execute_function(self, run, thread_id) -> Run:
+        try:
+            if run.status == "requires_action":
+                tool_calls: List = run.required_action.submit_tool_outputs.tool_calls
+                tool_outputs: List[Dict] = []
+                for tool_call in tool_calls:
+                    name = tool_call.function.name
+                    arguments = json.loads(tool_call.function.arguments)
+                    callable = openai.callables_register.get_langchain_tool(name)
+                    if callable is None:
+                        raise Exception(f"function {name} not found")
+                    result = callable.invoke(arguments)
+                    tool_outputs.append({
+                        "tool_call_id": tool_call.id,
+                        "output": json.dumps(result),
+                    })
+                run = openai.client.beta.threads.runs.submit_tool_outputs(
+                    thread_id=thread_id,
+                    run_id=run.id,
+                    tool_outputs=tool_outputs,
+                )
+                run = self._wait_on_run(run, thread_id)
+            return run
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
+
+    def _get_or_create_thread_and_run(self, user_id: str, topic_name: str, content: str) -> tuple[str, Run]:
+        try:
+            topic_info = self.topic_info_repository.get_by(user_id=user_id, topic_name=topic_name)
+            if topic_info:
+                topic = cast(OpenAiTopic,topic_info.topic)
+                topic_thread = openai.client.beta.threads.retrieve(topic.thread_id)
+            else:
+                topic_thread = self.add_topic(user_id, topic_name)
+            run = self._submit_message(topic_thread, content)
+            run = self._wait_on_run(run, topic_thread.id)
+            return topic_thread.id, run
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def _submit_message(self, thread: Thread, content: str) -> Run:
         """在thread中创建message，然后创建Run，它负责向assistant提交thread"""
@@ -229,24 +269,31 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                     "file_id": file_id,
                     "tools": [{"type": "code_interpreter"}]
                 })
-        openai_client.beta.threads.messages.create(
-            thread_id=thread.id,
-            role="user",
-            content=content,
-            attachments=attachments
-        )
-        return openai_client.beta.threads.runs.create(
-            model=self.assistant.model,
-            thread_id=thread.id,
-            assistant_id=self.assistant.id,
-            instructions=self.assistant.instructions,
-            tools=self.assistant.tools,
-            timeout=openai_client.timeout
-        )
+        try:
+            openai.client.beta.threads.messages.create(
+                thread_id=thread.id,
+                role="user",
+                content=content,
+                attachments=attachments
+            )
+            return openai.client.beta.threads.runs.create(
+                model=self.assistant.model,
+                thread_id=thread.id,
+                assistant_id=self.assistant.id,
+                instructions=self.assistant.instructions,
+                tools=self.assistant.tools,
+                timeout=openai.client.timeout
+            )
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def _get_response(self, thread: Thread) -> Message:
-        messages = openai_client.beta.threads.messages.list(thread_id=thread.id, order="asc")
-        return messages.data[-1]
+    @staticmethod
+    def _get_response(thread_id: str) -> Message:
+        try:
+            messages = openai.client.beta.threads.messages.list(thread_id=thread_id, order="asc")
+            return messages.data[-1]
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     @staticmethod
     def _do_with_text_result(message_content: Text) -> str:
@@ -259,12 +306,12 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
             # Gather citations based on annotation attributes
             file_citation = getattr(annotation, 'file_citation', None)
             if file_citation:
-                cited_file = openai_client.files.retrieve(file_citation.file_id)
+                cited_file = openai.client.files.retrieve(file_citation.file_id)
                 citations.append(f'[{index}] {file_citation.quote} from {cited_file.filename}')
             else:
                 file_path = getattr(annotation, 'file_path', None)
                 if file_path:
-                    cited_file = openai_client.files.retrieve(file_path.file_id)
+                    cited_file = openai.client.files.retrieve(file_path.file_id)
                     citations.append(f'[{index}] Click <here> to download {cited_file.filename}')
         # Add footnotes to the end of the message before displaying to user
         message_content.value += '\n' + '\n'.join(citations)
@@ -272,34 +319,31 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
 
     @staticmethod
     def _do_with_image_result(image_file) -> bytes:
-        image_data = openai_client.files.content(image_file.file_id)
+        image_data = openai.client.files.content(image_file.file_id)
         image_data_bytes = image_data.read()
         return image_data_bytes
 
-    def register_langchain_tool(self, tool: BaseTool):
-        self.functions_register.register_langchain_tool(tool)
-        self._add_functions()
-
-    def register_function(self, func: Callable, args_schema: Optional[Type[BaseModel]]):
-        self.functions_register.register_function(func, args_schema)
-        self._add_functions()
-
-    def register_langchain_tool_name(self, tool_name: str):
-        self.functions_register.register_langchain_tool_names([tool_name])
-        self._add_functions()
-
     def _register_native_tool(self, native_tool: Union[CodeInterpreterTool, FileSearchTool]):
-        tools = self.assistant.tools
-        for tool in tools:
+        tools = []
+        for tool in self.assistant.tools:
             if tool.type == native_tool.type:
                 return
-        tools.append(native_tool)
-        openai_client.beta.assistants.update(self.assistant.id, tools=tools)
+            else:
+                tools.append(tool)
+        try:
+            tools.append(native_tool)
+            openai.client.beta.assistants.update(self.assistant.id, tools=tools)
+            self.assistant.tools = tools
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def _remove_native_tool(self, tool_type: Literal["code_interpreter", "file_search"]):
-        tools = self.assistant.tools
-        tools = [tool for tool in tools if tool.type != tool_type]
-        openai_client.beta.assistants.update(self.assistant.id, tools=tools)
+        tools = [tool for tool in self.assistant.tools if tool.type != tool_type]
+        try:
+            openai.client.beta.assistants.update(self.assistant.id, tools=tools)
+            self.assistant.tools = tools
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
     def register_code_interpreter(self):
         self._register_native_tool(CodeInterpreterTool(type="code_interpreter"))
@@ -313,31 +357,50 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
     def remove_file_search(self):
         self._remove_native_tool("file_search")
 
-    def _add_functions(self):
-        tools = self.assistant.tools
-        new_functions = self.functions_register.functions_schema
-        update = False
-        for new_function in new_functions:
-            function_definition = FunctionDefinition(**new_function)
-            function_tool = FunctionTool(function=function_definition, type="function")
-            if not self.is_function_registered(function_tool.function.name):
-                tools.append(function_tool)  # 添加到工具列表中
-                update = True
-        # 使用更新后的工具列表更新助手
-        if update:
-            openai_client.beta.assistants.update(self.assistant.id, tools=tools)
+    def load_callables(self, callable_names: set[str]):
+        tools = [tool for tool in self.assistant.tools]
+        append = False
+        for callable_name in callable_names:
+            function_tool = openai.callables_register.get_function_tool(callable_name)
+            if function_tool and not self.is_function_in_assistant(function_tool.function.name):
+                tools.append(function_tool)
+                append = True
+        if append:
+            try:
+                openai.client.beta.assistants.update(assistant_id=self.assistant.id, tools=tools)
+                self.assistant.tools = tools
+            except (HTTPStatusError, BadRequestError) as e:
+                print(str(e))
 
-    def remove_functions(self):
+    def unload_callables(self, callable_names: set[str]):
+        tool_names = {tool.function.name for tool in self.assistant.tools}
+        retained_function_names = tool_names - callable_names
+        retained_tools = []
+        for tool in self.assistant.tools:
+            for retained_name in retained_function_names:
+                if tool.type != "function" or tool.function.name == retained_name:
+                    retained_tools.append(tool)
+        if len(retained_tools) < len(self.assistant.tools):
+            try:
+                openai.client.beta.assistants.update(self.assistant.id, tools=retained_tools)
+                self.assistant.tools = retained_tools  # 用于AI调用的信息，此处为了提高性能，不再从远程获取
+            except (HTTPStatusError, BadRequestError) as e:
+                print(str(e))
+
+    def unload_all_callables(self):
         tools = self.assistant.tools
         new_tools = []
         for tool in tools:
             if tool.type != "function":
                 new_tools.append(tool)
-        openai_client.beta.assistants.update(self.assistant.id, tools=new_tools)
+        try:
+            openai.client.beta.assistants.update(self.assistant.id, tools=new_tools)
+            self.assistant.tools = new_tools
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))
 
-    def is_function_registered(self, name: str) -> bool:
-        tools = self.assistant.tools
-        for tool in tools:
+    def is_function_in_assistant(self, name: str) -> bool:
+        for tool in self.assistant.tools:
             if tool.type == "function" and tool.function.name == name:
                 return True
         return False
@@ -356,5 +419,8 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                                    k: int = 1,
                                    embedding_model="text-embedding-3-small",
                                    ) -> list[tuple[str, float]]:
-        source_strings = openai_client.files.retrieve(file_id)
-        return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
+        try:
+            source_strings = openai.client.files.retrieve(file_id)
+            return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
+        except (HTTPStatusError, BadRequestError) as e:
+            print(str(e))

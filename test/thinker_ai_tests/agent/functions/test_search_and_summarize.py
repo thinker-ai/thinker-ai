@@ -7,6 +7,7 @@ from thinker_ai.agent.actions import SearchAndSummarize
 from thinker_ai.agent.provider import OpenAILLM
 from thinker_ai.agent.tools.search_engine import SearchEngine
 
+
 class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestCase
 
     def setUp(self):
@@ -43,9 +44,8 @@ class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestC
         '''
         """
         expected_queries = ["statements1", "statements2", "statements3"]
-        result = await SearchAndSummarize._get_queries("GPT4",self.question)
+        result = await SearchAndSummarize._get_queries("GPT4", self.question)
         self.assertEqual(result, expected_queries)
-
 
     @patch.object(SearchEngine, 'run', new_callable=AsyncMock)
     async def test_batch_query(self, mock_search_engine):
@@ -68,6 +68,6 @@ class TestSearchAndSummarize(asynctest.TestCase):  # 改为继承asynctest.TestC
         result = SearchAndSummarize._to_list(statements)
         self.assertEqual(result, expected)
 
+
 if __name__ == '__main__':
     asynctest.main()  # 使用asynctest的main方法
-

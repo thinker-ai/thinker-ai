@@ -7,14 +7,15 @@ from starlette.routing import Route, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.app_instance import app
-from thinker_ai.tasks.dynamic.service_loader import ServiceLoader
-
+from thinker_ai.tasks.dynamic.service_loader import ServiceLoader, LoadArgs
+from thinker_ai.web_socket_server import process_message_queue
+from thinker_ai.agent.openai_assistant_api import openai
 # 挂载静态文件目录
 app.mount("/static", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'static')), name="static")
 app.mount("/script", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'script')), name="script")
 app.mount("/css", StaticFiles(directory=os.path.join(PROJECT_ROOT, 'web', 'css')), name="css")
 main_loop = asyncio.get_event_loop()
-service_loader = ServiceLoader()
+background_tasks = []
 
 
 # 1、不能在该文件之外执行 include_router 操作，因为当前文件不感知其它文件，导致 include_router 不会执行，
@@ -25,16 +26,22 @@ service_loader = ServiceLoader()
 async def startup():
     from chat import chat_router
     from thinker_ai.login import login_router
-    from thinker_ai.web_socket import socket_router
-    from thinker_ai.tasks.dynamic.service_loader import loader_router
+    from thinker_ai.web_socket_server import socket_router
+    # 启动消息队列处理任务，并存储任务引用
+    task = asyncio.create_task(process_message_queue())
+    background_tasks.append(task)
+    register_service_loader()
     if not is_router_included(chat_router):
         app.include_router(chat_router)
     if not is_router_included(login_router):
         app.include_router(login_router)
     if not is_router_included(socket_router):
         app.include_router(socket_router)
-    if not is_router_included(loader_router):
-        app.include_router(loader_router)
+
+
+def register_service_loader() -> str:
+    service_loader = ServiceLoader(app=app, main_loop=main_loop)
+    return openai.callables_register.register_callable(service_loader.load_ui_and_show,LoadArgs)
 
 
 def is_router_included(router: APIRouter) -> bool:

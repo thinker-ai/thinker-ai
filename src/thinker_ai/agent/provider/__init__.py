@@ -1,3 +1,5 @@
+from enum import Enum
+
 from thinker_ai.agent.provider.anthropic_api import AnthropicLLM
 from thinker_ai.agent.provider.ark_api import ArkLLM
 from thinker_ai.agent.provider.azure_openai_api import AzureOpenAILLM
@@ -10,6 +12,7 @@ from thinker_ai.agent.provider.openai_api import OpenAILLM
 from thinker_ai.agent.provider.qianfan_api import QianFanLLM
 from thinker_ai.agent.provider.spark_api import SparkLLM
 
+
 __all__ = [
     "GeminiLLM",
     "OpenAILLM",
@@ -21,5 +24,5 @@ __all__ = [
     "DashScopeLLM",
     "AnthropicLLM",
     "BedrockLLM",
-    "ArkLLM",
+    "ArkLLM"
 ]

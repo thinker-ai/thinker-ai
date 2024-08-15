@@ -1,41 +1,58 @@
-from abc import ABC, abstractmethod
-from typing import Optional, List, Literal
+import json
+from abc import ABC
+from json import JSONDecodeError
+from typing import Optional
 
-from thinker_ai.agent.assistant_api import AssistantApi
 from thinker_ai.configs.const import PROJECT_ROOT
+from threading import Lock
 
 
-class AssistantRepository(ABC):
-
-    @classmethod
-    def get_instance(cls,filepath: Optional[str] = PROJECT_ROOT / 'data/test_assistants.json') -> "AssistantRepository":
-        raise NotImplementedError
-
-    @abstractmethod
-    def add_assistant_api(self, user_id: str, assistant_api: AssistantApi):
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_assistant_api_by_id(self, user_id: str, assistant_id: str) -> Optional[AssistantApi]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_assistant_api_by_name(self, user_id: str, name: str) -> Optional[AssistantApi]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_all_assistant_api_of(self, user_id, of: Literal["name", "assistant_id"]) -> List[str]:
-        raise NotImplementedError
-
-    @abstractmethod
-    def update(self, assistant_api: AssistantApi):
-        raise NotImplementedError
-
-    @abstractmethod
-    def delete_assistant_api(self, user_id: str, assistant_id: str, ):
-        raise NotImplementedError
+class AssistantRepository:
+    _instance = None
+    _lock = Lock()
 
     @classmethod
-    @abstractmethod
+    def get_instance(cls, filepath: Optional[str] = PROJECT_ROOT / 'data/assistants.json') -> "AssistantRepository":
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = cls(filepath)
+        return cls._instance
+
+    def __init__(self, filepath: str):
+        if not AssistantRepository._instance:
+            self.filepath = filepath
+            self._data = self._load_data()
+            AssistantRepository._instance = self
+        else:
+            raise Exception("Attempting to instantiate a singleton class.")
+
+    def _load_data(self):
+        try:
+            with open(self.filepath, 'r') as file:
+                return json.load(file)
+        except (FileNotFoundError,JSONDecodeError):
+            return {}
+
+    def _save_data(self):
+        with open(self.filepath, 'w') as file:
+            json.dump(self._data, file, indent=4)
+
+    def add(self,name: str,assistant_id:str):
+        self._data[name] = assistant_id
+        self._save_data()
+
+    def update(self,name: str,assistant_id:str):
+        if name in self._data.keys():
+            self._data[name] = assistant_id
+            self._save_data()
+
+    def delete(self, name):
+        self._data = {k: v for k, v in self._data.items() if k != name}
+        self._save_data()
+
+    def get_by_name(self, name: str) -> Optional[str]:
+        return self._data.get(name)
+
+    @classmethod
     def reset_instance(cls):
-        raise NotImplementedError
+        cls._instance = None

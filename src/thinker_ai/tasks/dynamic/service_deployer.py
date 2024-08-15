@@ -1,10 +1,23 @@
 import os
 from typing import Dict, Optional
-
+from langchain.pydantic_v1 import BaseModel, Field
 from thinker_ai.tasks.dynamic.service import Service, get_deploy_path
+class DeployArgs(BaseModel):
+    name: str = Field(
+        ...,
+        description="应用名称，即是gradio文件名，也是代码中最后一句创建的Blocks实例的名称"
+    )
+    gradio_code: str = Field(
+        ...,
+        description="gradio代码内容，所有import语句只能是局部作用域，这是为了回避gradio的bug"
+    )
+    user_id: str = Field(
+        ...,
+        description="用户id"
+    )
 
 
-def deploy_service(name, gradio_code, user_id: Optional[str]) -> str:
+def deploy_ui(name, gradio_code, user_id: Optional[str]) -> str:
     """
     保存一段已生成的gradio代码
     :param name: gradio代码文件名.
@@ -18,7 +31,7 @@ def deploy_service(name, gradio_code, user_id: Optional[str]) -> str:
     return deploy_path
 
 
-def is_service_exist(name, user_id: Optional[str]) -> bool:
+def is_ui_exist(name, user_id: Optional[str]) -> bool:
     """
     判断一份gradio代码是否存在
     :param name: gradio代码文件名.

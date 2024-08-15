@@ -1,8 +1,5 @@
-from typing import Optional, cast
-
-from thinker_ai.agent.provider import OpenAILLM
+from typing import Optional
 from thinker_ai.agent.provider.base_llm import BaseLLM
-from thinker_ai.configs.config import config
 from thinker_ai.configs.llm_config import LLMConfig
 from thinker_ai.app_context import AppContext
 

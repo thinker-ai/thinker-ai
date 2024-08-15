@@ -28,6 +28,6 @@ def pdf_to_jpg(pdf_path, output_folder):
 
 if __name__ == '__main__':
     # 示例调用
-    pdf_path = '/Users/wangli/Library/Mobile Documents/com~apple~CloudDocs/注册公司/赢睿科技（海南）有限公司章程/章程.pdf'
-    output_folder = '/Users/wangli/Library/Mobile Documents/com~apple~CloudDocs/注册公司/赢睿科技（海南）有限公司章程/章程/'
+    pdf_path = '/Users/wangli/Library/Mobile Documents/com~apple~CloudDocs/注册公司/赢睿科技（海南）有限公司章程/公司章程修正案.pdf'
+    output_folder = '/Users/wangli/Library/Mobile Documents/com~apple~CloudDocs/注册公司/赢睿科技（海南）有限公司章程/'
     pdf_to_jpg(pdf_path, output_folder)

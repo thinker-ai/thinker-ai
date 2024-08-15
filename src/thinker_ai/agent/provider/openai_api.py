@@ -24,11 +24,11 @@ from thinker_ai.agent.provider.cost_manager import CostManager
 from thinker_ai.agent.provider.token_counter import get_openrouter_tokens
 from thinker_ai.agent.tools.function_call import FunctionCall
 from thinker_ai.agent.provider.llm_schema import PromptMessage
-from thinker_ai.agent.tools.openai_functions_register import FunctionsRegister
+from thinker_ai.agent.tools.openai_callables_register import CallableRegister
 from thinker_ai.common.common import log_and_reraise, decode_image
 from thinker_ai.common.exceptions import handle_exception
 from thinker_ai.common.logs import logger
-from thinker_ai.configs.const import USE_CONFIG_TIMEOUT
+from thinker_ai.configs.const import USE_CONFIG_TIMEOUT,PROJECT_ROOT
 from thinker_ai.configs.llm_config import LLMConfig
 from thinker_ai.utils.code_parser import CodeParser
 from thinker_ai.utils.text_parser import TextParser
@@ -76,7 +76,7 @@ class OpenAILLM(BaseLLM):
         self.client = self.__init_n_openai(config)
         self.aclient = self.__init_a_openai(config)
         self._cost_manager = CostManager()
-        self.functions_register = FunctionsRegister()
+        self.callables_register=CallableRegister()
 
     def __init_a_openai(self, config: LLMConfig) -> AsyncOpenAI:
         openai = AsyncOpenAI(api_key=config.api_key)
@@ -159,10 +159,10 @@ class OpenAILLM(BaseLLM):
     #     return params
 
     def _chat_completion_with_function(self, prompt: PromptMessage, model: Optional[str] = None, timeout: Optional[int] = None) -> str:
-        functions_schema = self.functions_register.functions_schema
-        if functions_schema is None or len(self.functions_register.functions_schema) == 0:
+        functions_schema = self.callables_register.callables_schema
+        if functions_schema is None or len(self.callables_register.callables_schema) == 0:
             extra_kwargs = {
-                "functions": self.functions_register.functions_schema
+                "functions": self.callables_register.callables_schema
             }
             kwargs = self._cons_kwargs(messages=prompt.to_dicts(), model=model,timeout=timeout, **extra_kwargs)
             response = self.client.chat.completions.create(model=self.get_model(model), **kwargs)
@@ -203,8 +203,8 @@ class OpenAILLM(BaseLLM):
 
     def _chat_completion_stream(self, prompt: PromptMessage, model: Optional[str] = None,
                                  timeout: Optional[int] = None) -> str:
-        functions_schema = self.functions_register.functions_schema
-        if functions_schema is None or len(self.functions_register.functions_schema) == 0:
+        functions_schema = self.callables_register.callables_schema
+        if functions_schema is None or len(self.callables_register.callables_schema) == 0:
             return self._do_with_normal_stream(model=model, prompt=prompt,timeout=timeout)
         else:
             raise FunctionException(
@@ -282,8 +282,8 @@ class OpenAILLM(BaseLLM):
 
     async def _a_chat_completion_with_function_stream(self, prompt: PromptMessage, model: Optional[str] = None,
                                                       timeout: Optional[int] = None) -> str:
-        functions_schema = self.functions_register.functions_schema
-        if functions_schema is None or len(self.functions_register.functions_schema) == 0:
+        functions_schema = self.callables_register.callables_schema
+        if functions_schema is None or len(self.callables_register.callables_schema) == 0:
             raise FunctionException('function not found')
         extra_kwargs = {
             "functions": functions_schema
@@ -356,7 +356,7 @@ class OpenAILLM(BaseLLM):
         return FunctionCall(name=name, arguments=json.loads(arguments))
 
     def _call_function(self, function_call: FunctionCall) -> Any:
-        function = self.functions_register.get_function(function_call.name)
+        function = self.callables_register.get_langchain_tool(function_call.name)
         # 调用函数
         return function.invoke(function_call.arguments)
 
@@ -369,16 +369,16 @@ class OpenAILLM(BaseLLM):
                                              function_result=function_result)
 
     def register_langchain_function(self, tool: BaseTool):
-        self.functions_register.register_langchain_tool(tool)
+        self.callables_register.register_langchain_tool(tool)
 
     def register_function(self, func: Callable, args_schema: Optional[Type[BaseModel]]):
-        self.functions_register.register_function(func, args_schema)
+        self.callables_register.register_callable(func, args_schema)
 
     def register_langchain_functions(self, tool_names: list[str]):
-        self.functions_register.register_langchain_tool_names(tool_names)
+        self.callables_register.register_langchain_tool_names(tool_names)
 
     def remove_function(self, name: str):
-        self.functions_register.remove_function(name)
+        self.callables_register.remove_callable(name)
 
     async def a_generate_batch(self, model: str, user_msgs: dict[str, str], sys_msg: Optional[str] = None) -> dict[
         str, str]:

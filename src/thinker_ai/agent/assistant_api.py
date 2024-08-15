@@ -1,12 +1,8 @@
-from langchain_core.tools import BaseTool
-from pydantic import BaseModel
-
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Callable, Type
+from typing import List,Dict
 
 
 class AssistantApi(ABC):
-    user_id: str
 
     @property
     @abstractmethod
@@ -54,20 +50,8 @@ class AssistantApi(ABC):
         """Removes a vector store ID from the file search tool."""
 
     @abstractmethod
-    def ask(self, content: str, topic: str = "default") -> str:
+    def ask(self,user_id:str, content: str, topic_name: str = "default") -> str:
         """Sends a query to the assistant and returns the response."""
-
-    @abstractmethod
-    def register_langchain_tool(self, tool: 'BaseTool') -> None:
-        """Registers a LangChain tool."""
-
-    @abstractmethod
-    def register_function(self, func: Callable, args_schema: Optional[Type['BaseModel']]) -> None:
-        """Registers a custom function."""
-
-    @abstractmethod
-    def register_langchain_tool_name(self, tool_name: str) -> None:
-        """Registers a LangChain tool by name."""
 
     @abstractmethod
     def register_code_interpreter(self) -> None:
@@ -85,12 +69,18 @@ class AssistantApi(ABC):
     def remove_file_search(self) -> None:
         """Removes the file search tool."""
 
-    @abstractmethod
-    def remove_functions(self) -> None:
-        """Removes all registered functions."""
+    def load_callables(self, callable_names:list[str]):
+        """add callable."""
+
+    def unload_callables(self, callable_names:list[str]):
+        """remove callable"""
 
     @abstractmethod
-    def is_function_registered(self, name: str) -> bool:
+    def unload_all_callables(self) -> None:
+        """Removes all registered callables."""
+
+    @abstractmethod
+    def is_function_in_assistant(self, name: str) -> bool:
         """Checks if a function is registered."""
 
     @staticmethod

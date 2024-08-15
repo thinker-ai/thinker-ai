@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from pydantic import field_validator
 
-from thinker_ai.agent.openai_assistant_api import openai_client
+from thinker_ai.agent.openai_assistant_api import openai
 from thinker_ai.agent.openai_assistant_api.openai_assistant_api import OpenAiAssistantApi
 from langchain.pydantic_v1 import BaseModel, Field
 
@@ -94,17 +94,17 @@ def create_correlated_data():
 
 
 class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
-    assistant = OpenAiAssistantApi.from_id(user_id="user_1", assistant_id="asst_zBrqXNoQIvnX1TyyVry9UveZ")
-
+    callable_name = openai.callables_register.register_callable(quiz_instance.display_quiz, QuizArgs)
+    assistant = OpenAiAssistantApi.from_id(assistant_id="asst_jVuGNopfYaibKPYdvNAVEnh2")
+    assistant.load_callables({callable_name})
     async def test_chat_with_function_call(self):
         try:
-            self.assistant.register_function(quiz_instance.display_quiz, QuizArgs)
-            generated_result = self.assistant.ask(topic="quiz",
+            generated_result = self.assistant.ask(user_id="abc",topic="quiz",
                                                   content="Make a quiz with 2 questions: One open ended, one multiple choice. Then, give me feedback for the responses.")
             self.assertIsNotNone(generated_result)
             print(generated_result)
         finally:
-            self.assistant.remove_functions()
+            self.assistant.unload_all_callables()
             print(self.assistant.tools)
 
     async def test_chat_with_code_interpreter_1(self):
@@ -121,7 +121,7 @@ class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
             json_data = data.to_json(orient='records')
             self.assistant.set_instructions("你是一个数学老师，负责回答数学问题")
             self.assistant.register_code_interpreter()
-            generated_result = self.assistant._ask_for_messages(topic="math_tutor",
+            generated_result = self.assistant._ask_for_messages(user_id="abc",topic_name="math_tutor",
                                                                 content=f"问题：{ask}。具体数据如下：{json_data}")
             self.assertIsNotNone(generated_result)
             results = {}
@@ -141,11 +141,11 @@ class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
                     with open(f"data/math_tutor-{key}.png", "wb") as file:
                         file.write(content)
         finally:
-            self.assistant.remove_functions()
+            self.assistant.unload_all_callables()
             print(self.assistant.tools)
 
     async def test_chat_with_file_search(self):
-        file = openai_client.files.create(
+        file = openai.client.files.create(
             file=open(
                 "data/diy_llm.pdf",
                 "rb",
@@ -156,14 +156,14 @@ class AgentWithToolsTestCase(unittest.IsolatedAsyncioTestCase):
             self.assistant.register_file_search()
             self.assistant.register_file_id(file.id)
 
-            generated_result = self.assistant.ask(topic="file",
+            generated_result = self.assistant.ask(user_id="abc",topic="file",
                                                   content="解释知识库中的内容包含了什么")
             self.assertIsNotNone(generated_result)
             print(generated_result)
         finally:
             self.assistant.remove_file_id(file.id)
             self.assistant.remove_file_search()
-            openai_client.files.delete(file.id)
+            openai.client.files.delete(file.id)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,3 @@
-import shutil
-from typing import Tuple
 from thinker_ai.configs.const import PROJECT_ROOT
 
 import os
