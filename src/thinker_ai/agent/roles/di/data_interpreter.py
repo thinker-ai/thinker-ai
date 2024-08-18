@@ -41,7 +41,7 @@ class DataInterpreter(Role):
 
 
     @model_validator(mode="after")
-    def set_plan_and_tool(self) -> "Interpreter":
+    def set_plan_and_tool(self) -> "DataInterpreter":
         self._set_react_mode(react_mode=self.react_mode, max_react_loop=self.max_react_loop)
         self.set_actions([WriteAnalysisCode])
         self._set_state(0)
