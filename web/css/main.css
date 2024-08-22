@@ -1,3 +1,4 @@
+/* 全局样式 */
 * {
     margin: 0;
     padding: 0;
@@ -16,19 +17,12 @@ body {
 }
 
 .title {
-    font-size: 2em;
-    margin-bottom: 5px;
+    font-size: 40px; /* 字体放大 */
+    margin: 0;
     text-align: center;
 }
 
-#container {
-    display: flex;
-    margin: 0 auto;
-    flex-direction: column;
-    width: 80%;
-    max-width: 1200px;
-}
-
+/* 浮动面板样式 */
 #floating-panel {
     z-index: 1000;
     position: fixed;
@@ -128,6 +122,7 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    justify-content: center;
     align-items: center;
 }
 
@@ -183,7 +178,7 @@ pre {
     overflow: auto;
 }
 
-.tab-container {
+.tab-design {
     display: flex;
     flex-direction: row;
     width: 100%;
@@ -243,4 +238,91 @@ pre {
     height: auto;
     display: block;
     margin: 0 auto;
+}
+
+/* 头部和页脚样式 */
+#header {
+    background-color: transparent;
+    padding: 20px;
+}
+
+.header-container {
+    display: flex;
+    justify-content: center; /* 居中对齐 */
+    align-items: center;
+    position: relative; /* 相对定位用于放置按钮 */
+}
+#content {
+    flex-grow: 1;
+    padding: 20px;
+    background-color: #ffffff;
+}
+#design {
+    display: flex;
+    margin: 0 auto;
+    flex-direction: column;
+    width: 80%;
+    max-width: 1200px;
+}
+#footer{
+    background-color: #c7e1f3;
+    padding: 20px;
+}
+.footer-container {
+    text-align: center;
+}
+
+#menu {
+    display: flex;
+    justify-content: space-between; /* 按钮等距排列，两侧对齐 */
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    background-color: #333; /* 背景色 */
+}
+
+.menu-item {
+    flex-grow: 1;
+    text-align: center;
+    padding: 15px 0;
+    font-size: 18px;
+    color: #050505;
+    text-decoration: none;
+    border: none; /* 按钮无边框 */
+    background-color: #a4d893;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.menu-item:hover {
+    background-color: #10e82d; /* 鼠标移动到按钮上时背景高亮 */
+}
+
+.menu-item.active {
+    background-color: #10e82d; /* 当前menu的按钮背景高亮 */
+}
+
+/* h2 样式 */
+h2 {
+    font-size: 24px; /* 字体大小 */
+    margin: 20px 0;
+}
+
+#auth-buttons {
+    position: absolute;
+    right: 0; /* 按钮靠右显示 */
+}
+
+#auth-buttons button {
+    background-color: #a4d893;
+    border: none; /* 无边框 */
+    font-size: 16px; /* 字体放大 */
+    padding: 10px 20px;
+    margin-left: 10px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+#auth-buttons button:hover {
+    background-color: #10e82d; /* 鼠标悬停时按钮背景变深 */
 }

@@ -206,18 +206,18 @@ function addTabWithUrl(url, title) {
 
     newTab.textContent = title;
     newTab.appendChild(closeButton);
-    document.getElementById('tab-container').appendChild(newTab);
+    document.getElementById('tab-design-n').appendChild(newTab);
 
     const newTabContent = document.createElement('div');
-    newTabContent.className = 'tab-content';
-    newTabContent.id = 'tab' + tabCount + '-content';
+    newTabContent.className = 'tab-design';
+    newTabContent.id = 'tab' + tabCount + '-design';
 
     const newIframe = document.createElement('iframe');
     newIframe.className = 'tab-frame';
     newIframe.src = url;
     newTabContent.appendChild(newIframe);
 
-    document.getElementById('container').appendChild(newTabContent);
+    document.getElementById('design').appendChild(newTabContent);
     // Switch to the new tab
     openTab(null, 'tab' + tabCount);
     saveTabsToLocalStorage();
@@ -297,6 +297,26 @@ function restoreTabsFromLocalStorage() {
             addTabWithUrl(url, title);
         });
     }
+}
+
+function showContent(tabId, element) {
+    // 隐藏所有内容标签
+    var tabs = document.getElementsByClassName('content-tab');
+    for (var i = 0; i < tabs.length; i++) {
+        tabs[i].style.display = 'none';
+    }
+
+    // 显示所选的内容标签
+    document.getElementById(tabId).style.display = 'block';
+
+    // 移除所有菜单项的 active 类
+    var menuItems = document.getElementsByClassName('menu-item');
+    for (var i = 0; i < menuItems.length; i++) {
+        menuItems[i].classList.remove('active');
+    }
+
+    // 为当前点击的菜单项添加 active 类
+    element.classList.add('active');
 }
 
 // Call this function when the page loads

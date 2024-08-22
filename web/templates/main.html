@@ -10,9 +10,9 @@
     <link rel="stylesheet" type="text/css" href="/css/main.css">
 </head>
 <body>
-    <div id="header" style="background-color: #f0f0f0; padding: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-            <h1 class="title" style="margin: 0;">Thinker AI</h1>
+    <header id="header">
+        <div class="header-container">
+            <h1 class="title" style="margin: 0;">醒客（Thinker）无人公司 </h1>
             <div id="auth-buttons">
                 <!-- 登录/注册按钮，如果登录了则显示用户名和头像 -->
                 <button onclick="login()">登录</button>
@@ -22,21 +22,38 @@
                 <!-- <span>用户名</span> -->
             </div>
         </div>
-    </div>
-
-    <div id="content" style="flex-grow: 1; padding: 20px; background-color: #ffffff;">
-        <button class="add-tab" onclick="addTab()">新标签页</button>
-        <div id="tab-container" class="tab-container">
+    </header>
+    <div id="content">
+        <div id="menu">
+            <button class="menu-item" onclick="showContent('home', this)">首页</button>
+            <button class="menu-item" onclick="showContent('execution', this)">方案执行</button>
+            <button class="menu-item" onclick="showContent('design', this)">方案设计</button>
+            <button class="menu-item" onclick="showContent('transaction', this)">方案交易</button>
+            <button class="menu-item" onclick="showContent('resources', this)">资源管理</button>
+            <button class="menu-item" onclick="showContent('company', this)">企业信息</button>
+        </div>
+        <div id="container" class="tab-container">
+            <div id="home" class="content-tab">欢迎来到首页</div>
+            <div id="execution" class="content-tab" style="display:none;">这里是方案执行页面的内容</div>
+            <div id="design" class="content-tab" style="display:none;">这里是方案设计页面的内容
+               <div id="tab-design-n">
+                    <button class="add-tab" onclick="addTab()">新标签页</button>
+                    <div id="tab-design-0" class="tab-design">
+                    </div>
+               </div>
+            </div>
+            <div id="transaction" class="content-tab" style="display:none;">这里是方案交易页面的内容</div>
+            <div id="resources" class="content-tab" style="display:none;">这里是资源管理页面的内容</div>
+            <div id="company" class="content-tab" style="display:none;">这里是企业信息页面的内容</div>
         </div>
     </div>
-
-    <div id="footer" style="background-color: #f0f0f0; padding: 20px;">
-        <div style="text-align: center;">
-            <p>服务提供方信息：XXX公司</p>
-            <p>联系方式：电话：123-456-7890 | 邮箱：info@example.com</p>
+    <footer id="footer">
+        <div class="footer-container">
+            <p>服务提供方信息：赢睿科技（海南）有限公司</p>
+            <p>联系方式：电话：18559266801 | 邮箱：wunglee@thinbker-ai.net</p>
             <p>网站备案登记号：备案号1234567890</p>
         </div>
-    </div>
+    </footer>
     <div id="floating-panel">
         <div id="chat-container">
             <button id="toggle-button" onclick="toggleFloatingPanel()">+</button>
