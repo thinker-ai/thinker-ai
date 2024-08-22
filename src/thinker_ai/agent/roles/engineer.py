@@ -221,7 +221,7 @@ class Engineer(Role):
 
     async def _think(self) -> Action | None:
         if not self.src_workspace:
-            self.src_workspace = self.git_repo.workdir / self.git_repo.workdir.command
+            self.src_workspace = self.git_repo.workdir / self.git_repo.workdir.name
         write_plan_and_change_filters = any_to_str_set([WriteTasks, FixBug])
         write_code_filters = any_to_str_set([WriteTasks, WriteCodePlanAndChange, SummarizeCode])
         summarize_code_filters = any_to_str_set([WriteCode, WriteCodeReview])
@@ -229,15 +229,15 @@ class Engineer(Role):
             return None
         msg = self.rc.news[0]
         if self.config.inc and msg.cause_by in write_plan_and_change_filters:
-            logger.debug(f"TODO WriteCodePlanAndChange:{msg.model_dump_json(self)}")
+            logger.debug(f"TODO WriteCodePlanAndChange:{msg.model_dump_json()}")
             await self._new_code_plan_and_change_action(cause_by=msg.cause_by)
             return self.rc.todo
         if msg.cause_by in write_code_filters:
-            logger.debug(f"TODO WriteCode:{msg.model_dump_json(self)}")
+            logger.debug(f"TODO WriteCode:{msg.model_dump_json()}")
             await self._new_code_actions()
             return self.rc.todo
         if msg.cause_by in summarize_code_filters and msg.sent_from == any_to_str(self):
-            logger.debug(f"TODO SummarizeCode:{msg.model_dump_json(self)}")
+            logger.debug(f"TODO SummarizeCode:{msg.model_dump_json()}")
             await self._new_summarize_actions()
             return self.rc.todo
         return None

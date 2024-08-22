@@ -2,6 +2,8 @@ import os
 from typing import Dict, Optional
 from langchain.pydantic_v1 import BaseModel, Field
 from thinker_ai.tasks.dynamic.service import Service, get_deploy_path
+
+
 class DeployArgs(BaseModel):
     name: str = Field(
         ...,

@@ -17,7 +17,7 @@ chat_router = APIRouter()
 root_dir = PROJECT_ROOT
 template_dir = os.path.join(root_dir, 'web', 'templates')
 templates = Jinja2Templates(directory=template_dir)
-assistant_repository:AssistantRepository = AssistantRepository.get_instance()
+assistant_repository: AssistantRepository = AssistantRepository.get_instance()
 # 添加调试信息
 print(f"Template directory: {template_dir}")
 
@@ -43,11 +43,6 @@ async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> st
     user_id = session.get("user_id")
     if user_id:
         if request.assistant_name:
-            # name=openai.callables_register.register_callable(get_service_loader().load_ui_and_show, LoadArgs)
-            # callable = openai.callables_register.get_langchain_tool(name)
-            # arguments = json.loads('{"name":"calculator","user_id":"abc"}')
-            # result = callable.invoke(arguments)
-            # return result
             assistant_id = assistant_repository.get_by_name(request.assistant_name)
             if not assistant_id:
                 assistant_api = AssistantApiBuilder.create(name=request.assistant_name,
@@ -56,7 +51,7 @@ async def chat(request: ChatRequest, session: dict = Depends(get_session)) -> st
                 assistant_api.load_callables(openai.callables_register.callable_names)
             else:
                 assistant_api = AssistantApiBuilder.retrieve(assistant_id)
-            result = assistant_api.ask(user_id=user_id,content=request.content, topic_name=request.topic)
+            result = assistant_api.ask(user_id=user_id, topic_name=request.topic, content=request.content)
             return result
         else:
             return await LLM().aask(request.content)

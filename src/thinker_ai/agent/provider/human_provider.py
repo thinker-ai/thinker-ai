@@ -1,8 +1,8 @@
-
 from typing import Optional
 
 from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.common.logs import logger
+from thinker_ai.configs.config import config
 from thinker_ai.configs.const import LLM_API_TIMEOUT, USE_CONFIG_TIMEOUT
 from thinker_ai.configs.llm_config import LLMConfig
 
@@ -12,8 +12,8 @@ class HumanProvider(BaseLLM):
     This enables replacing LLM anywhere in the framework with a human, thus introducing human interaction
     """
 
-    def __init__(self, config: LLMConfig):
-        self.config = config
+    def __init__(self, my_config: LLMConfig = config):
+        self.config = my_config
 
     def ask(self, msg: str, timeout=USE_CONFIG_TIMEOUT) -> str:
         logger.info("It's your turn, please type in your response. You may also refer to the context below")
@@ -23,13 +23,13 @@ class HumanProvider(BaseLLM):
         return rsp
 
     async def aask(
-        self,
-        msg: str,
-        system_msgs: Optional[list[str]] = None,
-        format_msgs: Optional[list[dict[str, str]]] = None,
-        generator: bool = False,
-        timeout=USE_CONFIG_TIMEOUT,
-        **kwargs
+            self,
+            msg: str,
+            system_msgs: Optional[list[str]] = None,
+            format_msgs: Optional[list[dict[str, str]]] = None,
+            generator: bool = False,
+            timeout=USE_CONFIG_TIMEOUT,
+            **kwargs
     ) -> str:
         return self.ask(msg, timeout=self.get_timeout(timeout))
 
