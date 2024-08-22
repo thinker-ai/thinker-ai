@@ -10,10 +10,31 @@
     <link rel="stylesheet" type="text/css" href="/css/main.css">
 </head>
 <body>
-    <h1 class="title">Thinker AI</h1>
-    <div id="container">
+    <div id="header" style="background-color: #f0f0f0; padding: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h1 class="title" style="margin: 0;">Thinker AI</h1>
+            <div id="auth-buttons">
+                <!-- 登录/注册按钮，如果登录了则显示用户名和头像 -->
+                <button onclick="login()">登录</button>
+                <button onclick="register()">注册</button>
+                <!-- 例如登录后显示用户名和头像 -->
+                <!-- <img src="/path/to/avatar.jpg" alt="头像" style="width: 40px; height: 40px; border-radius: 50%;"> -->
+                <!-- <span>用户名</span> -->
+            </div>
+        </div>
+    </div>
+
+    <div id="content" style="flex-grow: 1; padding: 20px; background-color: #ffffff;">
         <button class="add-tab" onclick="addTab()">新标签页</button>
         <div id="tab-container" class="tab-container">
+        </div>
+    </div>
+
+    <div id="footer" style="background-color: #f0f0f0; padding: 20px;">
+        <div style="text-align: center;">
+            <p>服务提供方信息：XXX公司</p>
+            <p>联系方式：电话：123-456-7890 | 邮箱：info@example.com</p>
+            <p>网站备案登记号：备案号1234567890</p>
         </div>
     </div>
     <div id="floating-panel">
