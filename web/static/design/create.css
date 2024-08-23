@@ -319,9 +319,6 @@ pre {
     background-color: #5C9DF1FF; /* 选中后的背景颜色 */
     color: white; /* 选中后的文字颜色 */
 }
-.solution-tree {
-    margin-top: 10px;
-}
 
 #editor-container, #detail-container, #resource-container {
     display: none;
@@ -340,4 +337,44 @@ pre {
     padding: 10px; /* 内边距 */
     border: 1px solid #ccc; /* 边框 */
     border-radius: 4px; /* 圆角边框 */
+}
+
+
+
+
+.solution-tree {
+    margin-top: 10px;
+    font-family: Arial, sans-serif;
+}
+
+.tree-node {
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+.toggle-symbol {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.leaf-symbol {
+    margin-right: 5px;
+}
+
+.child-nodes {
+    display: none; /* 默认隐藏子节点 */
+    margin-left: 20px;
+}
+
+.node-text {
+    cursor: pointer;
+    margin-left: 5px;
+}
+
+.leaf {
+    cursor: default; /* 叶子节点不可折叠 */
+}
+
+.tree-node.leaf .toggle-symbol {
+    visibility: hidden; /* 隐藏叶子节点的加减号 */
 }

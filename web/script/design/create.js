@@ -321,17 +321,89 @@ function showSolution(button) {
 
     // 模拟服务器返回的目录树数据
     const treeData = [
-        { id: 1, title: '问题分解 1', details: '详情内容 1' },
-        { id: 2, title: '问题分解 2', details: '详情内容 2' }
+        {
+            id: 1,
+            title: '问题分解 1',
+            details: '详情内容 1',
+            children: [
+                { id: 11, title: '叶子节点 1.1', details: '叶子节点 1.1 的详细内容', children: [] },
+                { id: 12, title: '叶子节点 1.2', details: '叶子节点 1.2 的详细内容', children: [] }
+            ]
+        },
+        {
+            id: 2,
+            title: '问题分解 2',
+            details: '详情内容 2',
+            children: [
+                {
+                    id: 21,
+                    title: '问题分解 2.1',
+                    details: '问题分解 2.1 的详细内容',
+                    children: [
+                        { id: 211, title: '叶子节点 2.1.1', details: '叶子节点 2.1.1 的详细内容', children: [] },
+                        { id: 212, title: '叶子节点 2.1.2', details: '叶子节点 2.1.2 的详细内容', children: [] }
+                    ]
+                },
+                { id: 22, title: '叶子节点 2.2', details: '叶子节点 2.2 的详细内容', children: [] }
+            ]
+        }
     ];
 
-    treeData.forEach(item => {
+    // 递归生成树结构
+    function createTreeNode(nodeData) {
         const treeNode = document.createElement('div');
-        treeNode.textContent = item.title;
         treeNode.className = 'tree-node';
-        treeNode.onclick = function() {
-            showDetail(item.details);
-        };
+
+        if (nodeData.children && nodeData.children.length > 0) {
+            // 如果有子节点，添加加减号符号
+            const toggleSymbol = document.createElement('span');
+            toggleSymbol.className = 'toggle-symbol';
+            toggleSymbol.textContent = '+'; // 初始状态为折叠
+            toggleSymbol.onclick = function() {
+                toggleNode(toggleSymbol);
+            };
+            treeNode.appendChild(toggleSymbol);
+
+            const nodeText = document.createElement('span');
+            nodeText.className = 'node-text';
+            nodeText.textContent = nodeData.title;
+            nodeText.onclick = function() {
+                updateContent(nodeData.details);
+            };
+            treeNode.appendChild(nodeText);
+
+            const childContainer = document.createElement('div');
+            childContainer.className = 'child-nodes';
+            childContainer.style.display = 'none'; // 初始状态隐藏子节点
+
+            nodeData.children.forEach(child => {
+                const childNode = createTreeNode(child);
+                childContainer.appendChild(childNode);
+            });
+
+            treeNode.appendChild(childContainer);
+        } else {
+            // 如果是叶子节点
+            const leafSymbol = document.createElement('span');
+            leafSymbol.className = 'leaf-symbol';
+            leafSymbol.textContent = '•';
+            treeNode.appendChild(leafSymbol);
+
+            const nodeText = document.createElement('span');
+            nodeText.className = 'node-text';
+            nodeText.textContent = nodeData.title;
+            nodeText.onclick = function() {
+                updateContent(nodeData.details);
+            };
+            treeNode.appendChild(nodeText);
+        }
+
+        return treeNode;
+    }
+
+    // 创建并添加每个根节点
+    treeData.forEach(item => {
+        const treeNode = createTreeNode(item);
         solutionTree.appendChild(treeNode);
     });
 }
@@ -362,4 +434,28 @@ function submitResourceConfig() {
     // 提交后，可以添加额外的逻辑，如清空表单或返回到某个视图
 }
 
+function toggleNode(symbol) {
+    const node = symbol.parentElement; // 获取当前节点
+    const childNodes = node.querySelector('.child-nodes');
 
+    if (childNodes) {
+        if (childNodes.style.display === "none" || childNodes.style.display === "") {
+            childNodes.style.display = "block";
+            symbol.textContent = "-"; // 展开时显示减号
+        } else {
+            childNodes.style.display = "none";
+            symbol.textContent = "+"; // 折叠时显示加号
+        }
+    }
+}
+
+function updateContent(content) {
+    // 隐藏资源配置内容和问题描述编辑区域
+    document.getElementById('resource-container').style.display = 'none';
+    document.getElementById('editor-container').style.display = 'none';
+
+    // 显示并更新详细内容
+    const detailContainer = document.getElementById('detail-container');
+    detailContainer.style.display = 'block';
+    detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
+}
