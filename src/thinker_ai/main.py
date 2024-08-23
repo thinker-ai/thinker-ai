@@ -37,10 +37,7 @@ async def home(request: Request):
     return main_dir.TemplateResponse("/html/home.html", {"request": request})
 
 
-@app.get("/design", response_class=HTMLResponse)
-async def design(request: Request):
-    main_dir = Jinja2Templates(directory=web_root)
-    return main_dir.TemplateResponse("/html/design.html", {"request": request})
+
 
 
 # 1、不能在该文件之外执行 include_router 操作，因为当前文件不感知其它文件，导致 include_router 不会执行，
@@ -50,6 +47,7 @@ async def design(request: Request):
 @app.on_event("startup")
 async def startup():
     from chat import chat_router
+    from design import design_router
     from thinker_ai.login import login_router
     from thinker_ai.web_socket_server import socket_router
     # 启动消息队列处理任务，并存储任务引用
@@ -62,6 +60,8 @@ async def startup():
         app.include_router(login_router)
     if not is_router_included(socket_router):
         app.include_router(socket_router)
+    if not is_router_included(design_router):
+        app.include_router(design_router)
 
 
 def register_callables():

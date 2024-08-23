@@ -6,7 +6,6 @@
     <meta http-equiv="Expires" content="0" />
     <title>Chat</title>
     <link rel="icon" type="image/x-icon" href="static/main/favicon.ico">
-    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism-okaidia.css"/>
     <link rel="stylesheet" type="text/css" href="static/main/main.css">
 </head>
 <body>
@@ -29,7 +28,7 @@
             <button class="menu-item" onclick="showContent('execution', this)">方案执行</button>
             <button class="menu-item" onclick="showContent('design', this)">方案设计</button>
             <button class="menu-item" onclick="showContent('resources', this)">资源管理</button>
-            <button class="menu-item" onclick="showContent('transaction', this)">方案市场</button>
+            <button class="menu-item" onclick="showContent('transaction', this)">方案交易市场</button>
             <button class="menu-item" onclick="showContent('company', this)">企业信息</button>
         </div>
         <div id="container" class="tab-container">
@@ -43,32 +42,8 @@
             <p>网站备案登记号：备案号1234567890</p>
         </div>
     </footer>
-    <div id="floating-panel">
-        <div id="chat-container">
-            <button id="toggle-button" onclick="toggleFloatingPanel()">+</button>
-            <div id="sidebar" onclick="toggleFloatingPanel()">
-                <div class="vertical-text-wrapper">
-                    <span class="vertical-text">聊天窗口</span>
-                </div>
-            </div>
-            <div id="panel-content"> <!-- 新增容器 -->
-                <div id="chat"></div>
-                <div id="input-container">
-                    <textarea id="input"></textarea>
-                    <div id="button-container">
-                        <button id="send" onclick="sendMessage()">
-                            <i class="fas fa-paper-plane">发送</i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <script type="text/javascript" src="script/login.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
     <script type="text/javascript" src="script/main.js"></script>
 </body>
 </html>

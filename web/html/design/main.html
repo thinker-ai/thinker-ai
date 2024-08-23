@@ -1,0 +1,19 @@
+<html>
+    <head>
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
+        <title>Design</title>
+        <link rel="stylesheet" type="text/css" href="../../static/design/main.css">
+    </head>
+    <body>
+        <div id="menu">
+            <button class="menu-item" onclick="showContent('list', this)">方案列表</button>
+            <button class="menu-item" onclick="showContent('create', this)">设计方案</button>
+        </div>
+        <div id="container" class="tab-container">
+            <iframe id="content-frame" class="content-frame" src="design/list"></iframe>
+        </div>
+    <script type="text/javascript" src="../../script/design/main.js"></script>
+    </body>
+</html>
