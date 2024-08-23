@@ -5,9 +5,9 @@
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
     <title>Chat</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="static/main/favicon.ico">
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism-okaidia.css"/>
-    <link rel="stylesheet" type="text/css" href="/css/main.css">
+    <link rel="stylesheet" type="text/css" href="static/main/main.css">
 </head>
 <body>
     <header id="header">
@@ -28,29 +28,18 @@
             <button class="menu-item" onclick="showContent('home', this)">首页</button>
             <button class="menu-item" onclick="showContent('execution', this)">方案执行</button>
             <button class="menu-item" onclick="showContent('design', this)">方案设计</button>
-            <button class="menu-item" onclick="showContent('transaction', this)">方案交易</button>
             <button class="menu-item" onclick="showContent('resources', this)">资源管理</button>
+            <button class="menu-item" onclick="showContent('transaction', this)">方案市场</button>
             <button class="menu-item" onclick="showContent('company', this)">企业信息</button>
         </div>
         <div id="container" class="tab-container">
-            <div id="home" class="content-tab">欢迎来到首页</div>
-            <div id="execution" class="content-tab" style="display:none;">这里是方案执行页面的内容</div>
-            <div id="design" class="content-tab" style="display:none;">这里是方案设计页面的内容
-               <div id="tab-design-n">
-                    <button class="add-tab" onclick="addTab()">新标签页</button>
-                    <div id="tab-design-0" class="tab-design">
-                    </div>
-               </div>
-            </div>
-            <div id="transaction" class="content-tab" style="display:none;">这里是方案交易页面的内容</div>
-            <div id="resources" class="content-tab" style="display:none;">这里是资源管理页面的内容</div>
-            <div id="company" class="content-tab" style="display:none;">这里是企业信息页面的内容</div>
+            <iframe id="content-frame" class="content-frame" src="home"></iframe>
         </div>
     </div>
     <footer id="footer">
         <div class="footer-container">
             <p>服务提供方信息：赢睿科技（海南）有限公司</p>
-            <p>联系方式：电话：18559266801 | 邮箱：wunglee@thinbker-ai.net</p>
+            <p>联系方式：电话：18559266801 | 邮箱：wunglee@thinker-ai.net</p>
             <p>网站备案登记号：备案号1234567890</p>
         </div>
     </footer>
@@ -78,8 +67,8 @@
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-    <script type="text/javascript" src="/script/login.js"></script>
+    <script type="text/javascript" src="script/login.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
-    <script type="text/javascript" src="/script/main.js"></script>
+    <script type="text/javascript" src="script/main.js"></script>
 </body>
 </html>

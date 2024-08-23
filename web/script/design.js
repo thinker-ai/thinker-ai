@@ -67,3 +67,31 @@ function closeTab(event, tabId) {
         saveTabsToLocalStorage();
     }
 }
+
+function saveTabsToLocalStorage() {
+    const tabs = [];
+    const tabElements = document.getElementsByClassName('tab');
+    for (let i = 0; i < tabElements.length; i++) {
+        const tabId = tabElements[i].id;
+        const title = tabElements[i].textContent.replace('X', '').trim();
+        const url = document.getElementById(tabId + '-content').getElementsByTagName('iframe')[0].src;
+        tabs.push({ id: tabId, title: title, url: url });
+    }
+    localStorage.setItem('tabs', JSON.stringify(tabs));
+}
+
+
+function restoreTabsFromLocalStorage() {
+    const tabs = JSON.parse(localStorage.getItem('tabs'));
+    if (tabs) {
+        tabs.forEach(tab => {
+            const { title, url } = tab;
+            addTabWithUrl(url, title);
+        });
+    }
+}
+
+// Call this function when the page loads
+window.onload = () => {
+    restoreTabsFromLocalStorage();
+};

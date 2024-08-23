@@ -1,4 +1,4 @@
-
+// import * as design from 'design.js';
 document.getElementById('input').addEventListener('keydown', function (event) {
     // 如果按下的是 Enter 键，并且没有同时按下 Shift 键，Alt 键或 Ctrl 键
     if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey) {
@@ -165,75 +165,6 @@ window.addEventListener("load", function() {
     toggleFloatingPanel();  // 设置面板为关闭状态
 });
 
-function openTab(event, tabId) {
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        tabs.forEach(tab => {
-            tab.classList.remove('active');
-        });
-
-        tabContents.forEach(content => {
-            content.classList.remove('active');
-        });
-        if(tabId) {
-            document.getElementById(tabId + '-content').classList.add('active');
-        }
-        if(event) {
-            event.currentTarget.classList.add('active');
-        }
-    }
-
-let tabCount = 0;
-function addTab() {
-    const url = prompt("请输入网页地址:");
-    if (url) {
-        addTabWithUrl(url, `Tab ${tabCount + 1}`);
-    }
-}
-
-function addTabWithUrl(url, title) {
-    tabCount++;
-    const newTab = document.createElement('div');
-    newTab.className = 'tab';
-    newTab.id = 'tab' + tabCount;
-    newTab.setAttribute('onclick', `openTab(event, 'tab${tabCount}')`);
-
-    const closeButton = document.createElement('span');
-    closeButton.textContent = 'X';
-    closeButton.className = 'close-tab';
-    closeButton.setAttribute('onclick', `closeTab(event, 'tab${tabCount}')`);
-
-    newTab.textContent = title;
-    newTab.appendChild(closeButton);
-    document.getElementById('tab-design-n').appendChild(newTab);
-
-    const newTabContent = document.createElement('div');
-    newTabContent.className = 'tab-design';
-    newTabContent.id = 'tab' + tabCount + '-design';
-
-    const newIframe = document.createElement('iframe');
-    newIframe.className = 'tab-frame';
-    newIframe.src = url;
-    newTabContent.appendChild(newIframe);
-
-    document.getElementById('design').appendChild(newTabContent);
-    // Switch to the new tab
-    openTab(null, 'tab' + tabCount);
-    saveTabsToLocalStorage();
-}
-function closeTab(event, tabId) {
-    event.stopPropagation();
-    const confirmClose = confirm("确定要关闭这个标签页吗？");
-    if (confirmClose) {
-        const tab = document.getElementById(tabId);
-        const tabContent = document.getElementById(tabId + '-content');
-        tab.remove();
-        tabContent.remove();
-        saveTabsToLocalStorage();
-    }
-}
-
 const user_id = localStorage.getItem("user_id");
 let reconnectInterval = 1000; // 1 second
 
@@ -277,52 +208,20 @@ function connect() {
     }
 }
 connect();
-function saveTabsToLocalStorage() {
-    const tabs = [];
-    const tabElements = document.getElementsByClassName('tab');
-    for (let i = 0; i < tabElements.length; i++) {
-        const tabId = tabElements[i].id;
-        const title = tabElements[i].textContent.replace('X', '').trim();
-        const url = document.getElementById(tabId + '-content').getElementsByTagName('iframe')[0].src;
-        tabs.push({ id: tabId, title: title, url: url });
-    }
-    localStorage.setItem('tabs', JSON.stringify(tabs));
-}
 
-function restoreTabsFromLocalStorage() {
-    const tabs = JSON.parse(localStorage.getItem('tabs'));
-    if (tabs) {
-        tabs.forEach(tab => {
-            const { title, url } = tab;
-            addTabWithUrl(url, title);
-        });
-    }
-}
+function showContent(page, element) {
+    // Update the iframe's src attribute to load the corresponding page
+    document.getElementById('content-frame').src = page;
 
-function showContent(tabId, element) {
-    // 隐藏所有内容标签
-    var tabs = document.getElementsByClassName('content-tab');
-    for (var i = 0; i < tabs.length; i++) {
-        tabs[i].style.display = 'none';
-    }
-
-    // 显示所选的内容标签
-    document.getElementById(tabId).style.display = 'block';
-
-    // 移除所有菜单项的 active 类
+    // Update the active state of the menu items
     var menuItems = document.getElementsByClassName('menu-item');
     for (var i = 0; i < menuItems.length; i++) {
         menuItems[i].classList.remove('active');
     }
-
-    // 为当前点击的菜单项添加 active 类
     element.classList.add('active');
 }
 
-// Call this function when the page loads
-window.onload = () => {
-    restoreTabsFromLocalStorage();
-};
+
 // 添加请求拦截器
 axios.interceptors.request.use(config => {
     const token = localStorage.getItem('access_token');

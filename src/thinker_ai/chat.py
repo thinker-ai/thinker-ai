@@ -1,41 +1,20 @@
 import os
-
 from fastapi import APIRouter, Depends
-from fastapi import Request
-from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
-from starlette.templating import Jinja2Templates
-
 from thinker_ai.agent.assistant_api_builder import AssistantApiBuilder
 from thinker_ai.agent.assistant_api_repository import AssistantRepository
 from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.login import get_session
-from thinker_ai.configs.const import PROJECT_ROOT
 from thinker_ai.agent.openai_assistant_api import openai
 
 chat_router = APIRouter()
-root_dir = PROJECT_ROOT
-template_dir = os.path.join(root_dir, 'web', 'templates')
-templates = Jinja2Templates(directory=template_dir)
 assistant_repository: AssistantRepository = AssistantRepository.get_instance()
-# 添加调试信息
-print(f"Template directory: {template_dir}")
 
 
 class ChatRequest(BaseModel):
     assistant_name: str
     topic: str
     content: str
-
-
-@chat_router.get("/", response_class=HTMLResponse)
-async def main(request: Request):
-    return templates.TemplateResponse("main.html", {"request": request})
-
-
-@chat_router.get("/mermaid", response_class=HTMLResponse)
-async def mermaid(request: Request):
-    return templates.TemplateResponse("mermaid.html", {"request": request})
 
 
 @chat_router.post("/chat", response_model=str)
