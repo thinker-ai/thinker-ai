@@ -54,11 +54,11 @@
     </head>
     <body>
         <div id="menu">
+            <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/one', this)">方案设计</button>
             <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/list', this)">方案列表</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/one', this)">设计方案</button>
         </div>
         <div id="container" class="tab-container">
-            <iframe id="content-frame" class="content-frame" src="/design/list"></iframe>
+            <iframe id="content-frame" class="content-frame" src="/design/one"></iframe>
         </div>
     <script type="text/javascript" src="../../script/main.js"></script>
     </body>

@@ -1,0 +1,162 @@
+/* 浮动面板样式 */
+#floating-panel {
+    z-index: 1000;
+    position: fixed;
+    border: 2px solid #ccc;
+    right: 0;
+    top: 100px;
+    height: 550px;
+    background: white;
+    overflow: hidden; /* 禁止滚动 */
+    transition: all 0.3s ease-in-out;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    resize: none; /* 禁止面板本身的调整大小 */
+}
+
+#chat-container {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: #ffffff;
+    flex-direction: row;
+    border-top: 2px solid #000;
+    border-bottom: 2px solid #000;
+    border-right: 2px solid #000;
+    overflow: hidden; /* 禁止滚动 */
+}
+
+#toggle-button {
+    position: absolute;
+    width: 30px; /* 确保按钮宽度为30px */
+    height: 30px; /* 添加高度设置，确保按钮为正方形 */
+    top: 0;
+    left: 0;
+    cursor: pointer;
+    font-size: 24px; /* 调整字体大小以适应按钮 */
+    box-sizing: border-box; /* 确保 padding 和 border 包含在宽度和高度内 */
+    padding: 0; /* 移除内边距 */
+}
+
+#sidebar {
+    display: flex;
+    height: 100%;
+    width: 30px;
+    background-color: #ccc;
+    border-left: 2px solid black;
+    border-right: 2px solid black;
+    font-size: 16px;
+}
+
+.vertical-text-wrapper {
+    display: flex;
+    align-items: center;
+    cursor: move;
+    height: 100%;
+}
+
+.vertical-text {
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+}
+
+#chat, #input-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+}
+
+#panel-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    overflow: hidden;
+}
+
+#chat {
+    width: 95%;
+    height: 65%;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin: 10px auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+#input-container {
+    display: flex;
+    height: 25%;
+    flex-direction: column;
+    padding: 0 10px; /* 只设置左右内边距，确保子元素对齐 */
+    justify-content: center; /* 垂直方向居中 */
+}
+
+#input {
+    flex: 3;
+    height: auto;
+    width: 95%; /* 确保宽度占满父容器 */
+    box-sizing: border-box; /* 确保padding和border包含在width内 */
+    margin: 0; /* 移除任何外边距 */
+    resize: none; /* 禁止textarea调整大小 */
+}
+
+#button-container {
+    flex: 1;
+    height: auto;
+    width: 95%; /* 确保宽度占满父容器 */
+    box-sizing: border-box; /* 确保padding和border包含在width内 */
+    margin: 0; /* 移除任何外边距 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+#send {
+    width: 80%;
+    height: 80%;
+}
+
+.message-container {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.human-container {
+    display: flex;
+    justify-content: flex-end;
+    align-items: flex-end;
+}
+
+.ai-container {
+    display: flex;
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+.human_avatar, .ai_avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+}
+
+.human_message, .ai_message {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+    color: black;
+    font-size: 12px;
+}
+
+.human_message {
+    background-color: #90ee90;
+}
+
+.ai_message {
+    background-color: #ddd;
+}
