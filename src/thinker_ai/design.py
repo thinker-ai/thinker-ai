@@ -15,7 +15,7 @@ design_dir = Jinja2Templates(directory=design_root)
 
 @design_router.get("/design", response_class=HTMLResponse)
 async def main(request: Request):
-    return design_dir.TemplateResponse("main.html", {"request": request})
+    return design_dir.TemplateResponse("design.html", {"request": request})
 
 
 @design_router.get("/design/list", response_class=HTMLResponse)
@@ -38,9 +38,9 @@ async def design_one_knowledge(request: Request):
     return design_dir.TemplateResponse("one/knowledge.html", {"request": request})
 
 
-@design_router.get("/design/one/tools", response_class=HTMLResponse)
+@design_router.get("/design/one/resources", response_class=HTMLResponse)
 async def design_one_resource(request: Request):
-    return design_dir.TemplateResponse("one/tools.html", {"request": request})
+    return design_dir.TemplateResponse("one/resources.html", {"request": request})
 
 
 @design_router.get("/design/one/criterion", response_class=HTMLResponse)

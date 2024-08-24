@@ -37,7 +37,34 @@ async def home(request: Request):
     return main_dir.TemplateResponse("/html/home.html", {"request": request})
 
 
+@app.get("/works", response_class=HTMLResponse)
+async def works(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/works/works.html", {"request": request})
 
+
+@app.get("/resources", response_class=HTMLResponse)
+async def tools(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/resources/resources.html", {"request": request})
+
+
+@app.get("/strategy", response_class=HTMLResponse)
+async def strategy(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/strategy/strategy.html", {"request": request})
+
+
+@app.get("/marketing", response_class=HTMLResponse)
+async def strategy(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/marketing/marketing.html", {"request": request})
+
+
+@app.get("/knowledge", response_class=HTMLResponse)
+async def knowledge(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/knowledge/knowledge.html", {"request": request})
 
 
 # 1、不能在该文件之外执行 include_router 操作，因为当前文件不感知其它文件，导致 include_router 不会执行，
