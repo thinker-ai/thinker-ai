@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>solution</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* 隐藏横向滚动条 */
+            width: 95%;
+            box-sizing: border-box; /* 确保padding不影响宽度 */
+        }
+        #content {
+            display: flex;
+            padding: 20px;
+            background-color: #ffffff;
+            height: 100vh; /* 设置为视窗高度 */
+            box-sizing: border-box;
+        }
+
+        #solution-tree {
+            width: 30%; /* 左侧占30% */
+            margin-top: 10px;
+            font-family: Arial, sans-serif;
+            border-right: 1px solid #ccc; /* 中间边界线 */
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+
+        #detail-container {
+            width: 70%; /* 右侧占70% */
+            padding-left: 20px;
+            box-sizing: border-box;
+        }
+
+        .tree-node {
+            margin-left: 20px;
+            cursor: pointer;
+        }
+
+        .toggle-symbol {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
+        .leaf-symbol {
+            margin-right: 5px;
+        }
+
+        .child-nodes {
+            display: block; /* 默认显示子节点 */
+            margin-left: 20px;
+        }
+
+        .node-text {
+            cursor: pointer;
+            margin-left: 5px;
+        }
+
+        .leaf {
+            cursor: default; /* 叶子节点不可折叠 */
+        }
+
+        .tree-node.leaf .toggle-symbol {
+            visibility: hidden; /* 隐藏叶子节点的加减号 */
+        }
+    </style>
+</head>
+<body>
+    <div id="content">
+        <div id="solution-tree">
+            <!-- 树形结构 -->
+        </div>
+        <div id="detail-container">
+            <!-- 点击目录树节点后在这里显示详情 -->
+        </div>
+    </div>
+    <script type="text/javascript">
+        function updateContent(content) {
+            // 显示并更新详细内容
+            const detailContainer = document.getElementById('detail-container');
+            detailContainer.style.display = 'block';
+            detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
+        }
+
+        function showSolution() {
+            // 假设从服务器获取目录树的 JSON 数据
+            const solutionTree = document.getElementById('solution-tree');
+            solutionTree.innerHTML = ''; // 清空已有的树结构
+
+            // 模拟服务器返回的目录树数据
+            const treeData = [
+                {
+                    id: 1,
+                    title: '问题分解 1',
+                    details: '详情内容 1',
+                    children: [
+                        { id: 11, title: '叶子节点 1.1', details: '叶子节点 1.1 的详细内容', children: [] },
+                        { id: 12, title: '叶子节点 1.2', details: '叶子节点 1.2 的详细内容', children: [] }
+                    ]
+                },
+                {
+                    id: 2,
+                    title: '问题分解 2',
+                    details: '详情内容 2',
+                    children: [
+                        {
+                            id: 21,
+                            title: '问题分解 2.1',
+                            details: '问题分解 2.1 的详细内容',
+                            children: [
+                                { id: 211, title: '叶子节点 2.1.1', details: '叶子节点 2.1.1 的详细内容', children: [] },
+                                { id: 212, title: '叶子节点 2.1.2', details: '叶子节点 2.1.2 的详细内容', children: [] }
+                            ]
+                        },
+                        { id: 22, title: '叶子节点 2.2', details: '叶子节点 2.2 的详细内容', children: [] }
+                    ]
+                }
+            ];
+
+            // 递归生成树结构
+            function createTreeNode(nodeData) {
+                const treeNode = document.createElement('div');
+                treeNode.className = 'tree-node';
+
+                if (nodeData.children && nodeData.children.length > 0) {
+                    // 如果有子节点，添加减号符号，并展开
+                    const toggleSymbol = document.createElement('span');
+                    toggleSymbol.className = 'toggle-symbol';
+                    toggleSymbol.textContent = '-'; // 默认展开
+                    toggleSymbol.onclick = function() {
+                        toggleNode(toggleSymbol);
+                    };
+                    treeNode.appendChild(toggleSymbol);
+
+                    const nodeText = document.createElement('span');
+                    nodeText.className = 'node-text';
+                    nodeText.textContent = nodeData.title;
+                    nodeText.onclick = function() {
+                        updateContent(nodeData.details);
+                    };
+                    treeNode.appendChild(nodeText);
+
+                    const childContainer = document.createElement('div');
+                    childContainer.className = 'child-nodes';
+                    childContainer.style.display = 'block'; // 默认展开子节点
+
+                    nodeData.children.forEach(child => {
+                        const childNode = createTreeNode(child);
+                        childContainer.appendChild(childNode);
+                    });
+
+                    treeNode.appendChild(childContainer);
+                } else {
+                    // 如果是叶子节点
+                    const leafSymbol = document.createElement('span');
+                    leafSymbol.className = 'leaf-symbol';
+                    leafSymbol.textContent = '•';
+                    treeNode.appendChild(leafSymbol);
+
+                    const nodeText = document.createElement('span');
+                    nodeText.className = 'node-text';
+                    nodeText.textContent = nodeData.title;
+                    nodeText.onclick = function() {
+                        updateContent(nodeData.details);
+                    };
+                    treeNode.appendChild(nodeText);
+                }
+
+                return treeNode;
+            }
+
+            // 创建并添加每个根节点
+            treeData.forEach(item => {
+                const treeNode = createTreeNode(item);
+                solutionTree.appendChild(treeNode);
+            });
+
+            // 自动点击第一个节点以显示其内容
+            const firstNodeText = solutionTree.querySelector('.tree-node .node-text');
+            if (firstNodeText) {
+                firstNodeText.click();
+            }
+        }
+
+        function toggleNode(symbol) {
+            const node = symbol.parentElement; // 获取当前节点
+            const childNodes = node.querySelector('.child-nodes');
+
+            if (childNodes) {
+                if (childNodes.style.display === "none" || childNodes.style.display === "") {
+                    childNodes.style.display = "block";
+                    symbol.textContent = "-"; // 展开时显示减号
+                } else {
+                    childNodes.style.display = "none";
+                    symbol.textContent = "+"; // 折叠时显示加号
+                }
+            }
+        }
+
+        // 页面加载时自动显示解决方案树和第一个节点的详细信息
+        window.onload = showSolution;
+    </script>
+</body>
+</html>

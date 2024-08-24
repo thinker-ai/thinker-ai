@@ -1,4 +1,3 @@
-/* 全局样式 */
 * {
     margin: 0;
     padding: 0;
@@ -7,13 +6,14 @@
     resize: none;
 }
 
-body {
-    display: block;
+html, body {
+    /*display: block;*/
     width: 100vw;
     height: 100%;
     min-height: 100vh;
     margin: 0;
-    padding: 20px;
+    padding: 0;
+    overflow: hidden; /* 防止页面出现滚动条 */
 }
 
 .title {
@@ -51,11 +51,14 @@ body {
 
 #toggle-button {
     position: absolute;
-    width: 28px;
+    width: 30px; /* 确保按钮宽度为30px */
+    height: 30px; /* 添加高度设置，确保按钮为正方形 */
     top: 0;
     left: 0;
     cursor: pointer;
-    font-size: 30px;
+    font-size: 24px; /* 调整字体大小以适应按钮 */
+    box-sizing: border-box; /* 确保 padding 和 border 包含在宽度和高度内 */
+    padding: 0; /* 移除内边距 */
 }
 
 #sidebar {
@@ -121,7 +124,6 @@ body {
     height: auto;
     display: flex;
     flex-direction: column;
-    justify-content: center;
     justify-content: center;
     align-items: center;
 }
@@ -240,64 +242,41 @@ pre {
     margin: 0 auto;
 }
 
-/* 头部和页脚样式 */
-#header {
-    background-color: transparent;
-    padding: 20px;
-}
-
-.header-container {
-    display: flex;
-    justify-content: center; /* 居中对齐 */
-    align-items: center;
-    position: relative; /* 相对定位用于放置按钮 */
-}
-#content {
-    display: flex;
-    flex-grow: 1;
-    padding: 20px;
-    background-color: #ffffff;
-    height: 100%;
-}
-
-#design {
-    display: flex;
-    margin: 0 auto;
-    flex-direction: column;
-    width: 80%;
-    max-width: 1200px;
-}
-#footer{
-    background-color: #c7e1f3;
-    padding: 20px;
-}
-.footer-container {
-    text-align: center;
-}
-
 .tab-container {
     width: 100%;
     height: calc(100vh - 120px); /* 例如，减去 header 和 footer 的高度 */
     padding: 0;
     margin: 0;
 }
-#content-frame {
-    width: 100%;
+
+#content {
+    display: flex;
+    padding: 20px;
+    background-color: #ffffff;
     height: 100%;
-    border: none;
+    box-sizing: border-box;
 }
 
-
-.main-sidebar {
-    width: 25%; /* 左侧菜单占25%宽度 */
+#main-sidebar {
+    width: 10%; /* 左侧菜单占25%宽度 */
     background-color: #f4f4f4;
     padding: 20px;
     box-sizing: border-box;
 }
 
-.main-content {
-    width: 75%;
-    padding: 20px;
+#main-content {
+    width: 90%;
+    padding: 0; /* 去除内边距，确保 iframe 占满父容器 */
+    height: 100%; /* 让 #main-content 占满剩余高度 */
+    box-sizing: border-box;
+}
+
+#content-frame {
+    width: 100%;
+    height: 100%; /* 占满父容器的高度 */
+    border: none; /* 去除边框 */
+    overflow-x: hidden; /* 隐藏横向滚动条 */
+    overflow-y: auto; /* 允许纵向滚动 */
     box-sizing: border-box;
 }
 
@@ -308,7 +287,7 @@ pre {
     margin-bottom: 10px;
     background-color: #a4d893;
     border: none;
-    text-align: left;
+    text-align: center;
     cursor: pointer;
 }
 
@@ -318,63 +297,4 @@ pre {
 .menu-item.active {
     background-color: #5C9DF1FF; /* 选中后的背景颜色 */
     color: white; /* 选中后的文字颜色 */
-}
-
-#editor-container, #detail-container, #resource-container {
-    display: none;
-}
-
-#editor-container {
-    display: flex;
-    flex-direction: column;
-}
-
-#problem-description {
-    width: 100%; /* 使得 textarea 宽度占满父容器 */
-    height: 200px;
-    box-sizing: border-box; /* 包含内边距和边框在宽度计算中 */
-    margin-bottom: 10px; /* 可选：为提交按钮留出一点空间 */
-    padding: 10px; /* 内边距 */
-    border: 1px solid #ccc; /* 边框 */
-    border-radius: 4px; /* 圆角边框 */
-}
-
-
-
-
-.solution-tree {
-    margin-top: 10px;
-    font-family: Arial, sans-serif;
-}
-
-.tree-node {
-    margin-left: 20px;
-    cursor: pointer;
-}
-
-.toggle-symbol {
-    font-weight: bold;
-    margin-right: 5px;
-}
-
-.leaf-symbol {
-    margin-right: 5px;
-}
-
-.child-nodes {
-    display: none; /* 默认隐藏子节点 */
-    margin-left: 20px;
-}
-
-.node-text {
-    cursor: pointer;
-    margin-left: 5px;
-}
-
-.leaf {
-    cursor: default; /* 叶子节点不可折叠 */
-}
-
-.tree-node.leaf .toggle-symbol {
-    visibility: hidden; /* 隐藏叶子节点的加减号 */
 }

@@ -24,12 +24,12 @@
     </header>
     <div id="content">
         <div id="menu">
-            <button class="menu-item" onclick="showContent('home', this)">首页</button>
-            <button class="menu-item" onclick="showContent('execution', this)">方案执行</button>
-            <button class="menu-item" onclick="showContent('design', this)">方案设计</button>
-            <button class="menu-item" onclick="showContent('resources', this)">资源管理</button>
-            <button class="menu-item" onclick="showContent('transaction', this)">方案交易市场</button>
-            <button class="menu-item" onclick="showContent('company', this)">企业信息</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','home', this)">首页</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','execution', this)">方案执行</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','design', this)">方案设计</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','resources', this)">资源管理</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','transaction', this)">方案交易市场</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','company', this)">企业信息</button>
         </div>
         <div id="container" class="tab-container">
             <iframe id="content-frame" class="content-frame" src="home"></iframe>

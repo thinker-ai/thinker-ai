@@ -1,0 +1,42 @@
+<html>
+    <head>
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
+        <title>knowledge</title>
+        <style>
+            html, body {
+                margin: 0;
+                padding: 0;
+                overflow-x: hidden; /* 隐藏横向滚动条 */
+                width: 95%;
+                box-sizing: border-box; /* 确保padding不影响宽度 */
+            }
+            #editor-container {
+                display: flex;
+                flex-direction: column;
+            }
+            #problem-description {
+                width: 100%; /* 使得 textarea 宽度占满父容器 */
+                height: 200px;
+                box-sizing: border-box; /* 包含内边距和边框在宽度计算中 */
+                margin-bottom: 10px; /* 可选：为提交按钮留出一点空间 */
+                padding: 10px; /* 内边距 */
+                border: 1px solid #ccc; /* 边框 */
+                border-radius: 4px; /* 圆角边框 */
+            }
+        </style>
+    </head>
+    <body>
+        <div id="editor-container">
+            <textarea id="problem-description" placeholder="请输入问题描述..."></textarea>
+            <button onclick="submitProblem()">提交</button>
+        </div>
+        <script type="text/javascript">
+            function submitProblem() {
+            // 提交问题描述逻辑，这里模拟提交后更新方案分解
+            showSolution(); // 提交问题后自动显示方案分解菜单和目录树
+        }
+        </script>
+    </body>
+</html>

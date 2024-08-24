@@ -4,16 +4,62 @@
         <meta http-equiv="Pragma" content="no-cache" />
         <meta http-equiv="Expires" content="0" />
         <title>Design</title>
-        <link rel="stylesheet" type="text/css" href="../../static/design/main.css">
+        <style>
+            #menu {
+                display: flex;
+                justify-content: flex-start; /* 将按钮都对齐到左侧 */
+                align-items: center; /* 垂直居中对齐 */
+                gap: 20px; /* 按钮之间的间距，可根据需要调整 */
+                width: 100%; /* 确保菜单栏占满父容器宽度 */
+                padding: 0; /* 内边距 */
+                margin: 0; /* 外边距 */
+                background-color: transparent; /* 保持背景透明 */
+            }
+
+            .menu-item {
+                flex-grow: 0; /* 按钮宽度不会随容器变化 */
+                text-align: center; /* 文字居中对齐 */
+                padding: 15px 20px; /* 设置按钮内边距 */
+                font-size: 15px;
+                color: #050505;
+                text-decoration: none;
+                border: none;
+                background-color: #edeab1; /* 按钮的背景色 */
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+            }
+
+            .tab-container {
+                width: 100%;
+                height: calc(100vh - 60px); /* 例如，减去 header 和 footer 的高度 */
+                padding: 0;
+                margin: 0;
+            }
+
+            .content-frame {
+                width: 100%;
+                height: 100%; /* 这里的高度也可以根据需要调整 */
+                border: none; /* 去除边框 */
+                overflow-y: auto;
+            }
+
+            .menu-item:hover {
+                background-color: #5C9DF1FF; /* 鼠标移动到按钮上时背景高亮 */
+            }
+
+            .menu-item.active {
+                background-color: #5C9DF1FF; /* 当前menu的按钮背景高亮 */
+            }
+        </style>
     </head>
     <body>
         <div id="menu">
-            <button class="menu-item" onclick="showContent('list', this)">方案列表</button>
-            <button class="menu-item" onclick="showContent('create', this)">设计方案</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/list', this)">方案列表</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/one', this)">设计方案</button>
         </div>
         <div id="container" class="tab-container">
-            <iframe id="content-frame" class="content-frame" src="design/list"></iframe>
+            <iframe id="content-frame" class="content-frame" src="/design/list"></iframe>
         </div>
-    <script type="text/javascript" src="../../script/design/main.js"></script>
+    <script type="text/javascript" src="../../script/main.js"></script>
     </body>
 </html>
