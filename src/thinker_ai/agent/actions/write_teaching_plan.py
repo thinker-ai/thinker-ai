@@ -2,7 +2,7 @@ from typing import Optional
 
 from thinker_ai.agent.actions import Action
 from thinker_ai.common.logs import logger
-from thinker_ai.app_context import AppContext
+from thinker_ai.context import Context
 
 
 class WriteTeachingPlanPart(Action):
@@ -61,7 +61,7 @@ class WriteTeachingPlanPart(Action):
         return self.topic
 
     @staticmethod
-    def format_value(value, context: AppContext):
+    def format_value(value, context: Context):
         """Fill parameters inside `value` with `options`."""
         if not isinstance(value, str):
             return value

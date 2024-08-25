@@ -11,10 +11,10 @@ from thinker_ai.agent.actions.add_requirement import UserRequirement
 from thinker_ai.agent.provider.schema import Message, MessageQueue, SerializationMixin
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider import HumanProvider
+from thinker_ai.context_mixin import ContextMixin
 from thinker_ai.common.common import role_raise_decorator
 from thinker_ai.common.logs import logger
 from thinker_ai.common.val_class import (any_to_name, any_to_str)
-from thinker_ai.context_mixin import ContextMixin
 from thinker_ai.utils.project_repo import ProjectRepo
 from thinker_ai.utils.repair_llm_raw_output import extract_state_value_from_output
 

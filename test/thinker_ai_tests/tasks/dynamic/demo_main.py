@@ -1,7 +1,8 @@
 import asyncio
 
 import uvicorn
-from thinker_ai.app_instance import app
+
+from thinker_ai.api.fast_api_instance import app
 from thinker_ai.tasks.dynamic.service_loader import ServiceLoader
 
 main_loop = asyncio.get_event_loop()

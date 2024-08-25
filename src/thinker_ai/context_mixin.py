@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.configs.config import Config
-from thinker_ai.app_context import AppContext
+from thinker_ai.context import Context
 
 
 class ContextMixin(BaseModel):
@@ -25,7 +25,7 @@ class ContextMixin(BaseModel):
     # - https://github.com/pydantic/pydantic/issues/7091
 
     # Env/Role/Action will use this context as private context, or use self.context as public context
-    private_context: Optional[AppContext] = Field(default=None, exclude=True)
+    private_context: Optional[Context] = Field(default=None, exclude=True)
     # Env/Role/Action will use this config as private config, or use self.context.config as public config
     private_config: Optional[Config] = Field(default=None, exclude=True)
 
@@ -49,7 +49,7 @@ class ContextMixin(BaseModel):
         if override or not self.__dict__.get(k):
             self.__dict__[k] = v
 
-    def set_context(self, context: AppContext, override=True):
+    def set_context(self, context: Context, override=True):
         """Set context"""
         self.set("private_context", context, override)
 
@@ -76,14 +76,14 @@ class ContextMixin(BaseModel):
         self.set_config(config)
 
     @property
-    def context(self) -> AppContext:
+    def context(self) -> Context:
         """Role context: role context > context"""
         if self.private_context:
             return self.private_context
-        return AppContext()
+        return Context()
 
     @context.setter
-    def context(self, context: AppContext) -> None:
+    def context(self, context: Context) -> None:
         """Set context"""
         self.set_context(context)
 

@@ -2,6 +2,8 @@ import json
 import re
 from json import JSONDecodeError
 
+from thinker_ai.context import Context
+
 
 def _decode_uXXXX(s, pos):
     esc = s[pos + 1:pos + 5]
@@ -302,7 +304,7 @@ class CustomDecoder(json.JSONDecoder):
         )
         self.parse_object = JSONObject
         self.parse_string = py_scanstring
-        self.scan_once = py_make_scanner(self)
+        self.scan_once = py_make_scanner(Context())
 
-    def decode(self, s, _w=json.decoder.WHITESPACE.match):
+    def decode(self, s, _w=WHITESPACE.match):
         return super().decode(s)

@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from thinker_ai.agent.actions import UserRequirement
 from thinker_ai.agent.provider.schema import Message
-from thinker_ai.app_context import AppContext
+from thinker_ai.context import Context
 from thinker_ai.configs.config import config
 from thinker_ai.configs.const import MESSAGE_ROUTE_TO_ALL, SERDESER_PATH
 from thinker_ai.environment import Environment
@@ -33,9 +33,9 @@ class Team(BaseModel):
     investment: float = Field(default=10.0)
     idea: str = Field(default="")
 
-    def __init__(self, context: AppContext = None, **data: Any):
+    def __init__(self, context: Context = None, **data: Any):
         super(Team, self).__init__(**data)
-        ctx = context or AppContext()
+        ctx = context or Context()
         if not self.env:
             self.env = Environment(context=ctx)
         else:
@@ -54,7 +54,7 @@ class Team(BaseModel):
         write_json_file(team_info_path, serialized_data)
 
     @classmethod
-    def deserialize(cls, stg_path: Path, context: AppContext = None) -> "Team":
+    def deserialize(cls, stg_path: Path, context: Context = None) -> "Team":
         """stg_path = ./storage/team"""
         # recover team_info
         team_info_path = stg_path.joinpath("team.json")
@@ -64,7 +64,7 @@ class Team(BaseModel):
             )
 
         team_info: dict = read_json_file(team_info_path)
-        ctx = context or AppContext()
+        ctx = context or Context()
         ctx.deserialize(team_info.pop("context", None))
         team = Team(**team_info, context=ctx)
         return team

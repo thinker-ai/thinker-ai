@@ -26,7 +26,7 @@ def generate_repo(
 ) -> ProjectRepo:
     """Run the startup logic. Can be called from CLI or other Python scripts."""
     from thinker_ai.configs.config import config
-    from thinker_ai.app_context import AppContext
+    from thinker_ai.context import Context
     from thinker_ai.agent.roles import (
         Architect,
         Engineer,
@@ -37,7 +37,7 @@ def generate_repo(
     from thinker_ai.team import Team
 
     config.update_via_cli(project_path, project_name, inc, reqa_file, max_auto_summarize_code)
-    ctx = AppContext(config=config)
+    ctx = Context(config=config)
 
     if not recover_path:
         company = Team(context=ctx)

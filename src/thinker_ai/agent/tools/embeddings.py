@@ -8,18 +8,16 @@ from scipy import spatial
 from sklearn.decomposition import PCA
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.manifold import TSNE
-from sklearn.metrics import average_precision_score, precision_recall_curve, accuracy_score, f1_score, silhouette_score
+from sklearn.metrics import average_precision_score, precision_recall_curve,f1_score, silhouette_score
 
 import numpy as np
 from sklearn.model_selection import train_test_split
 
 from thinker_ai.agent.provider import OpenAILLM
+from thinker_ai.context_mixin import ContextMixin
 from thinker_ai.configs.const import PROJECT_ROOT
 from typing import List
 import pandas as pd
-
-from thinker_ai.context_mixin import ContextMixin
-
 
 client = (cast(OpenAILLM, ContextMixin().llm)).client
 

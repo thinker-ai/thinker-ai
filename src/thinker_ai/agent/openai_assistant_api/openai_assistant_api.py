@@ -18,14 +18,13 @@ from thinker_ai.agent.tools.embeddings import get_most_similar_strings
 from thinker_ai.agent.topic_repository.openai_topic_repository import OpenAiTopicInfoRepository
 from thinker_ai.agent.topic_repository.topic_builder import OpenAiTopic
 from thinker_ai.agent.topic_repository.topic_repository import TopicInfo
-from thinker_ai.common.common import show_json
-
 from thinker_ai.context_mixin import ContextMixin
+from thinker_ai.common.common import show_json
 
 
 class OpenAiAssistantApi(AssistantApi, ContextMixin):
     assistant: Assistant
-    topic_info_repository:OpenAiTopicInfoRepository = OpenAiTopicInfoRepository.get_instance()
+    topic_info_repository: OpenAiTopicInfoRepository = OpenAiTopicInfoRepository.get_instance()
 
     @property
     def name(self) -> str:
@@ -50,7 +49,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
     def del_topic(self, user_id: str, topic_name):
         topic_info = self.topic_info_repository.get_by(user_id, topic_name)
         if topic_info:
-            topic = cast(OpenAiTopic,topic_info.topic)
+            topic = cast(OpenAiTopic, topic_info.topic)
             try:
                 openai.client.beta.threads.delete(topic.thread_id)
                 self.topic_info_repository.delete(user_id, topic_name)
@@ -247,7 +246,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
         try:
             topic_info = self.topic_info_repository.get_by(user_id=user_id, topic_name=topic_name)
             if topic_info:
-                topic = cast(OpenAiTopic,topic_info.topic)
+                topic = cast(OpenAiTopic, topic_info.topic)
                 topic_thread = openai.client.beta.threads.retrieve(topic.thread_id)
             else:
                 topic_thread = self.add_topic(user_id, topic_name)

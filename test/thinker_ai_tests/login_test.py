@@ -1,11 +1,12 @@
 import pytest
 from fastapi.testclient import TestClient
-from thinker_ai.main import app  # 假设你的FastAPI应用定义在main.py中
 from passlib.context import CryptContext
 import jwt
 
+from thinker_ai.api.fast_api_instance import app
+from thinker_ai.api.login import SECRET_KEY, ALGORITHM
+
 # 假设SECRET_KEY和ALGORITHM在main.py中定义
-from thinker_ai.login import SECRET_KEY, ALGORITHM
 
 # 模拟用户数据库
 fake_users_db = {
@@ -21,6 +22,7 @@ client = TestClient(app)
 
 # 密码哈希器
 pwd_context = CryptContext(schemes=["bcrypt"])
+
 
 def test_login_success():
     # 准备数据
@@ -44,6 +46,7 @@ def test_login_success():
     payload = jwt.decode(access_token, SECRET_KEY, algorithms=[ALGORITHM])
     assert payload["sub"] == username
 
+
 def test_login_failure():
     # 准备数据
     username = "testuser"
@@ -58,6 +61,7 @@ def test_login_failure():
     # 检查响应
     assert response.status_code == 400
     assert response.json() == {"detail": "Incorrect username or password"}
+
 
 # 运行测试
 if __name__ == "__main__":
