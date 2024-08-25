@@ -33,9 +33,9 @@ async def design_one_requirements(request: Request):
     return design_dir.TemplateResponse("one/requirements.html", {"request": request})
 
 
-@design_router.get("/design/one/knowledge", response_class=HTMLResponse)
-async def design_one_knowledge(request: Request):
-    return design_dir.TemplateResponse("one/knowledge.html", {"request": request})
+@design_router.get("/design/one/experiences", response_class=HTMLResponse)
+async def design_one_experiences(request: Request):
+    return design_dir.TemplateResponse("one/experiences.html", {"request": request})
 
 
 @design_router.get("/design/one/resources", response_class=HTMLResponse)

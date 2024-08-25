@@ -38,6 +38,6 @@ with gr.Blocks() as calculator:
             return divide(num1, num2)
 
     run.click(calculate, [num1, num2, operation], result)
-#
+
 # calculator.queue()
 # calculator.launch()

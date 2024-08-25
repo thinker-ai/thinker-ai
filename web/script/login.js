@@ -21,17 +21,3 @@ function login() {
         console.error('Error:', error);
     });
 }
-
-// 创建 axios 实例
-const instance = axios.create();
-
-// 添加请求拦截器
-instance.interceptors.request.use(config => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-});

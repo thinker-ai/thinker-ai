@@ -33,7 +33,7 @@ class ServiceLoader:
                 return True
         return False
 
-    def load_ui_and_show(self, name: str, user_id: Optional[str] = None) -> str:
+    def load_ui_and_show(self,name: str, user_id: Optional[str] = None) -> str:
         """
         将gradio代码加载运行后把地址推给用户
         :param name: 加载文件名

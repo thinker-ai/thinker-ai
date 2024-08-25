@@ -1,63 +1,3 @@
-const user_id = localStorage.getItem("user_id");
-let reconnectInterval = 1000; // 1 second
-
-function connect() {
-    if (user_id) {
-        const socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
-        let heartbeatInterval;
-
-        socket.onopen = () => {
-            console.log('Connected to server');
-            reconnectInterval = 1000; // Reset the interval on successful connection
-
-            // Start sending heartbeat messages every 10 seconds
-            heartbeatInterval = setInterval(() => {
-                if (socket.readyState === WebSocket.OPEN) {
-                    socket.send(JSON.stringify({ type: 'heartbeat' }));
-                }
-            }, 10000);
-        };
-
-        socket.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            if (data.type !== 'heartbeat') {
-                const url = `http://localhost:${data.port}${data.mount_path}`;
-                addTabWithUrl(url, data.name);
-            }
-        };
-
-        socket.onclose = (event) => {
-            console.log('Connection closed', event);
-            clearInterval(heartbeatInterval); // Stop heartbeat messages
-            // Attempt to reconnect after a delay
-            setTimeout(connect, reconnectInterval);
-            // Increment the interval for each failed attempt
-            reconnectInterval = Math.min(reconnectInterval * 2, 5000); // Max 5 seconds
-        };
-
-        socket.onerror = (error) => {
-            console.log('WebSocket error', error);
-        };
-    }
-}
-connect();
-
-
-// 添加请求拦截器
-axios.interceptors.request.use(config => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-}, error => {
-    return Promise.reject(error);
-});
-if(!localStorage.getItem('access_token'))
-    login();
-
-
-
 function openTab(event, tabId) {
         const tabs = document.querySelectorAll('.tab');
         const tabContents = document.querySelectorAll('.tab-content');
@@ -126,3 +66,30 @@ function closeTab(event, tabId) {
         saveTabsToLocalStorage();
     }
 }
+function saveTabsToLocalStorage() {
+    const tabs = [];
+    const tabElements = document.getElementsByClassName('tab');
+    for (let i = 0; i < tabElements.length; i++) {
+        const tabId = tabElements[i].id;
+        const title = tabElements[i].textContent.replace('X', '').trim();
+        const url = document.getElementById(tabId + '-content').getElementsByTagName('iframe')[0].src;
+        tabs.push({ id: tabId, title: title, url: url });
+    }
+    localStorage.setItem('tabs', JSON.stringify(tabs));
+}
+
+function restoreTabsFromLocalStorage() {
+    const tabs = JSON.parse(localStorage.getItem('tabs'));
+    if (tabs) {
+        tabs.forEach(tab => {
+            const { title, url } = tab;
+            addTabWithUrl(url, title);
+        });
+    }
+}
+
+// Call this function when the page loads
+window.onload = () => {
+    restoreTabsFromLocalStorage();
+};
+

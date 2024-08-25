@@ -11,7 +11,7 @@
 <body>
     <header id="header">
         <div class="header-container">
-            <h1 class="title" style="margin: 0;">醒客（Thinker）无人公司 </h1>
+            <h1 class="title" style="margin: 0;">醒客（Thinker）无人驾驶公司 </h1>
             <div id="auth-buttons">
                 <!-- 登录/注册按钮，如果登录了则显示用户名和头像 -->
                 <button onclick="login()">登录</button>
@@ -27,9 +27,10 @@
             <button class="menu-item" onclick="showContent('content-frame','menu-item','home', this)">首页</button>
             <button class="menu-item" onclick="showContent('content-frame','menu-item','works', this)">方案执行</button>
             <button class="menu-item" onclick="showContent('content-frame','menu-item','design', this)">方案设计</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','knowledge', this)">知识经验管理</button>
             <button class="menu-item" onclick="showContent('content-frame','menu-item','resources', this)">资源管理</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','strategy', this)">思维方法管理</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','train', this)">经验沉淀</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','strategy', this)">思维模式管理</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','criterion', this)">行动偏好和价值准则管理</button>
             <button class="menu-item" onclick="showContent('content-frame','menu-item','marketing', this)">方案输出市场</button>
         </div>
         <div id="container" class="tab-container">
@@ -43,7 +44,8 @@
             <p>网站备案登记号：备案号1234567890</p>
         </div>
     </footer>
-    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/annyang/2.6.0/annyang.min.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script type="text/javascript" src="../script/common.js"></script>
     <script type="text/javascript" src="../script/login.js"></script>
     <script type="text/javascript" src="../script/main.js"></script>
 </body>

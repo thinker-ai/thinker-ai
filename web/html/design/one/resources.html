@@ -56,24 +56,22 @@
     <body>
         <div id="resource-container" class="resource-container">
             <div class="resource-list-container">
+                <label for="selected-resources">备选工具</label>
+                <select id="selected-resources" multiple>
+                    <!-- 初始状态为空 -->
+                </select>
+            </div>
+            <div class="button-container">
+                <button id="move-to-selected">←</button>
+                <button id="move-to-available">→</button>
+            </div>
+            <div class="resource-list-container">
                 <label for="available-resources">可用工具</label>
                 <select id="available-resources" multiple>
                     <option value="resource1" title="这是工具1的描述">工具1</option>
                     <option value="resource2" title="这是工具2的描述">工具2</option>
                     <option value="resource3" title="这是工具3的描述">工具3</option>
                     <option value="resource4" title="这是工具4的描述">工具4</option>
-                </select>
-            </div>
-
-            <div class="button-container">
-                <button id="move-to-selected">→</button>
-                <button id="move-to-available">←</button>
-            </div>
-
-            <div class="resource-list-container">
-                <label for="selected-resources">备选工具</label>
-                <select id="selected-resources" multiple>
-                    <!-- 初始状态为空 -->
                 </select>
             </div>
         </div>

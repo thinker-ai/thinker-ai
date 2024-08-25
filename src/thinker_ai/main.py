@@ -23,7 +23,7 @@ web_root = os.path.join(PROJECT_ROOT, 'web')
 # 将整个 web 目录挂载为静态文件目录，这样可以使用相对路径访问静态文件
 app.mount("/static", StaticFiles(directory=web_root + "/static"), name="static")
 app.mount("/script", StaticFiles(directory=web_root + "/script"), name="script")
-
+service_loader = ServiceLoader(app=app, main_loop=main_loop)
 
 @app.get("/", response_class=HTMLResponse)
 async def main(request: Request):
@@ -61,10 +61,16 @@ async def strategy(request: Request):
     return main_dir.TemplateResponse("/html/marketing/marketing.html", {"request": request})
 
 
-@app.get("/knowledge", response_class=HTMLResponse)
-async def knowledge(request: Request):
+@app.get("/train", response_class=HTMLResponse)
+async def train(request: Request):
     main_dir = Jinja2Templates(directory=web_root)
-    return main_dir.TemplateResponse("/html/knowledge/knowledge.html", {"request": request})
+    return main_dir.TemplateResponse("/html/train/train.html", {"request": request})
+
+
+@app.get("/criterion", response_class=HTMLResponse)
+async def criterion(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/criterion/criterion.html", {"request": request})
 
 
 # 1、不能在该文件之外执行 include_router 操作，因为当前文件不感知其它文件，导致 include_router 不会执行，
@@ -89,10 +95,10 @@ async def startup():
         app.include_router(socket_router)
     if not is_router_included(design_router):
         app.include_router(design_router)
+    # service_loader.load_ui_and_show("resources")
 
 
 def register_callables():
-    service_loader = ServiceLoader(app=app, main_loop=main_loop)
     openai.callables_register.register_callable(service_loader.load_ui_and_show, LoadArgs)
     openai.callables_register.register_callable(deploy_ui, DeployArgs)
 

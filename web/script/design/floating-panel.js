@@ -67,39 +67,40 @@ function highlightCode(message) {
     }
     return message;
 }
-
+// 使用 loadAxios 发送消息
 function sendMessage() {
     const inputField = document.getElementById('input');
     let message = inputField.value;
     inputField.value = '';
-    if (message.trim() === '')
-        return;
+    if (message.trim() === '') return;
+
     append_human_message(message);
-        // 从 localStorage 中获取 user_id 和 topic
-    // 发送消息到服务器
-    axios.post('/chat', {
-        assistant_name:"assistant_1",
-        topic:"default",
-        content: message
-    }, {
-        headers: {
-            'Content-Type': 'application/json'
-        }
-    }).then(response => {
-        // 检查响应状态
-        if (response.status === 200) {
-            // 添加 AI 的消息
-            append_ai_message(response.data);
-        } else {
-            alert(`HTTP error! status: ${response.status}`);
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-    }).catch(e => {
-        alert(e)
-        console.error('Error:', e);
+
+    loadAxios().then(function(axiosInstance) {
+        axiosInstance.post('/chat', {
+            assistant_name: "assistant_1",
+            topic: "default",
+            content: message
+        }, {
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).then(function(response) {
+            if (response.status === 200) {
+                append_ai_message(response.data);
+            } else {
+                alert('HTTP error! status: ' + response.status);
+                throw new Error('HTTP error! status: ' + response.status);
+            }
+        }).catch(function(e) {
+            alert(e);
+            console.error('Error:', e);
+        });
+    }).catch(function(error) {
+        alert('Failed to load axios: ' + error.message);
+        console.error('Error:', error);
     });
 }
-
 let isPanelOpen = true;
 let isDragging = false;
 
@@ -162,4 +163,4 @@ window.addEventListener("load", function() {
 
 
     toggleFloatingPanel();  // 设置面板为关闭状态
-});
+})
