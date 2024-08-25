@@ -16,10 +16,11 @@ from thinker_ai.api.marketing import marketing_router
 from thinker_ai.api.resources import resources_router
 from thinker_ai.api.strategy import strategy_router
 from thinker_ai.api.train import train_router
+from thinker_ai.api.web_socket_server import socket_router, process_message_queue
 from thinker_ai.api.works import works_router
 from thinker_ai.tasks.dynamic.service_deployer import deploy_ui, DeployArgs
 from thinker_ai.tasks.dynamic.service_loader import ServiceLoader, LoadArgs
-from thinker_ai.web_socket_server import process_message_queue
+
 from thinker_ai.agent.openai_assistant_api import openai
 from thinker_ai.configs.const import PROJECT_ROOT
 
@@ -54,7 +55,6 @@ async def home(request: Request):
 async def startup():
     from chat import chat_router
     from design import design_router
-    from thinker_ai.web_socket_server import socket_router
     # 启动消息队列处理任务，并存储任务引用
     task = asyncio.create_task(process_message_queue())
     background_tasks.append(task)
@@ -68,6 +68,7 @@ async def startup():
     include_router(works_router)
     include_router(design_router)
     include_router(login_router)
+    include_router(socket_router)
 
 
 def include_router(router: APIRouter):

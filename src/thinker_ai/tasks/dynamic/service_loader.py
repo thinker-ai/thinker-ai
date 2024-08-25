@@ -5,8 +5,9 @@ import gradio as gr
 from fastapi import APIRouter, FastAPI
 from starlette.routing import Route, Mount
 from langchain.pydantic_v1 import BaseModel, Field
+
+from thinker_ai.api.web_socket_server import send_message_to_client
 from thinker_ai.tasks.dynamic.service import Service
-from thinker_ai.web_socket_server import send_message_to_client
 
 
 class LoadArgs(BaseModel):
