@@ -1,20 +1,19 @@
 import json
 from typing import List, Tuple
 
-from thinker_ai.agent.actions.state_machine_task.ai_actions import PlanAction
-from thinker_ai.agent.actions.state_machine_task.composite_task import PlanResult
-from thinker_ai.agent.actions.state_machine_task.composite_task_ui import CompositeTaskUI
-from thinker_ai.agent.actions.state_machine_task.task import TaskResult
-from thinker_ai.agent.actions.state_machine_task.task_repository import state_machine_definition_repository, \
-    state_machine_scenario_repository
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message
+from thinker_ai.app.design.solution.ai_actions import PlanAction
+from thinker_ai.app.design.solution.solution_node import SolutionResult
+from thinker_ai.app.design.solution.solution_node_repository import state_machine_definition_repository, \
+    state_machine_scenario_repository
+from thinker_ai.app.design.solution.solution_tree_node import PlanResult
 from thinker_ai.common.logs import logger
 from thinker_ai.status_machine.base import Command
 from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder
 
 
-class CompositeTaskDefinitionController:
+class SolutionTreeNodeController:
 
     def __init__(self,
                  human_confirm=True,
@@ -27,7 +26,7 @@ class CompositeTaskDefinitionController:
                        goal: str,
                        task_name: str,
                        instruction: str,
-                       max_retry) -> CompositeTaskUI:
+                       max_retry) -> PlanResult:
 
         max_retry = max_retry if max_retry else self.plan_update_max_retry
         plan_update_count = 0
@@ -35,10 +34,10 @@ class CompositeTaskDefinitionController:
             plan_update_count += 1
             plan_result=await self._write_plan(goal, task_name, instruction)
             if plan_result:
-                return CompositeTaskUI(plan_result)
+                return plan_result
         error_msg = "生成计划次数超限，任务失败"
         logger.info(error_msg)
-        return CompositeTaskUI(PlanResult(is_success=False, message=error_msg))
+        return PlanResult(is_success=False, message=error_msg)
 
     async def _write_plan(self,
                           goal: str,
@@ -106,5 +105,5 @@ class CompositeTaskDefinitionController:
         state_machine_definition_repository.set_dict(group_id, state_machine_def_dict)
         state_machine_definition_repository.save()
 
-    async def try_execute(self, task_execute_max_retry) -> TaskResult:
+    async def try_execute(self, task_execute_max_retry) -> SolutionResult:
         pass

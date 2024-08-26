@@ -1,9 +1,10 @@
 from typing import Any
 
 from thinker_ai.agent.actions import Action
-from thinker_ai.agent.actions.state_machine_task.task_repository import state_machine_definition_repository, \
-    state_machine_scenario_repository
+
 from thinker_ai.agent.memory.memory import Memory
+from thinker_ai.app.design.solution.solution_node_repository import state_machine_definition_repository, \
+    state_machine_scenario_repository
 from thinker_ai.common.common import replace_curly_braces
 from thinker_ai.status_machine.task_desc import TaskType
 from thinker_ai.utils.code_parser import CodeParser

@@ -62,7 +62,7 @@ async def design_one_resources_trains(request: Request):
 
 
 @design_router.get("/design/one/resources/data_sources", response_class=HTMLResponse)
-async def design_one_resources_third_party(request: Request):
+async def design_one_resources_data_sources(request: Request):
     return design_dir.TemplateResponse("one/resources/data_sources.html", {"request": request})
 
 
@@ -71,8 +71,8 @@ async def design_one_resources_third_party(request: Request):
     return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
 
 
-@design_router.get("/design/one/solution/requirement", response_model=str)
-async def design_one_resource(request: Request, session: dict = Depends(get_session)) -> str:
-    requirement = request.get("requirement")
+@design_router.get("/design/one/solution/current", response_model=str)
+async def design_one_solution_current(request: Request, session: dict = Depends(get_session)) -> str:
     user_id = session.get("user_id")
+
     return user_id
