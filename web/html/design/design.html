@@ -5,15 +5,26 @@
         <meta http-equiv="Expires" content="0" />
         <title>Design</title>
         <style>
+            html, body {
+                display: flex;
+                flex-direction: row;
+                width: 100vw;
+                height: 100%;
+                min-height: 100vh;
+                margin: 0;
+                padding: 0;
+                overflow: hidden; /* 防止页面出现滚动条 */
+            }
             #menu {
                 display: flex;
+                flex-direction: column;
                 justify-content: flex-start; /* 将按钮都对齐到左侧 */
                 align-items: center; /* 垂直居中对齐 */
                 gap: 20px; /* 按钮之间的间距，可根据需要调整 */
-                width: 100%; /* 确保菜单栏占满父容器宽度 */
-                padding: 0; /* 内边距 */
+                width: 5%;
+                padding: 20px; /* 内边距 */
                 margin: 0; /* 外边距 */
-                background-color: transparent; /* 保持背景透明 */
+                background-color: #E7E8E7FF;
             }
 
             .menu-item {
@@ -30,8 +41,8 @@
             }
 
             .tab-container {
-                width: 100%;
-                height: calc(100vh - 60px); /* 例如，减去 header 和 footer 的高度 */
+                width: 95%;
+                height: calc(100vh - 30px); /* 例如，减去 header 和 footer 的高度 */
                 padding: 0;
                 margin: 0;
             }

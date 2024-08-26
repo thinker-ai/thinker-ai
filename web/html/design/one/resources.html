@@ -3,131 +3,22 @@
         <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
         <meta http-equiv="Pragma" content="no-cache" />
         <meta http-equiv="Expires" content="0" />
-        <title>resource</title>
-        <style>
-            html, body {
-                margin: 0;
-                padding: 0;
-                overflow-x: hidden; /* 隐藏横向滚动条 */
-                width: 95%;
-                box-sizing: border-box; /* 确保padding不影响宽度 */
-            }
-
-            .resource-container {
-                display: flex;
-                justify-content: space-between; /* 水平排列子元素 */
-                align-items: center; /* 垂直居中对齐 */
-                padding: 20px;
-                width: 100%;
-                box-sizing: border-box;
-            }
-
-            .resource-list-container {
-                width: 45%; /* 两个列表框各占45%宽度 */
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                box-sizing: border-box; /* 确保padding不影响宽度 */
-            }
-
-            .button-container {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                width: auto; /* 确保按钮容器不被拉伸 */
-            }
-
-            button {
-                width: 40px; /* 固定按钮宽度 */
-                height: 40px; /* 固定按钮高度 */
-                margin: 10px 0;
-                cursor: pointer;
-            }
-
-            select {
-                width: 100%;
-                height: 200px;
-                margin-top: 10px;
-                box-sizing: border-box; /* 确保padding不影响宽度 */
-            }
-        </style>
+        <title>resources</title>
+        <link rel="stylesheet" type="text/css" href="../../../static/design/resources.css">
     </head>
     <body>
-        <div id="resource-container" class="resource-container">
-            <div class="resource-list-container">
-                <label for="selected-resources">备选工具</label>
-                <select id="selected-resources" multiple>
-                    <!-- 初始状态为空 -->
-                </select>
+        <div id="content">
+            <div id="main-sidebar">
+                <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/one/resources/tools',this)">工具配置</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/one/resources/solutions',this);">可重用方案</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/one/resources/data_sources',this);">数据源</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item', '/design/one/resources/trains',this)">专项训练模型</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item', '/design/one/resources/third_parties',this)">第三方服务</button>
             </div>
-            <div class="button-container">
-                <button id="move-to-selected">←</button>
-                <button id="move-to-available">→</button>
-            </div>
-            <div class="resource-list-container">
-                <label for="available-resources">可用工具</label>
-                <select id="available-resources" multiple>
-                    <option value="resource1" title="这是工具1的描述">工具1</option>
-                    <option value="resource2" title="这是工具2的描述">工具2</option>
-                    <option value="resource3" title="这是工具3的描述">工具3</option>
-                    <option value="resource4" title="这是工具4的描述">工具4</option>
-                </select>
+            <div id="main-content">
+                <iframe id="content-frame" src="/design/one/resources/tools"></iframe>
             </div>
         </div>
-        <script type="text/javascript">
-        document.getElementById('move-to-selected').addEventListener('click', function() {
-            moveItems('available-resources', 'selected-resources');
-        });
-
-        document.getElementById('move-to-available').addEventListener('click', function() {
-            moveItems('selected-resources', 'available-resources');
-        });
-
-        function moveItems(fromSelectId, toSelectId) {
-            const fromSelect = document.getElementById(fromSelectId);
-            const toSelect = document.getElementById(toSelectId);
-            const selectedOptions = Array.from(fromSelect.selectedOptions);
-
-            selectedOptions.forEach(option => {
-                toSelect.appendChild(option);
-            });
-        }
-
-        document.querySelectorAll('option').forEach(option => {
-            option.addEventListener('mouseover', function() {
-                showTooltip(option);
-            });
-            option.addEventListener('mouseout', function() {
-                hideTooltip();
-            });
-        });
-
-        function showTooltip(option) {
-            const tooltip = document.createElement('div');
-            tooltip.id = 'tooltip';
-            tooltip.textContent = option.getAttribute('title');
-            tooltip.style.position = 'absolute';
-            tooltip.style.backgroundColor = '#333';
-            tooltip.style.color = '#fff';
-            tooltip.style.padding = '5px';
-            tooltip.style.borderRadius = '5px';
-            tooltip.style.top = `${option.getBoundingClientRect().top + window.scrollY}px`;
-            tooltip.style.left = `${option.getBoundingClientRect().right + 10}px`;
-            document.body.appendChild(tooltip);
-        }
-
-        function hideTooltip() {
-            const tooltip = document.getElementById('tooltip');
-            if (tooltip) {
-                tooltip.remove();
-            }
-        }
-        function submitResourceConfig() {
-            // 提交工具配置的逻辑，例如通过 Ajax 提交到服务器
-            alert('工具配置已保存');
-            // 提交后，可以添加额外的逻辑，如清空表单或返回到某个视图
-        }
-        </script>
+        <script type="text/javascript" src="../../../script/common.js"></script>
     </body>
 </html>

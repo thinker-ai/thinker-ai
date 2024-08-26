@@ -28,19 +28,34 @@ async def design_one(request: Request):
     return design_dir.TemplateResponse("one.html", {"request": request})
 
 
-@design_router.get("/design/one/requirements", response_class=HTMLResponse)
-async def design_one_requirements(request: Request):
-    return design_dir.TemplateResponse("one/requirements.html", {"request": request})
-
-
-@design_router.get("/design/one/experiences", response_class=HTMLResponse)
-async def design_one_experiences(request: Request):
-    return design_dir.TemplateResponse("one/experiences.html", {"request": request})
-
-
 @design_router.get("/design/one/resources", response_class=HTMLResponse)
 async def design_one_resource(request: Request):
     return design_dir.TemplateResponse("one/resources.html", {"request": request})
+
+
+@design_router.get("/design/one/resources/tools", response_class=HTMLResponse)
+async def design_one_resources_tools(request: Request):
+    return design_dir.TemplateResponse("one/resources/tools.html", {"request": request})
+
+
+@design_router.get("/design/one/resources/solutions", response_class=HTMLResponse)
+async def design_one_resources_solutions(request: Request):
+    return design_dir.TemplateResponse("one/resources/solutions.html", {"request": request})
+
+
+@design_router.get("/design/one/resources/trains", response_class=HTMLResponse)
+async def design_one_resources_trains(request: Request):
+    return design_dir.TemplateResponse("one/resources/trains.html", {"request": request})
+
+
+@design_router.get("/design/one/resources/data_sources", response_class=HTMLResponse)
+async def design_one_resources_third_party(request: Request):
+    return design_dir.TemplateResponse("one/resources/data_sources.html", {"request": request})
+
+
+@design_router.get("/design/one/resources/third_parties", response_class=HTMLResponse)
+async def design_one_resources_third_party(request: Request):
+    return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
 
 
 @design_router.get("/design/one/criterion", response_class=HTMLResponse)

@@ -11,10 +11,9 @@ from thinker_ai.common.resource import Resource
 
 
 class Solution(Resource,BaseModel):
-    title: str
+    name: str
     description: str
     solution_tree: SolutionTreeNode
     resources: Set[Resource]
-    experiences: Set[Experience]
     mindsets: Set[Mindset]
     criterion: Set[Criterion]

@@ -7,6 +7,7 @@
 }
 
 html, body {
+    /*display: block;*/
     width: 100vw;
     height: 100%;
     min-height: 100vh;
@@ -24,20 +25,23 @@ html, body {
 
 #content {
     display: flex;
-    padding: 0;
+    flex-direction: column;
+    padding: 20px;
     background-color: #ffffff;
     height: 100%;
     box-sizing: border-box;
 }
 
 #main-sidebar {
-    width: 15%; /* 左侧菜单占25%宽度 */
-    padding: 20px;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    padding: 0;
     box-sizing: border-box;
 }
 
 #main-content {
-    width: 85%;
+    width: 100%;
     padding: 0; /* 去除内边距，确保 iframe 占满父容器 */
     height: 100%; /* 让 #main-content 占满剩余高度 */
     box-sizing: border-box;
