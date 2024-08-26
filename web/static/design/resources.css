@@ -26,7 +26,7 @@ html, body {
 #content {
     display: flex;
     flex-direction: column;
-    padding: 20px;
+    padding: 0;
     background-color: #ffffff;
     height: 100%;
     box-sizing: border-box;

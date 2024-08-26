@@ -24,6 +24,7 @@ html, body {
 
 #content {
     display: flex;
+    flex-direction: column;
     padding: 0;
     background-color: #ffffff;
     height: 100%;
@@ -31,14 +32,15 @@ html, body {
 }
 
 #main-sidebar {
-    width: 15%; /* 左侧菜单占25%宽度 */
-    padding: 20px;
+    display: flex;
+    width: 100%;
+    padding: 10px;
     box-sizing: border-box;
 }
 
 #main-content {
-    width: 85%;
-    padding: 0; /* 去除内边距，确保 iframe 占满父容器 */
+    width: 100%;
+    padding: 0 10px;
     height: 100%; /* 让 #main-content 占满剩余高度 */
     box-sizing: border-box;
 }
@@ -56,7 +58,7 @@ html, body {
     display: block;
     width: 100%;
     padding: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
     background-color: #a4d893;
     border: none;
     text-align: center;
