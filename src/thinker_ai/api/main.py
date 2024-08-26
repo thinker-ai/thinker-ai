@@ -15,6 +15,8 @@ from thinker_ai.api.login import login_router
 from thinker_ai.api.marketing import marketing_router
 from thinker_ai.api.resources import resources_router
 from thinker_ai.api.strategy import strategy_router
+from thinker_ai.api.design import design_router
+from thinker_ai.api.chat import chat_router
 from thinker_ai.api.train import train_router
 from thinker_ai.api.web_socket_server import socket_router, process_message_queue
 from thinker_ai.api.works import works_router
@@ -53,8 +55,6 @@ async def home(request: Request):
 # 而app实例放在该文件中被其它文件import的时候，会成为另一个不同的实例，导致@asynccontextmanager不得不和app的创建分离。
 @app.on_event("startup")
 async def startup():
-    from chat import chat_router
-    from design import design_router
     # 启动消息队列处理任务，并存储任务引用
     task = asyncio.create_task(process_message_queue())
     background_tasks.append(task)

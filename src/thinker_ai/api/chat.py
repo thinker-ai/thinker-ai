@@ -1,4 +1,3 @@
-import os
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from thinker_ai.agent.assistant_api_builder import AssistantApiBuilder

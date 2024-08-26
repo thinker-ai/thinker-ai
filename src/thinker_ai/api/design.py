@@ -1,14 +1,12 @@
 import os
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from starlette.responses import HTMLResponse
 from starlette.templating import Jinja2Templates
 from fastapi import Request
-
+from thinker_ai.api.login import get_session
 from thinker_ai.configs.const import PROJECT_ROOT
 
 design_router = APIRouter()
-
 design_root = os.path.join(PROJECT_ROOT, 'web', 'html', 'design')
 design_dir = Jinja2Templates(directory=design_root)
 
@@ -26,6 +24,21 @@ async def design_list(request: Request):
 @design_router.get("/design/one", response_class=HTMLResponse)
 async def design_one(request: Request):
     return design_dir.TemplateResponse("one.html", {"request": request})
+
+
+@design_router.get("/design/one/criterion", response_class=HTMLResponse)
+async def design_one_criterion(request: Request):
+    return design_dir.TemplateResponse("one/criterion.html", {"request": request})
+
+
+@design_router.get("/design/one/solution", response_class=HTMLResponse)
+async def design_one_solution(request: Request):
+    return design_dir.TemplateResponse("one/solution.html", {"request": request})
+
+
+@design_router.get("/design/one/strategy", response_class=HTMLResponse)
+async def design_one_strategy(request: Request):
+    return design_dir.TemplateResponse("one/strategy.html", {"request": request})
 
 
 @design_router.get("/design/one/resources", response_class=HTMLResponse)
@@ -58,16 +71,8 @@ async def design_one_resources_third_party(request: Request):
     return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
 
 
-@design_router.get("/design/one/criterion", response_class=HTMLResponse)
-async def design_one_criterion(request: Request):
-    return design_dir.TemplateResponse("one/criterion.html", {"request": request})
-
-
-@design_router.get("/design/one/solution", response_class=HTMLResponse)
-async def design_one_solution(request: Request):
-    return design_dir.TemplateResponse("one/solution.html", {"request": request})
-
-
-@design_router.get("/design/one/strategy", response_class=HTMLResponse)
-async def design_one_strategy(request: Request):
-    return design_dir.TemplateResponse("one/strategy.html", {"request": request})
+@design_router.get("/design/one/solution/requirement", response_model=str)
+async def design_one_resource(request: Request, session: dict = Depends(get_session)) -> str:
+    requirement = request.get("requirement")
+    user_id = session.get("user_id")
+    return user_id
