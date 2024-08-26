@@ -14,8 +14,9 @@
             box-sizing: border-box; /* 确保padding不影响宽度 */
         }
         #content {
+            border-top: 1px solid black;
             display: flex;
-            padding: 0;
+            margin-top: 10px;
             background-color: #ffffff;
             height: 100vh; /* 设置为视窗高度 */
             box-sizing: border-box;
@@ -48,6 +49,10 @@
             border: 1px solid #ccc; /* 边框 */
             border-radius: 4px; /* 圆角边框 */
             resize: none
+        }
+        #problem-submit{
+            width: 50%;
+            align-self: center;
         }
         .tree-node {
             margin-left: 20px;
@@ -85,7 +90,7 @@
 <body>
     <div id="editor-container">
         <textarea id="problem-description" placeholder="请输入问题描述..."></textarea>
-        <button onclick="submitProblem()">提交</button>
+        <button id="problem-submit" onclick="submitProblem()">提交</button>
     </div>
     <div id="content">
         <div id="solution-tree">
