@@ -8,11 +8,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from starlette import status
 
+from thinker_ai.configs.const import PROJECT_ROOT
+
 login_router = APIRouter()
 # 创建 OAuth2 实例，用于解析 token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 # 会话存储文件路径
-SESSION_STORE_FILE = "session_store.pkl"
+SESSION_STORE_FILE = f"{PROJECT_ROOT}/src/thinker_ai/session_store.pkl"
 # 读取会话存储
 if os.path.exists(SESSION_STORE_FILE):
     with open(SESSION_STORE_FILE, "rb") as f:

@@ -1,15 +1,17 @@
+import json
 import os
 from fastapi import APIRouter, Depends
-from starlette.responses import HTMLResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 from fastapi import Request
 from thinker_ai.api.login import get_session
+from thinker_ai.app.design.solution.solution_manager import SolutionManager
 from thinker_ai.configs.const import PROJECT_ROOT
 
 design_router = APIRouter()
 design_root = os.path.join(PROJECT_ROOT, 'web', 'html', 'design')
 design_dir = Jinja2Templates(directory=design_root)
-
+solution_manager = SolutionManager()
 
 @design_router.get("/design", response_class=HTMLResponse)
 async def main(request: Request):
@@ -71,8 +73,62 @@ async def design_one_resources_third_party(request: Request):
     return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
 
 
-@design_router.get("/design/one/solution/current", response_model=str)
-async def design_one_solution_current(request: Request, session: dict = Depends(get_session)) -> str:
+@design_router.get("/design/one/solution/current", response_class=JSONResponse)
+async def design_one_solution_current(session: dict = Depends(get_session)) -> list:
     user_id = session.get("user_id")
+    solution = solution_manager.get_current_solution(user_id)
 
-    return user_id
+    # 这里返回的应该是 Python 的列表或字典
+    return [
+        {
+            "id": 1,
+            "title": "问题分解 1",
+            "details": "详情内容 1",
+            "children": [
+                {
+                    "id": 11,
+                    "title": "叶子节点 1.1",
+                    "details": "叶子节点 1.1 的详细内容",
+                    "children": []
+                },
+                {
+                    "id": 12,
+                    "title": "叶子节点 1.2",
+                    "details": "叶子节点 1.2 的详细内容",
+                    "children": []
+                }
+            ]
+        },
+        {
+            "id": 2,
+            "title": "问题分解 2",
+            "details": "详情内容 2",
+            "children": [
+                {
+                    "id": 21,
+                    "title": "问题分解 2.1",
+                    "details": "问题分解 2.1 的详细内容",
+                    "children": [
+                        {
+                            "id": 211,
+                            "title": "叶子节点 2.1.1",
+                            "details": "叶子节点 2.1.1 的详细内容",
+                            "children": []
+                        },
+                        {
+                            "id": 212,
+                            "title": "叶子节点 2.1.2",
+                            "details": "叶子节点 2.1.2 的详细内容",
+                            "children": []
+                        }
+                    ]
+                },
+                {
+                    "id": 22,
+                    "title": "叶子节点 2.2",
+                    "details": "叶子节点 2.2 的详细内容",
+                    "children": []
+                }
+            ]
+        }
+    ]

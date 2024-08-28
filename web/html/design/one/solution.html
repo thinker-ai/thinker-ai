@@ -136,42 +136,29 @@
             detailContainer.style.display = 'block';
             detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
         }
-
         function showSolution() {
+                loadAxios().then(function(axiosInstance) {
+                axiosInstance.get('/design/one/solution/current')
+                    .then(function(response) {
+                        if (response.status === 200) {
+                            showTree(response.data);
+                        } else {
+                            alert('HTTP error! status: ' + response.status);
+                            throw new Error('HTTP error! status: ' + response.status);
+                        }
+                    }).catch(function(e) {
+                        alert(e);
+                        console.error('Error:', e);
+                    });
+            }).catch(function(error) {
+                alert('Failed to load axios: ' + error.message);
+                console.error('Error:', error);
+            });
+        }
+        function showTree(treeData) {
             // 假设从服务器获取目录树的 JSON 数据
             const solutionTree = document.getElementById('solution-tree');
             solutionTree.innerHTML = ''; // 清空已有的树结构
-
-            // 模拟服务器返回的目录树数据
-            const treeData = [
-                {
-                    id: 1,
-                    title: '问题分解 1',
-                    details: '详情内容 1',
-                    children: [
-                        { id: 11, title: '叶子节点 1.1', details: '叶子节点 1.1 的详细内容', children: [] },
-                        { id: 12, title: '叶子节点 1.2', details: '叶子节点 1.2 的详细内容', children: [] }
-                    ]
-                },
-                {
-                    id: 2,
-                    title: '问题分解 2',
-                    details: '详情内容 2',
-                    children: [
-                        {
-                            id: 21,
-                            title: '问题分解 2.1',
-                            details: '问题分解 2.1 的详细内容',
-                            children: [
-                                { id: 211, title: '叶子节点 2.1.1', details: '叶子节点 2.1.1 的详细内容', children: [] },
-                                { id: 212, title: '叶子节点 2.1.2', details: '叶子节点 2.1.2 的详细内容', children: [] }
-                            ]
-                        },
-                        { id: 22, title: '叶子节点 2.2', details: '叶子节点 2.2 的详细内容', children: [] }
-                    ]
-                }
-            ];
-
             // 递归生成树结构
             function createTreeNode(nodeData) {
                 const treeNode = document.createElement('div');

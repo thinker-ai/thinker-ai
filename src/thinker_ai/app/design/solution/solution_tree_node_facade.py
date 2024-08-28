@@ -4,16 +4,15 @@ from typing import List, Tuple
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message
 from thinker_ai.app.design.solution.ai_actions import PlanAction
-from thinker_ai.app.design.solution.solution_node import SolutionResult
+from thinker_ai.app.design.solution.solution_node import SolutionResult, PlanResult
 from thinker_ai.app.design.solution.solution_node_repository import state_machine_definition_repository, \
     state_machine_scenario_repository
-from thinker_ai.app.design.solution.solution_tree_node import PlanResult
 from thinker_ai.common.logs import logger
 from thinker_ai.status_machine.base import Command
 from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder
 
 
-class SolutionTreeNodeController:
+class SolutionTreeNodefacade:
 
     def __init__(self,
                  human_confirm=True,
@@ -22,6 +21,7 @@ class SolutionTreeNodeController:
         self.plan_action = PlanAction()
         self.exec_logger: Memory = Memory()
         self.human_confirm = human_confirm
+
     async def try_plan(self,
                        goal: str,
                        task_name: str,
