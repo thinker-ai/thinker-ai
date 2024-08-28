@@ -3,7 +3,6 @@ from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, Tuple
 
 from thinker_ai.status_machine.base import Command, Event, ExecutorDescription
-from thinker_ai.status_machine.task_desc import TaskTypeDef, TaskType
 
 
 class BaseStateDefinition:
@@ -120,7 +119,8 @@ class StateMachineDefinition:
     @staticmethod
     def _from_event_to_mock_executor(state: StateDefinition, event: str) -> Optional[ExecutorDescription]:
         for executor in state.executors_des:
-            if event.startswith(f"{executor.on_command}_result"):  # Assuming event name is used as command in mock executor
+            if event.startswith(
+                    f"{executor.on_command}_result"):  # Assuming event name is used as command in mock executor
                 return executor
         return None
 
@@ -311,10 +311,10 @@ class StateMachineDefinitionBuilder:
     def _state_def_to_dict(cls, state_def: BaseStateDefinition) -> Dict[str, Any]:
         if isinstance(state_def, StateDefinition):
             executors_des = [{"on_command": a.on_command,
-                            "full_class_name": a.full_class_name,
-                            "pre_check_list": a.pre_check_list,
-                            "post_check_list": a.post_check_list
-                            } for a in state_def.executors_des]
+                              "full_class_name": a.full_class_name,
+                              "pre_check_list": a.pre_check_list,
+                              "post_check_list": a.post_check_list
+                              } for a in state_def.executors_des]
             return {
                 "name": state_def.name,
                 "description": state_def.description,
@@ -419,6 +419,7 @@ class StateMachineDefinitionRepository(ABC):
     @abstractmethod
     def get_state_machine_names(self, state_machine_def_group_name: str):
         raise NotImplementedError
+
     @abstractmethod
     def save(self):
         raise NotImplementedError
