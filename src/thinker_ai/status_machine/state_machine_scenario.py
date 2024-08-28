@@ -186,13 +186,13 @@ class StateScenarioDescription:
             state_scenario_builder_class = from_class_name(StateScenarioBuilder,
                                                            self.state_scenario_builder_full_class_name)
         else:
-            state_scenario_builder_class = DefaultStateContextBuilder
+            state_scenario_builder_class = DefaultStateScenarioBuilder
         return state_scenario_builder_class
 
     def get_state_scenario(self, is_validate: bool) -> BaseStateScenario:
         if is_validate:
             # 模拟过程不用缓存，避免缓存中模拟的state_scenario替代并占位实际的state_scenario
-            state_scenario = self._build_state_scenario(DefaultStateContextBuilder())
+            state_scenario = self._build_state_scenario(DefaultStateScenarioBuilder())
         else:
             state_scenario = StateContextRegister.get(self.scenario_id)
             if not state_scenario:
@@ -224,7 +224,7 @@ class StateScenarioDescription:
         return state_scenario
 
 
-class DefaultStateContextBuilder(StateScenarioBuilder):
+class DefaultStateScenarioBuilder(StateScenarioBuilder):
     @staticmethod
     def build_state_scenario(state_def: StateDefinition,
                              state_scenario_class_name: str,
