@@ -9,7 +9,6 @@
             "is_start": true,
             "state_scenario_class_name": "XXXContext",
             "description": "Start state",
-            "task_type": "other",
             "executors": [
               {
                 "on_command": "start_to_A",
@@ -23,7 +22,6 @@
             "is_start": false,
             "state_scenario_class_name": "XXXContext",
             "description": "State A description",
-            "task_type": "state machine plan",
             "executors": [
               {
                 "on_command": "A_to_B",
@@ -37,7 +35,6 @@
             "is_start": false,
             "state_scenario_class_name": "XXXContext",
             "description": "State B description",
-            "task_type": "other",
             "executors": [
               {
                 "on_command":"B_to_C",
@@ -55,7 +52,6 @@
             "is_start": false,
             "state_scenario_class_name": "XXXContext",
             "description": "State C description",
-            "task_type": "other",
             "executors": [
               {
                 "on_command": "C_to_A",
@@ -69,7 +65,6 @@
             "is_start": false,
             "state_scenario_class_name": "XXXContext",
             "description": "State D description",
-            "task_type": "other",
             "executors": [
               {
                 "on_command": "D_to_E",
@@ -83,7 +78,6 @@
             "is_start": false,
             "state_scenario_class_name": "XXXContext",
             "description": "State E description",
-            "task_type": "other",
             "executors": [],
             "events": []
           }

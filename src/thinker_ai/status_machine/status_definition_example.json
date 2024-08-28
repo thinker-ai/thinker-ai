@@ -10,7 +10,6 @@
           "is_start": true,
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends StateContex or CompositeStateContext class",
           "description": "what you should do in this state scenario, one short phrase or sentence",
-          "task_type": "task type of this state to do, should be one of Available Task Types",
           "executors": [
             {
               "on_command": "The on_command parameter of the handle method of Action interface",
@@ -28,7 +27,6 @@
           "is_start": false,
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends StateContex or CompositeStateContext class",
           "description": "what you should do in this state scenario, one short phrase or sentence",
-          "task_type": "task type of the state_scenario_class to do, should be one of Available Task Types",
           "executors": [
             {
               "on_command": "the on_command parameter of the handle method of Action interface",

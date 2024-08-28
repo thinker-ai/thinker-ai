@@ -74,61 +74,61 @@ async def design_one_resources_third_party(request: Request):
 
 
 @design_router.get("/design/one/solution/current", response_class=JSONResponse)
-async def design_one_solution_current(session: dict = Depends(get_session)) -> list:
+async def design_one_solution_current(session: dict = Depends(get_session)) -> dict:
     user_id = session.get("user_id")
     solution = solution_manager.get_current_solution(user_id)
-
+    return solution.model_dump()
     # 这里返回的应该是 Python 的列表或字典
-    return [
-        {
-            "id": 1,
-            "title": "问题分解 1",
-            "details": "详情内容 1",
-            "children": [
-                {
-                    "id": 11,
-                    "title": "叶子节点 1.1",
-                    "details": "叶子节点 1.1 的详细内容",
-                    "children": []
-                },
-                {
-                    "id": 12,
-                    "title": "叶子节点 1.2",
-                    "details": "叶子节点 1.2 的详细内容",
-                    "children": []
-                }
-            ]
-        },
-        {
-            "id": 2,
-            "title": "问题分解 2",
-            "details": "详情内容 2",
-            "children": [
-                {
-                    "id": 21,
-                    "title": "问题分解 2.1",
-                    "details": "问题分解 2.1 的详细内容",
-                    "children": [
-                        {
-                            "id": 211,
-                            "title": "叶子节点 2.1.1",
-                            "details": "叶子节点 2.1.1 的详细内容",
-                            "children": []
-                        },
-                        {
-                            "id": 212,
-                            "title": "叶子节点 2.1.2",
-                            "details": "叶子节点 2.1.2 的详细内容",
-                            "children": []
-                        }
-                    ]
-                },
-                {
-                    "id": 22,
-                    "title": "叶子节点 2.2",
-                    "details": "叶子节点 2.2 的详细内容",
-                    "children": []
-                }
-            ]
-        }
-    ]
+    # return [
+    #     {
+    #         "id": 1,
+    #         "title": "问题分解 1",
+    #         "description": "详情内容 1",
+    #         "children": [
+    #             {
+    #                 "id": 11,
+    #                 "title": "叶子节点 1.1",
+    #                 "description": "叶子节点 1.1 的详细内容",
+    #                 "children": []
+    #             },
+    #             {
+    #                 "id": 12,
+    #                 "title": "叶子节点 1.2",
+    #                 "description": "叶子节点 1.2 的详细内容",
+    #                 "children": []
+    #             }
+    #         ]
+    #     },
+    #     {
+    #         "id": 2,
+    #         "title": "问题分解 2",
+    #         "description": "详情内容 2",
+    #         "children": [
+    #             {
+    #                 "id": 21,
+    #                 "title": "问题分解 2.1",
+    #                 "description": "问题分解 2.1 的详细内容",
+    #                 "children": [
+    #                     {
+    #                         "id": 211,
+    #                         "title": "叶子节点 2.1.1",
+    #                         "description": "叶子节点 2.1.1 的详细内容",
+    #                         "children": []
+    #                     },
+    #                     {
+    #                         "id": 212,
+    #                         "title": "叶子节点 2.1.2",
+    #                         "description": "叶子节点 2.1.2 的详细内容",
+    #                         "children": []
+    #                     }
+    #                 ]
+    #             },
+    #             {
+    #                 "id": 22,
+    #                 "title": "叶子节点 2.2",
+    #                 "description": "叶子节点 2.2 的详细内容",
+    #                 "children": []
+    #             }
+    #         ]
+    #     }
+    # ]

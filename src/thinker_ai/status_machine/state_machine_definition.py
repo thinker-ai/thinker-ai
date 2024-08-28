@@ -21,13 +21,12 @@ class BaseStateDefinition:
 
 
 class StateDefinition(BaseStateDefinition):
-    def __init__(self, name: str, group_def_name: str, description: str, task_type: TaskTypeDef,
+    def __init__(self, name: str, group_def_name: str, description: str,
                  state_scenario_class_name: str,
                  executors_des: Set[ExecutorDescription], result_events: Set[str], is_start: bool = False,
                  is_composite: bool = False):
         super().__init__(name, description, state_scenario_class_name)
         self.group_def_name = group_def_name
-        self.task_type = task_type
         self.is_start = is_start
         self.events: Set[str] = result_events
         self.executors_des: Set[ExecutorDescription] = executors_des
@@ -83,58 +82,6 @@ class StateMachineDefinition:
         if outer_event_name is None:
             return None
         return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
-
-    def get_state_machine_create_order(self, state_machine_def_repo: "StateMachineDefinitionRepository",
-                                       state_machine_def_group: str = None,
-                                       state_machine_name: str = None,
-                                       sorted_state_defs: Optional[List[Tuple[str, StateDefinition]]] = None) \
-            -> List[Tuple[str, StateDefinition]]:
-        if not state_machine_def_group:
-            state_machine_def_group = self.group_def_name
-            state_machine_name = self.name
-            state_machine_def = self
-        else:
-            state_machine_def = state_machine_def_repo.get(state_machine_def_group, state_machine_name)
-            if not state_machine_def:
-                return sorted_state_defs
-
-        if sorted_state_defs is None:
-            sorted_state_defs = []
-        visited: Set[str] = set()
-        stack: List[Tuple[str, BaseStateDefinition]] = []
-
-        if not state_machine_def:
-            return sorted_state_defs
-
-        def visit(state: BaseStateDefinition):
-            state_def_name = f"{state_machine_def.name}.{state.name}"
-            if state_def_name in visited:
-                return
-            visited.add(state_def_name)
-            if (isinstance(state, StateDefinition)
-                    and state.task_type
-                    and state.task_type.name == TaskType.STATE_MACHINE_PLAN.type_name
-                    and state_def_name not in state_machine_def_repo.get_state_machine_names(self.group_def_name)
-            ):
-                stack.append((state_def_name, state))
-            for transition in state_machine_def.transitions:
-                if transition.source.name == state.name:
-                    visit(transition.target)
-
-            # Process sub-state machine if any
-            if isinstance(state, StateDefinition) and state.is_composite:
-                self.get_state_machine_create_order(state_machine_def_repo=state_machine_def_repo,
-                                                    state_machine_def_group=state_machine_def_group,
-                                                    state_machine_name=f"{state_machine_name}.{state.name}",
-                                                    sorted_state_defs=sorted_state_defs)
-
-        start_state = state_machine_def.get_start_state_def()
-        if start_state:
-            visit(start_state)
-
-        sorted_state_defs.extend(stack)  # Reverse the stack to get the correct order
-
-        return sorted_state_defs
 
     def get_self_validate_commands_in_order(self) -> List[List[Command]]:
         paths = self._get_state_validate_paths()
@@ -372,7 +319,6 @@ class StateMachineDefinitionBuilder:
                 "name": state_def.name,
                 "description": state_def.description,
                 "state_scenario_class_name": state_def.state_scenario_class_name,
-                "task_type": state_def.task_type.name,
                 "executors": executors_des,
                 "events": list(state_def.events),
                 "is_start": state_def.is_start
@@ -398,7 +344,6 @@ class StateMachineDefinitionBuilder:
                 group_def_name=group_def_name,
                 state_scenario_class_name=data["state_scenario_class_name"],
                 description=data.get("description", ""),
-                task_type=TaskType.get_type(data.get("task_type", "")),
                 executors_des={ExecutorDescription(a) for a in data["executors"]},
                 result_events=set(data["events"]),
                 is_composite=is_composite,

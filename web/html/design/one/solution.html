@@ -89,6 +89,7 @@
 </head>
 <body>
     <div id="editor-container">
+        <input id="problem-title" title="问题标题" placeholder="请输入问题标题...">
         <textarea id="problem-description" placeholder="请输入问题描述..."></textarea>
         <button id="problem-submit" onclick="submitProblem()">提交</button>
     </div>
@@ -136,12 +137,13 @@
             detailContainer.style.display = 'block';
             detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
         }
-        function showSolution() {
+
+        function showData() {
                 loadAxios().then(function(axiosInstance) {
                 axiosInstance.get('/design/one/solution/current')
                     .then(function(response) {
                         if (response.status === 200) {
-                            showTree(response.data);
+                            showPage(response.data)
                         } else {
                             alert('HTTP error! status: ' + response.status);
                             throw new Error('HTTP error! status: ' + response.status);
@@ -155,8 +157,22 @@
                 console.error('Error:', error);
             });
         }
-        function showTree(treeData) {
+        function showPage(data) {
+              showProblem(data);
+              showSolution(data);
+        }
+
+       function showProblem(data) {
+            const problem_title = document.getElementById('problem-title');
+            problem_title.value = data.name;
+
+            const problem_description = document.getElementById('problem-description');
+            problem_description.value = data.description;
+        }
+
+        function showSolution(data) {
             // 假设从服务器获取目录树的 JSON 数据
+            const treeData=data.solution_tree
             const solutionTree = document.getElementById('solution-tree');
             solutionTree.innerHTML = ''; // 清空已有的树结构
             // 递归生成树结构
@@ -178,7 +194,7 @@
                     nodeText.className = 'node-text';
                     nodeText.textContent = nodeData.title;
                     nodeText.onclick = function() {
-                        updateContent(nodeData.details);
+                        updateContent(nodeData.description);
                     };
                     treeNode.appendChild(nodeText);
 
@@ -203,7 +219,7 @@
                     nodeText.className = 'node-text';
                     nodeText.textContent = nodeData.title;
                     nodeText.onclick = function() {
-                        updateContent(nodeData.details);
+                        updateContent(nodeData.description);
                     };
                     treeNode.appendChild(nodeText);
                 }
@@ -239,7 +255,7 @@
             }
         }
         // 页面加载时自动显示解决方案树和第一个节点的详细信息
-        window.onload = showSolution;
+        window.onload = showData;
     </script>
 </body>
 </html>

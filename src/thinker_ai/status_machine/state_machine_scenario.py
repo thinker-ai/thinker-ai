@@ -160,7 +160,7 @@ class StateScenarioBuilder(ABC):
     def build_composite_state_scenario(cls, state_def: "StateDefinition", state_scenario_class_name: str,
                                        state_machine_definition_repository: "StateMachineDefinitionRepository",
                                        state_machine_scenario_repository: "StateMachineScenarioRepository",
-                                       scenario_group_id: str,
+                                       scenario_root_id: str,
                                        scenario_id: Optional[str] = str(uuid.uuid4())) -> BaseStateScenario:
         raise NotImplementedError
 
@@ -171,10 +171,10 @@ class StateScenarioDescription:
                  state_scenario_builder_full_class_name: str,
                  state_machine_definition_repository: "StateMachineDefinitionRepository",
                  state_machine_repository: "StateMachineScenarioRepository",
-                 scenario_group_id: str,
+                 scenario_root_id: str,
                  scenario_id: Optional[str] = str(uuid.uuid4())
                  ):
-        self.scenario_group_id: str = scenario_group_id
+        self.scenario_root_id: str = scenario_root_id
         self.scenario_id: str = scenario_id
         self.state_def = state_def
         self.state_scenario_builder_full_class_name = state_scenario_builder_full_class_name
@@ -209,7 +209,7 @@ class StateScenarioDescription:
                                                                   self.state_def.state_scenario_class_name,
                                                                   self.state_machine_definition_repository,
                                                                   self.state_machine_repository,
-                                                                  self.scenario_group_id,
+                                                                  self.scenario_root_id,
                                                                   self.scenario_id))
             else:
                 state_scenario = (
@@ -242,11 +242,11 @@ class DefaultStateScenarioBuilder(StateScenarioBuilder):
                                        state_scenario_class_name: str,
                                        state_machine_definition_repository: "StateMachineDefinitionRepository",
                                        state_machine_scenario_repository: "StateMachineScenarioRepository",
-                                       scenario_group_id: str,
+                                       scenario_root_id: str,
                                        scenario_id: Optional[str] = str(uuid.uuid4())) -> BaseStateScenario:
         if state_def.is_composite:
             return CompositeStateScenario(scenario_id=scenario_id,
-                                          scenario_group_id=scenario_group_id,
+                                          scenario_root_id=scenario_root_id,
                                           state_def=state_def,
                                           state_scenario_builder_class=cls,
                                           state_machine_scenario_repository=state_machine_scenario_repository,
@@ -256,7 +256,7 @@ class DefaultStateScenarioBuilder(StateScenarioBuilder):
 
 class StateMachineScenario:
     def __init__(self, scenario_id: str,
-                 scenario_group_id: str,
+                 scenario_root_id: str,
                  state_machine_def_group_name: str,
                  state_machine_def_name: str,
                  current_state_scenario_des: StateScenarioDescription,
@@ -264,7 +264,7 @@ class StateMachineScenario:
                  state_machine_definition_repository: StateMachineDefinitionRepository,
                  history: Optional[List[StateScenarioDescription]] = None):
         self.scenario_id = scenario_id
-        self.scenario_group_id = scenario_group_id
+        self.scenario_root_id = scenario_root_id
         self.state_machine_def_group_name = state_machine_def_group_name
         self.state_machine_def_name = state_machine_def_name
         self.current_state_scenario_des: StateScenarioDescription = current_state_scenario_des
@@ -290,7 +290,7 @@ class StateMachineScenario:
             if transition.event == event.name and transition.source.name == self.current_state_scenario_des.state_def.name:
                 self.history.append(self.current_state_scenario_des)
                 self.current_state_scenario_des = self.creat_state_scenario_des(transition.target)
-                self.state_machine_repository.set_scenario(self.scenario_group_id, self)
+                self.state_machine_repository.set_scenario(self.scenario_root_id, self)
                 return
         raise ValueError(
             f"No transition from state '{self.current_state_scenario_des.state_def.name}' with event '{event.name}'")
@@ -308,7 +308,7 @@ class StateMachineScenario:
             state_def=state_def,
             state_machine_definition_repository=self.state_machine_definition_repository,
             state_machine_repository=self.state_machine_repository,
-            scenario_group_id=self.scenario_group_id,
+            scenario_root_id=self.scenario_root_id,
             scenario_id=str(uuid.uuid4())
         )
 
@@ -335,15 +335,15 @@ class StateMachineScenario:
 
 class StateMachineScenarioRepository(ABC):
     @abstractmethod
-    def get(self, scenario_group_id: str, scenario_id: str) -> StateMachineScenario:
+    def get(self, scenario_root_id: str, scenario_id: str) -> StateMachineScenario:
         raise NotImplementedError
 
     @abstractmethod
-    def set_scenario(self, scenario_group_id: str, state_machine_scenario: StateMachineScenario):
+    def set_scenario(self, scenario_root_id: str, state_machine_scenario: StateMachineScenario):
         raise NotImplementedError
 
     @abstractmethod
-    def set_dict(self, scenario_group_id: str, state_machine_dict: dict):
+    def set_dict(self, scenario_root_id: str, state_machine_dict: dict):
         raise NotImplementedError
 
     @abstractmethod
@@ -358,13 +358,13 @@ class StateMachineScenarioRepository(ABC):
 class CompositeStateScenario(StateScenario):
     def __init__(self,
                  scenario_id: str,
-                 scenario_group_id: str,
+                 scenario_root_id: str,
                  state_def: StateDefinition,
                  state_scenario_builder_class: Type[StateScenarioBuilder],
                  state_machine_scenario_repository: StateMachineScenarioRepository,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
         super().__init__(scenario_id, state_def)
-        self.scenario_group_id = scenario_group_id
+        self.scenario_root_id = scenario_root_id
         self.state_scenario_builder_class = state_scenario_builder_class
         self.state_machine_scenario_repository = state_machine_scenario_repository
         self.state_machine_definition_repository = state_machine_definition_repository
@@ -403,7 +403,7 @@ class CompositeStateScenario(StateScenario):
             raise TypeError("executor not a CompositeExecutor")
 
     def get_state_machine(self) -> StateMachineScenario:
-        result_state_machine = self.state_machine_scenario_repository.get(self.scenario_group_id, self.scenario_id)
+        result_state_machine = self.state_machine_scenario_repository.get(self.scenario_root_id, self.scenario_id)
         if not result_state_machine:
             state_machine_definition = self.state_machine_definition_repository.get(self.get_state_def().group_def_name,
                                                                                     self.get_state_def().name)
@@ -425,12 +425,12 @@ class StateMachineContextBuilder:
                                 def_json: str,
                                 state_machine_definition_repository: StateMachineDefinitionRepository,
                                 state_machine_scenario_repository: StateMachineScenarioRepository,
-                                scenario_group_id: str = str(uuid.uuid4()),
+                                scenario_root_id: str = str(uuid.uuid4()),
                                 ) -> StateMachineScenario:
         state_machine_def = StateMachineDefinitionBuilder.from_group_def_json(state_machine_def_group_name,
                                                                               state_machine_def_name, def_json)
         state_machine = cls.new_from_def(state_machine_def, state_machine_definition_repository,
-                                         state_machine_scenario_repository, scenario_group_id)
+                                         state_machine_scenario_repository, scenario_root_id)
         return state_machine
 
     @classmethod
@@ -438,30 +438,30 @@ class StateMachineContextBuilder:
                           state_machine_def_name: str,
                           state_machine_definition_repository: StateMachineDefinitionRepository,
                           state_machine_scenario_repository: StateMachineScenarioRepository,
-                          scenario_group_id: str = str(uuid.uuid4())) -> StateMachineScenario:
+                          scenario_root_id: str = str(uuid.uuid4())) -> StateMachineScenario:
 
         state_machine_def = (state_machine_definition_repository
                              .get(state_machine_def_group_name, state_machine_def_name))
         state_machine = cls.new_from_def(state_machine_def, state_machine_definition_repository,
-                                         state_machine_scenario_repository, scenario_group_id)
+                                         state_machine_scenario_repository, scenario_root_id)
         return state_machine
 
     @classmethod
     def new_from_def(cls, state_machine_def: StateMachineDefinition,
                      state_machine_definition_repository: StateMachineDefinitionRepository,
                      state_machine_scenario_repository: StateMachineScenarioRepository,
-                     scenario_group_id: str = str(uuid.uuid4())) -> StateMachineScenario:
+                     scenario_root_id: str = str(uuid.uuid4())) -> StateMachineScenario:
         start_state_scenario = StateScenarioDescription(
             state_scenario_builder_full_class_name=state_machine_def.state_scenario_builder_full_class_name,
             state_def=state_machine_def.get_start_state_def(),
             state_machine_definition_repository=state_machine_definition_repository,
             state_machine_repository=state_machine_scenario_repository,
-            scenario_group_id=scenario_group_id,
+            scenario_root_id=scenario_root_id,
             scenario_id=str(uuid.uuid4())
         )
         state_machine = StateMachineScenario(
             scenario_id=str(uuid.uuid4()),
-            scenario_group_id=scenario_group_id,
+            scenario_root_id=scenario_root_id,
             state_machine_def_group_name=state_machine_def.group_def_name,
             state_machine_def_name=state_machine_def.name,
             current_state_scenario_des=start_state_scenario,
@@ -496,7 +496,7 @@ class StateMachineContextBuilder:
         }
 
     @classmethod
-    def state_machine_scenario_from_dict(cls, scenario_group_id: str, scenario_id: str, data: Dict[str, Any],
+    def state_machine_scenario_from_dict(cls, scenario_root_id: str, scenario_id: str, data: Dict[str, Any],
                                          state_machine_definition_repository: StateMachineDefinitionRepository,
                                          state_machine_scenario_repository: StateMachineScenarioRepository
                                          ) -> StateMachineScenario:
@@ -511,7 +511,7 @@ class StateMachineContextBuilder:
             state_def=current_state_def,
             state_machine_definition_repository=state_machine_definition_repository,
             state_machine_repository=state_machine_scenario_repository,
-            scenario_group_id=scenario_group_id,
+            scenario_root_id=scenario_root_id,
             scenario_id=current_state_scenario_date["scenario_id"])
 
         history = [StateScenarioDescription(
@@ -519,13 +519,13 @@ class StateMachineContextBuilder:
             state_def=next(sd for sd in state_machine_def.states_def if sd.name == one_history_data["state_def_name"]),
             state_machine_definition_repository=state_machine_definition_repository,
             state_machine_repository=state_machine_scenario_repository,
-            scenario_group_id=scenario_group_id,
+            scenario_root_id=scenario_root_id,
             scenario_id=one_history_data["scenario_id"],
         ) for one_history_data in data["history"]]
 
         state_machine = StateMachineScenario(
             scenario_id=scenario_id,
-            scenario_group_id=scenario_group_id,
+            scenario_root_id=scenario_root_id,
             state_machine_def_group_name=data["state_machine_def_group_name"],
             state_machine_def_name=data["state_machine_def_name"],
             current_state_scenario_des=current_state_scenario,
@@ -541,7 +541,7 @@ class StateMachineContextBuilder:
         return json.dumps(state_machine_dict, indent=2, ensure_ascii=False)
 
     @classmethod
-    def state_machine_scenario_from_json(cls, scenario_group_id: str, scenario_id: str,
+    def state_machine_scenario_from_json(cls, scenario_root_id: str, scenario_id: str,
                                          json_text: str,
                                          state_machine_definition_repository: StateMachineDefinitionRepository,
                                          state_machine_scenario_repository: StateMachineScenarioRepository
@@ -549,7 +549,7 @@ class StateMachineContextBuilder:
         data = json.loads(json_text)
         # 状态机的name和状态机json节点是kv关系，json_text只有状态机自身的信息，没有group_id和id的信息，所以，要把group_id和id独立传入，
         # 所以，TODO：key方式存储name,也许不是最好的方式，待改进
-        return cls.state_machine_scenario_from_dict(scenario_group_id, scenario_id, data, state_machine_definition_repository,
+        return cls.state_machine_scenario_from_dict(scenario_root_id, scenario_id, data, state_machine_definition_repository,
                                                     state_machine_scenario_repository)
 
     @classmethod
@@ -567,19 +567,19 @@ class StateMachineContextBuilder:
                                       state_machine_scenario_repository: StateMachineScenarioRepository
                                       ) -> dict[str, dict[str, StateMachineScenario]]:
         result = {}
-        for scenario_group_id in data.keys():
-            group_data = data.get(scenario_group_id)
+        for scenario_root_id in data.keys():
+            group_data = data.get(scenario_root_id)
             root_scenario = {}
             for state_machine_id in group_data.keys():
                 state_machine_data = group_data.get(state_machine_id)
 
-                state_machine = StateMachineContextBuilder.state_machine_scenario_from_dict(scenario_group_id,
+                state_machine = StateMachineContextBuilder.state_machine_scenario_from_dict(scenario_root_id,
                                                                                             state_machine_id,
                                                                                             state_machine_data,
                                                                                             state_machine_definition_repository,
                                                                                             state_machine_scenario_repository)
                 root_scenario[state_machine_id] = state_machine
-            result[scenario_group_id] = root_scenario
+            result[scenario_root_id] = root_scenario
         return result
 
 

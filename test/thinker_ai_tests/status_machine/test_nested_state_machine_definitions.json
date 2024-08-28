@@ -9,7 +9,6 @@
             "is_start":true,
             "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
             "description": "what you should do in this state, one short phrase or sentence",
-            "task_type": "task type of this state to do, should be one of Available Task Types",
             "executors": [
                 {
                   "on_command":"inner_start_command",
@@ -44,7 +43,6 @@
             "is_start":true,
             "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
             "description": "what you should do in this state, one short phrase or sentence",
-            "task_type": "task type of this state to do, should be one of Available Task Types",
             "executors": [
                 {
                   "on_command":"middle_start_command",
@@ -80,7 +78,6 @@
             "is_start":true,
             "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
             "description": "what you should do in this state, one short phrase or sentence",
-            "task_type": "task type of this state to do, should be one of Available Task Types",
             "executors": [
               {
                 "on_command":"outer_start_command",

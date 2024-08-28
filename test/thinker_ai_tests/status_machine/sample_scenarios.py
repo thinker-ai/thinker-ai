@@ -1,6 +1,6 @@
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository, StateDefinition, BaseStateDefinition
 from thinker_ai.status_machine.state_machine_scenario import BaseStateScenario, StateMachineScenarioRepository, StateScenario, \
-    CompositeStateScenario, DefaultStateContextBuilder
+    CompositeStateScenario, DefaultStateScenarioBuilder
 
 
 class EndSampleContext(BaseStateScenario):
@@ -15,7 +15,7 @@ class SampleContext(StateScenario):
 
 class CompositeSampleContext(CompositeStateScenario):
     def __init__(self, id: str, state_def: StateDefinition,
-                 state_scenario_builder_class: DefaultStateContextBuilder, state_machine_scenario_repository: StateMachineScenarioRepository,
+                 state_scenario_builder_class: DefaultStateScenarioBuilder, state_machine_scenario_repository: StateMachineScenarioRepository,
                  state_machine_definition_repository: StateMachineDefinitionRepository):
         super().__init__(id, state_def, state_scenario_builder_class, state_machine_scenario_repository,
                          state_machine_definition_repository)

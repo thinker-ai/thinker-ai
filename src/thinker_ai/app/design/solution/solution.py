@@ -19,3 +19,15 @@ class Solution(Resource, BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+
+    def to_dict(self)->dict:
+        result = dict()
+        result['user_id'] = self.user_id
+        result['name'] = self.name
+        result['description'] = self.description
+        result['solution_tree'] = self.solution_tree.to_dict()
+        result['resources'] = self.resources
+        result['mindsets'] = self.mindsets
+        result['criterion'] = self.criterion
+        return result
+
