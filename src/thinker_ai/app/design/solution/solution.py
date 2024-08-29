@@ -8,7 +8,7 @@ from thinker_ai.app.design.solution.solution_tree_node_facade import SolutionTre
 from thinker_ai.app.mindset.mindset import Mindset
 from thinker_ai.common.resource import Resource
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinition, StateMachineDefinitionBuilder, \
-    StateDefinition
+    StateDefinition, CompositeStateDefinition
 
 facade = SolutionTreeNodefacade()
 
@@ -63,12 +63,10 @@ class Solution(Resource, BaseModel):
                         "name": child.name,
                         "description": child.description,
                     }
-                    if child.is_composite:
-                        child_state_machine_definition = state_machine_definition_repository.get(self.name, child.name)
-                        if child_state_machine_definition:
-                            children_tree = self.build_menu_tree(child_state_machine_definition)
-                            child_node["children"] = children_tree
-                        else:
-                            child_node["children"] = []
+                    if isinstance(child, CompositeStateDefinition):
+                        children_tree = self.build_menu_tree(child.state_machine_definition)
+                        child_node["children"] = children_tree
+                    else:
+                        child_node["children"] = []
                     menu_tree.append(child_node)
         return menu_tree
