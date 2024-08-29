@@ -1,6 +1,6 @@
 import os
 import unittest
-from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder, ExecutorRegister
+from thinker_ai.status_machine.state_machine_scenario import StateMachineScenarioBuilder, ExecutorRegister
 from thinker_ai.status_machine.state_machine_scenario_repository import DefaultStateMachineScenarioRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_executors import StartExecutor, MiddleExecutor
@@ -16,7 +16,7 @@ class TestSimpleStateMachine(unittest.TestCase):
                                                                                       'test_simple_state_machine_definitions.json')
         self.scenario_repo = DefaultStateMachineScenarioRepository.from_file(self.base_dir,
                                                                            'test_simple_state_machine_scenarios.json',
-                                                                             StateMachineContextBuilder(),
+                                                                             StateMachineScenarioBuilder(),
                                                                              self.definition_repo)
         # 读取状态机实例
         self.state_machine = self.scenario_repo.get("group_scenario","simple_scenario")

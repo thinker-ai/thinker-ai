@@ -2,16 +2,18 @@ import json
 from abc import abstractmethod, ABC
 from typing import List, Dict, Optional, Any, Set, Tuple
 
-from thinker_ai.status_machine.base import Command, Event, ExecutorDescription
+from thinker_ai.status_machine.base import Command, Event, ExecutorDescription, EventDes
 
 
 class BaseStateDefinition:
     def __init__(self,
                  name: str,
+                 label: str,
                  description: str,
                  state_scenario_class_name: str
                  ):
         self.name = name
+        self.label = label
         self.description = description
         self.state_scenario_class_name = state_scenario_class_name
 
@@ -20,21 +22,22 @@ class BaseStateDefinition:
 
 
 class StateDefinition(BaseStateDefinition):
-    def __init__(self, name: str, group_def_name: str, description: str,
+    def __init__(self, name: str, label: str, group_def_name: str, description: str,
                  state_scenario_class_name: str,
-                 executors_des: Set[ExecutorDescription], result_events: Set[str], is_start: bool = False,
+                 executors_des: Set[ExecutorDescription], result_events: Set[EventDes], is_start: bool = False,
                  is_composite: bool = False):
-        super().__init__(name, description, state_scenario_class_name)
+        super().__init__(name, label, description, state_scenario_class_name)
         self.group_def_name = group_def_name
         self.is_start = is_start
-        self.events: Set[str] = result_events
+        self.events: Set[EventDes] = result_events
         self.executors_des: Set[ExecutorDescription] = executors_des
         self.is_composite = is_composite
 
 
 class Transition:
-    def __init__(self, event: str, source: BaseStateDefinition, target: BaseStateDefinition):
+    def __init__(self, event: str, label: str, source: BaseStateDefinition, target: BaseStateDefinition):
         self.event = event
+        self.label = label
         self.source = source
         self.target = target
 
@@ -47,7 +50,7 @@ class StateMachineDefinition:
                  transitions: Set[Transition],
                  state_scenario_builder_full_class_name: Optional[str],
                  is_root: bool = False,
-                 inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
+                 inner_end_state_to_outer_event: Optional[Dict[str, EventDes]] = None):
         self.name = name
         self.state_scenario_builder_full_class_name = state_scenario_builder_full_class_name
         self.group_def_name = group_def_name
@@ -296,14 +299,15 @@ class StateMachineDefinitionBuilder:
     @classmethod
     def to_dict(cls, state_machine_def: StateMachineDefinition) -> Dict[str, Any]:
         result = {
-            "is_root": state_machine_def.is_root,
             "state_scenario_builder_full_class_name": state_machine_def.state_scenario_builder_full_class_name,
             "states_def": [cls._state_def_to_dict(sd) for sd in
                            state_machine_def.states_def],
             "transitions": [cls._transition_to_dict(t) for t in
                             state_machine_def.transitions],
         }
-        if not state_machine_def.is_root and state_machine_def.inner_end_state_to_outer_event:
+        if state_machine_def.is_root:
+            result["is_root"]=state_machine_def.is_root
+        elif state_machine_def.inner_end_state_to_outer_event:
             result["inner_end_state_to_outer_event"] = state_machine_def.inner_end_state_to_outer_event
         return {state_machine_def.name: result}
 
@@ -315,17 +319,20 @@ class StateMachineDefinitionBuilder:
                               "pre_check_list": a.pre_check_list,
                               "post_check_list": a.post_check_list
                               } for a in state_def.executors_des]
+            events_des = {event.name: event.label for event in state_def.events}
             return {
                 "name": state_def.name,
+                "label": state_def.label,
                 "description": state_def.description,
                 "state_scenario_class_name": state_def.state_scenario_class_name,
                 "executors": executors_des,
-                "events": list(state_def.events),
+                "events": events_des,
                 "is_start": state_def.is_start
             }
         elif isinstance(state_def, BaseStateDefinition):
             return {
                 "name": state_def.name,
+                "label": state_def.label,
                 "description": state_def.description,
                 "state_scenario_class_name": state_def.state_scenario_class_name
             }
@@ -339,19 +346,23 @@ class StateMachineDefinitionBuilder:
                                               state_def_name=data["name"],
                                               exist_state_machine_names=exist_state_machine_names)
         if data.get("executors"):
+            events_des = {EventDes(name=event_name, label=event_label)
+                          for event_name, event_label in data.get("events", {}).items()}
             return StateDefinition(
                 name=data["name"],
+                label=data["label"],
                 group_def_name=group_def_name,
                 state_scenario_class_name=data["state_scenario_class_name"],
                 description=data.get("description", ""),
                 executors_des={ExecutorDescription(a) for a in data["executors"]},
-                result_events=set(data["events"]),
+                result_events=events_des,
                 is_composite=is_composite,
                 is_start=data.get("is_start")
             )
         else:
             return BaseStateDefinition(
                 name=data["name"],
+                label=data["label"],
                 description=data.get("description", ""),
                 state_scenario_class_name=data.get("state_scenario_class_name")
             )
@@ -367,6 +378,7 @@ class StateMachineDefinitionBuilder:
     def _transition_to_dict(cls, transition: Transition) -> Dict[str, str]:
         return {
             "event": transition.event,
+            "label": transition.label,
             "source": transition.source.name,
             "target": transition.target.name
         }
@@ -392,7 +404,7 @@ class StateMachineDefinitionBuilder:
         if target is None:
             raise ValueError(f"Target state {data['target']} not found")
 
-        return Transition(event=data["event"], source=source, target=target)
+        return Transition(event=data["event"],label=data["label"],source=source, target=target)
 
 
 class StateMachineDefinitionRepository(ABC):

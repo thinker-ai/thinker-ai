@@ -2,68 +2,76 @@
   "group_name": {
     "state_machine_definition_name": {
       "is_root": true,
-      "description": "what you should do in this state machine, one short phrase or sentence",
+      "label": "the label of the state_machine_definition_name,be consistent with user's local language",
+      "description": "what you should do in this state machine, one short phrase or sentence,be consistent with user's local language",
       "state_scenario_builder_full_class_name":"Full class name for users to create custom state scenarios",
       "states_def": [
         {
           "name": "start_state_name",
+          "label": "the label of the start_state_name,be consistent with user's local language",
           "is_start": true,
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends StateContex or CompositeStateContext class",
-          "description": "what you should do in this state scenario, one short phrase or sentence",
+          "description": "what you should do in this state scenario, one short phrase or sentence,be consistent with user's local language",
           "executors": [
             {
               "on_command": "The on_command parameter of the handle method of Action interface",
-              "pre_check_list": "Checklist to ensure that all conditions and resources for implementation are in place",
+              "pre_check_list": ["Checklist to ensure that all conditions and resources for implementation are in place"],
               "full_class_name": "≈he full class name in package '{{state_machine_name}}.{{state_name}}.executors' implements the Action interface",
-              "post_check_list": "Checklist to ensure that all implementation results meet expectations"
+              "post_check_list": ["Checklist to ensure that all implementation results meet expectations"]
             }
           ],
-          "events": [
-            "start_command_handled_event_name"
-          ]
+          "events": {
+            "start_command_handled_event_name":"start_command_handled_event_label,be consistent with user's local language"
+          }
         },
         {
           "name": "middle_state_name",
+          "label": "the label of the middle_state_name,be consistent with user's local language",
           "is_start": false,
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends StateContex or CompositeStateContext class",
-          "description": "what you should do in this state scenario, one short phrase or sentence",
+          "description": "what you should do in this state scenario, one short phrase or sentence,be consistent with user's local language",
           "executors": [
             {
               "on_command": "the on_command parameter of the handle method of Action interface",
-              "pre_check_list": "Checklist to ensure that all conditions and resources for implementation are in place",
+              "pre_check_list": ["Checklist to ensure that all conditions and resources for implementation are in place"],
               "full_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.executors' implements the Action interface",
-              "post_check_list": "Checklist to ensure that all implementation results meet expectations"
+              "post_check_list": ["Checklist to ensure that all implementation results meet expectations"]
             }
           ],
-          "events": [
-            "middle_command_handled_event_name_1",
-            "middle_command_handled_event_name_2"
-          ]
+          "events": {
+            "middle_command_handled_event_name_1": "middle_command_handled_event_label_1,be consistent with user's local language",
+            "middle_command_handled_event_name_2": "middle_command_handled_event_label_2,be consistent with user's local language"
+          }
         },
         {
           "name": "end_state_name_1",
-          "description": "description of this state scenario, one short phrase or sentence",
+          "label": "the label of the end_state_name_1,be consistent with user's local language",
+          "description": "description of this state scenario, one short phrase or sentence,be consistent with user's local language",
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends BaseStateContext class"
         },
         {
           "name": "end_state_name_2",
-          "description": "description of this state scenario, one short phrase or sentence",
+          "label": "the label of the end_state_name_2,be consistent with user's local language",
+          "description": "description of this state scenario, one short phrase or sentence,be consistent with user's local language",
           "state_scenario_class_name": "the full class name in package '{{state_machine_name}}.{{state_name}}.scenarios' of the state scenario that extends BaseStateContext class"
         }
       ],
       "transitions": [
         {
           "event": "start_command_handled_event_name",
+          "label": "the label of the start_command_handled_event_name,be consistent with user's local language",
           "source": "start_state_name",
           "target": "middle_state_name"
         },
         {
           "event": "middle_command_handled_event_name_1",
+          "label": "the label of the middle_command_handled_event_name_1,be consistent with user's local language",
           "source": "middle_state_name",
           "target": "end_state_name_1"
         },
         {
           "event": "middle_command_handled_event_name_2",
+          "label": "the label of the middle_command_handled_event_name_2,be consistent with user's local language",
           "source": "middle_state_name",
           "target": "end_state_name_2"
         }

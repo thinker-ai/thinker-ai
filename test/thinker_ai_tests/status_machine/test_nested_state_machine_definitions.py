@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder, ExecutorRegister
+from thinker_ai.status_machine.state_machine_scenario import StateMachineScenarioBuilder, ExecutorRegister
 from thinker_ai.status_machine.state_machine_scenario_repository import DefaultStateMachineScenarioRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 from thinker_ai_tests.status_machine.sample_executors import InnerStartExecutor, MiddleStartAction, OuterStartAction
@@ -16,7 +16,7 @@ class TestNestedStateMachine(unittest.TestCase):
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
         self.scenario_repo = DefaultStateMachineScenarioRepository.from_file(self.base_dir, self.scenarios_file_name,
-                                                                             StateMachineContextBuilder(),
+                                                                             StateMachineScenarioBuilder(),
                                                                              self.definition_repo)
         ExecutorRegister.register_executor(InnerStartExecutor.get_full_class_name(), InnerStartExecutor)
         ExecutorRegister.register_executor(MiddleStartAction.get_full_class_name(), MiddleStartAction)

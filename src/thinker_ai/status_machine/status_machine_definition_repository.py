@@ -1,7 +1,7 @@
 import json
 import os
 from json import JSONDecodeError
-from typing import Dict, Any, Set
+from typing import Dict, Any, Set, Optional
 from thinker_ai.status_machine.state_machine_definition import (StateMachineDefinition,
                                                                 StateMachineDefinitionRepository,
                                                                 StateMachineDefinitionBuilder)
@@ -72,8 +72,9 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
             return set(state_machine_def_group.keys())
+        return set()
 
-    def get(self, state_machine_def_group_name: str, state_machine_name: str) -> StateMachineDefinition:
+    def get(self, state_machine_def_group_name: str, state_machine_name: str) -> Optional[StateMachineDefinition]:
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
             data = state_machine_def_group.get(state_machine_name)
@@ -83,9 +84,12 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
                     state_machine_def_name=state_machine_name,
                     state_machine_def_dict=data,
                     exist_state_machine_names=self.get_state_machine_names(state_machine_def_group_name)))
+        return None
 
     def set_def(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
         state_machine_def_dict = StateMachineDefinitionBuilder.to_dict(state_machine_def)
+        if state_machine_def.is_root:
+            state_machine_def_dict[list(state_machine_def_dict.keys())[0]]['is_root'] = True
         self.set_dict(state_machine_def_group_name,state_machine_def_dict)
 
     def set_dict(self, state_machine_def_group_name: str, state_machine_def_dict: dict):

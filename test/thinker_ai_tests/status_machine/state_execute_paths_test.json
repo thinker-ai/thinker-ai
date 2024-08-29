@@ -1,119 +1,142 @@
 {
   "paths_test": {
     "example_sm": {
-        "is_root": true,
-        "description": "Example description",
-        "states_def": [
-          {
-            "name": "start",
-            "is_start": true,
-            "state_scenario_class_name": "XXXContext",
-            "description": "Start state",
-            "executors": [
-              {
-                "on_command": "start_to_A",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              }
-            ],
-            "events": ["start_to_A_result_success"]
-          },
-          {
-            "name": "A",
-            "is_start": false,
-            "state_scenario_class_name": "XXXContext",
-            "description": "State A description",
-            "executors": [
-              {
-                "on_command": "A_to_B",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              }
-            ],
-            "events": ["A_to_B_result_success"]
-          },
-          {
-            "name": "B",
-            "is_start": false,
-            "state_scenario_class_name": "XXXContext",
-            "description": "State B description",
-            "executors": [
-              {
-                "on_command":"B_to_C",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              },
-              {
-                "on_command": "B_to_D",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              }
-            ],
-            "events": ["B_to_C_result_success","B_to_D_result_success"]
-          },
-          {
-            "name": "C",
-            "is_start": false,
-            "state_scenario_class_name": "XXXContext",
-            "description": "State C description",
-            "executors": [
-              {
-                "on_command": "C_to_A",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              }
-            ],
-            "events": ["C_to_A_result_success"]
-          },
-          {
-            "name": "D",
-            "is_start": false,
-            "state_scenario_class_name": "XXXContext",
-            "description": "State D description",
-            "executors": [
-              {
-                "on_command": "D_to_E",
-                "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-              }
-            ],
-            "events": ["D_to_E_result_success"]
-          },
-          {
-            "name": "E",
-            "is_start": false,
-            "state_scenario_class_name": "XXXContext",
-            "description": "State E description",
-            "executors": [],
-            "events": []
+      "is_root": true,
+      "description": "Example description",
+      "states_def": [
+        {
+          "name": "start",
+          "label": "开始",
+          "is_start": true,
+          "state_scenario_class_name": "XXXContext",
+          "description": "Start state",
+          "executors": [
+            {
+              "on_command": "start_to_A",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "start_to_A_result_success": "执行成功，进入A状态"
           }
-        ],
-        "transitions": [
-          {
-            "event": "start_to_A_result_success",
-            "source": "start",
-            "target": "A"
-          },
-          {
-            "event": "A_to_B_result_success",
-            "source": "A",
-            "target": "B"
-          },
-          {
-            "event": "B_to_C_result_success",
-            "source": "B",
-            "target": "C"
-          },
-          {
-            "event": "C_to_A_result_success",
-            "source": "C",
-            "target": "A"
-          },
-          {
-            "event": "B_to_D_result_success",
-            "source": "B",
-            "target": "D"
-          },
-          {
-            "event": "D_to_E_result_success",
-            "source": "D",
-            "target": "E"
+        },
+        {
+          "name": "A",
+          "label": "状态A",
+          "is_start": false,
+          "state_scenario_class_name": "XXXContext",
+          "description": "State A description",
+          "executors": [
+            {
+              "on_command": "A_to_B",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "A_to_B_result_success": "执行成功，进入B状态"
           }
-        ]
-      }
+        },
+        {
+          "name": "B",
+          "label": "状态B",
+          "is_start": false,
+          "state_scenario_class_name": "XXXContext",
+          "description": "State B description",
+          "executors": [
+            {
+              "on_command": "B_to_C",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            },
+            {
+              "on_command": "B_to_D",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "B_to_C_result_success": "执行成功，进入C状态",
+            "B_to_D_result_success": "执行成功，进入D状态"
+          }
+        },
+        {
+          "name": "C",
+          "label": "状态C",
+          "is_start": false,
+          "state_scenario_class_name": "XXXContext",
+          "description": "State C description",
+          "executors": [
+            {
+              "on_command": "C_to_A",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "C_to_A_result_success": "执行成功，进入A状态"
+          }
+        },
+        {
+          "name": "D",
+          "label": "状态D",
+          "is_start": false,
+          "state_scenario_class_name": "XXXContext",
+          "description": "State D description",
+          "executors": [
+            {
+              "on_command": "D_to_E",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "D_to_E_result_success": "执行成功，进入E状态"
+          }
+        },
+        {
+          "name": "E",
+          "label": "状态E",
+          "is_start": false,
+          "state_scenario_class_name": "XXXContext",
+          "description": "State E description",
+          "executors": [],
+          "events": {}
+        }
+      ],
+      "transitions": [
+        {
+          "event": "start_to_A_result_success",
+          "label": "开始到A的转换",
+          "source": "start",
+          "target": "A"
+        },
+        {
+          "event": "A_to_B_result_success",
+          "label": "A到B的转换",
+          "source": "A",
+          "target": "B"
+        },
+        {
+          "event": "B_to_C_result_success",
+          "label": "B到C的转换",
+          "source": "B",
+          "target": "C"
+        },
+        {
+          "event": "C_to_A_result_success",
+          "label": "C到A的转换",
+          "source": "C",
+          "target": "A"
+        },
+        {
+          "event": "B_to_D_result_success",
+          "label": "B到D的转换",
+          "source": "B",
+          "target": "D"
+        },
+        {
+          "event": "D_to_E_result_success",
+          "label": "D到E的转换",
+          "source": "D",
+          "target": "E"
+        }
+      ]
+    }
   }
 }

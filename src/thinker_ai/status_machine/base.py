@@ -26,6 +26,12 @@ def from_class_name(cls: Type[T], full_class_name: str, **kwargs: Any) -> T:
     return instance
 
 
+class EventDes:
+    def __init__(self, name: str, label: str):
+        self.name = name
+        self.label = label
+
+
 class Event:
     def __init__(self, name: str, id: Optional[str] = str(uuid.uuid4()), publisher_id: Optional[str] = None,
                  payload: Optional[Any] = None):
@@ -34,9 +40,9 @@ class Event:
         self.publisher_id = publisher_id
         self.payload = payload
 
-
 class Command:
-    def __init__(self, name: str, target: str, id: Optional[str] = str(uuid.uuid4()), payload: Optional[Any] = None):
+    def __init__(self, name: str, target: str, id: Optional[str] = str(uuid.uuid4()),
+                 payload: Optional[Any] = None):
         self.id = id
         self.name = name
         self.target = target

@@ -3,7 +3,7 @@ import unittest
 from typing import List, Tuple
 
 from thinker_ai.status_machine.state_machine_definition import BaseStateDefinition, Command
-from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder
+from thinker_ai.status_machine.state_machine_scenario import StateMachineScenarioBuilder
 from thinker_ai.status_machine.state_machine_scenario_repository import DefaultStateMachineScenarioRepository
 from thinker_ai.status_machine.status_machine_definition_repository import DefaultBasedStateMachineDefinitionRepository
 
@@ -14,7 +14,7 @@ class StateExecutePathsTest(unittest.TestCase):
         self.definitions_file_name = 'state_execute_paths_test.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
-        self.scenario_repo = DefaultStateMachineScenarioRepository.new(StateMachineContextBuilder(),
+        self.scenario_repo = DefaultStateMachineScenarioRepository.new(StateMachineScenarioBuilder(),
                                                                        self.definition_repo)
         self.state_machine_definition = self.definition_repo.get_root("paths_test")
 
@@ -59,11 +59,11 @@ class StateExecutePathsTest(unittest.TestCase):
             self.assertTrue(plan in expected_path)
 
     def test_get_execute_commands_in_order(self):
-        state_machine = StateMachineContextBuilder.new_from_def_name("paths_test",
+        state_machine = StateMachineScenarioBuilder.new_from_def_name("paths_test",
                                                                       "example_sm",
-                                                                     self.definition_repo,
-                                                                     self.scenario_repo
-                                                                     )
+                                                                      self.definition_repo,
+                                                                      self.scenario_repo
+                                                                      )
         results: list[tuple[list[Command], bool]] = state_machine.self_validate()
         success = True
         for command_list, result in results:

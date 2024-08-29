@@ -50,6 +50,18 @@
             border-radius: 4px; /* 圆角边框 */
             resize: none
         }
+        #problem{
+            padding: 10px;
+            width: 100%;
+            gap: 10px;
+        }
+        #problem-label{
+            width: 10%;
+        }
+        #problem-title{
+            width: 90%;
+        }
+
         #problem-submit{
             width: 50%;
             align-self: center;
@@ -89,7 +101,10 @@
 </head>
 <body>
     <div id="editor-container">
-        <input id="problem-title" title="问题标题" placeholder="请输入问题标题...">
+        <div id="problem">
+            <label id="problem-label">问题标题</label>
+            <input id="problem-title" placeholder="请输入问题标题...">
+        </div>
         <textarea id="problem-description" placeholder="请输入问题描述..."></textarea>
         <button id="problem-submit" onclick="submitProblem()">提交</button>
     </div>
@@ -128,8 +143,29 @@
     <script type="text/javascript" src="../../../script/design/floating-panel.js"></script>
     <script type="text/javascript">
         function submitProblem() {
-            // 提交问题描述逻辑，这里模拟提交后更新方案分解
-            showSolution(); // 提交问题后自动显示方案分解菜单和目录树
+            const params={
+                name:document.getElementById('problem-title').value,
+                description:document.getElementById('problem-description').value,
+            }
+             makeRequest(
+                {
+                    method: 'post',
+                    url: '/design/one/solution/submit',
+                    params: params
+                },
+                {
+                    onSuccess: function (clientParams, responseParams) {
+                        showPage(responseParams);
+                    },
+                    onError: function (error) {
+                        alert('Error: ' + error.message);
+                    },
+                    clientParams: {},
+                    responseParamsExtractor: function (response) {
+                        return response.data;
+                    }
+                }
+            );
         }
         function updateContent(content) {
             // 显示并更新详细内容
@@ -139,23 +175,25 @@
         }
 
         function showData() {
-                loadAxios().then(function(axiosInstance) {
-                axiosInstance.get('/design/one/solution/current')
-                    .then(function(response) {
-                        if (response.status === 200) {
-                            showPage(response.data)
-                        } else {
-                            alert('HTTP error! status: ' + response.status);
-                            throw new Error('HTTP error! status: ' + response.status);
+                makeRequest(
+                    {
+                        method: 'get',
+                        url: '/design/one/solution/current',
+                        params: {}
+                    },
+                    {
+                        onSuccess: function (clientParams, responseParams) {
+                            showPage(responseParams);
+                        },
+                        onError: function (error) {
+                            alert('Error: ' + error.message);
+                        },
+                        clientParams: {},
+                        responseParamsExtractor: function (response) {
+                            return response.data;
                         }
-                    }).catch(function(e) {
-                        alert(e);
-                        console.error('Error:', e);
-                    });
-            }).catch(function(error) {
-                alert('Failed to load axios: ' + error.message);
-                console.error('Error:', error);
-            });
+                    }
+                );
         }
         function showPage(data) {
               showProblem(data);
@@ -192,7 +230,7 @@
 
                     const nodeText = document.createElement('span');
                     nodeText.className = 'node-text';
-                    nodeText.textContent = nodeData.title;
+                    nodeText.textContent = nodeData.name;
                     nodeText.onclick = function() {
                         updateContent(nodeData.description);
                     };
@@ -217,7 +255,7 @@
 
                     const nodeText = document.createElement('span');
                     nodeText.className = 'node-text';
-                    nodeText.textContent = nodeData.title;
+                    nodeText.textContent = nodeData.name;
                     nodeText.onclick = function() {
                         updateContent(nodeData.description);
                     };

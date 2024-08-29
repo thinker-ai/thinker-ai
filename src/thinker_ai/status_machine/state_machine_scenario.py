@@ -123,7 +123,12 @@ class StateScenario(BaseStateScenario):
     def assert_event(self, event: Event):
         if not event:
             raise RuntimeError(f'Event is None')
-        if event.name not in self.state_def.events:
+        found = False
+        for event_def in self.state_def.events:
+            if event.name == event_def.name:
+                found = True
+                break
+        if not found:
             raise RuntimeError(f'Illegal event "{event.name}" for state {self.state_def.name}')
 
     def handle(self, command: Command, outer_state_machine: 'StateMachineScenario', **kwargs) -> ExecutorResult:
@@ -549,7 +554,8 @@ class StateMachineScenarioBuilder:
         data = json.loads(json_text)
         # 状态机的name和状态机json节点是kv关系，json_text只有状态机自身的信息，没有group_id和id的信息，所以，要把group_id和id独立传入，
         # 所以，TODO：key方式存储name,也许不是最好的方式，待改进
-        return cls.state_machine_scenario_from_dict(scenario_root_id, scenario_id, data, state_machine_definition_repository,
+        return cls.state_machine_scenario_from_dict(scenario_root_id, scenario_id, data,
+                                                    state_machine_definition_repository,
                                                     state_machine_scenario_repository)
 
     @classmethod

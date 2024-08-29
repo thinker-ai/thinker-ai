@@ -1,52 +1,62 @@
 {
-  "group_simple":{
-      "test_state_machine": {
-          "description": "",
-          "state_scenario_builder_full_class_name":"thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
-          "states_def": [
+  "group_simple": {
+    "test_state_machine": {
+      "description": "",
+      "label": "测试状态机",
+      "state_scenario_builder_full_class_name": "thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
+      "states_def": [
+        {
+          "name": "start",
+          "label": "开始",
+          "is_start": true,
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "executors": [
             {
-              "name": "start",
-              "is_start":true,
-              "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
-              "description": "what you should do in this state, one short phrase or sentence",
-              "executors": [
-                  {
-                    "on_command":"start_command",
-                    "full_class_name":"thinker_ai_tests.status_machine.sample_executors.StartAction"
-                  }
-              ],
-              "events": ["start_command_result_success"]
-            },
-            {
-              "name": "middle",
-              "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
-              "description": "what you should do in this state, one short phrase or sentence",
-              "executors": [
-                  {
-                    "on_command":"middle_command",
-                    "full_class_name":"thinker_ai_tests.status_machine.sample_executors.MiddleAction"
-                  }
-              ],
-              "events": ["middle_command_result_success"]
-            },
-            {
-              "name": "end",
-              "description": "what you should do in this state, one short phrase or sentence",
-              "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
+              "on_command": "start_command",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.StartAction"
             }
           ],
-          "transitions": [
+          "events": {
+            "start_command_result_success": "开始命令执行成功"
+          }
+        },
+        {
+          "name": "middle",
+          "label": "中间",
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "executors": [
             {
-              "event": "start_command_result_success",
-              "source": "start",
-              "target": "middle"
-            },
-            {
-              "event": "middle_command_result_success",
-              "source": "middle",
-              "target": "end"
+              "on_command": "middle_command",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.MiddleAction"
             }
-          ]
+          ],
+          "events": {
+            "middle_command_result_success": "中间命令执行成功"
+          }
+        },
+        {
+          "name": "end",
+          "label": "结束",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
         }
+      ],
+      "transitions": [
+        {
+          "event": "start_command_result_success",
+          "label": "从开始到中间的转换",
+          "source": "start",
+          "target": "middle"
+        },
+        {
+          "event": "middle_command_result_success",
+          "label": "从中间到结束的转换",
+          "source": "middle",
+          "target": "end"
+        }
+      ]
+    }
   }
 }

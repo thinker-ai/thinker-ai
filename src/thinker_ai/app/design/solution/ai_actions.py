@@ -32,13 +32,13 @@ class PlanAction(Action):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    async def run(self, goal: str, task_name, instruction: str, exec_logger: Memory) -> str:
+    async def run(self, goal_name: str, task_name, instruction: str, exec_logger: Memory) -> str:
         if not task_name or not instruction:
             raise Exception("task_name and instruction must be provided")
         create_or_update = "create"
-        if not goal:
-            goal = task_name
-        state_machine_def = state_machine_definition_repository.get(goal, task_name)
+        if not goal_name:
+            goal_name = task_name
+        state_machine_def = state_machine_definition_repository.get(goal_name, task_name)
         if state_machine_def:
             create_or_update = "update"
 
@@ -65,18 +65,19 @@ class PlanAction(Action):
          {exist_status_scenario}
         ```
         {guidance}
+        IMPORTANT: The original content of the user input should remain unchanged in the output, do not translate, in addition, you generate the state machine name, state name and its description must also be consistent with the user's local language at the time of input, the rest of the part of the use of the English output, in particular, the class name, method name, parameter name and so on will directly become the part of the code itself must be used entirely in English, and can not contain the user's local language
         """
 
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])
         prompt = PROMPT_TEMPLATE.format(
             plan_name=task_name,
-            goal=goal,
+            goal=goal_name,
             create_or_update=create_or_update,
             instruction=instruction,
             scenario="\n".join([str(ct) for ct in exec_logger.get()]),
             task_type_desc=task_type_desc,
-            exist_status_definition=replace_curly_braces(state_machine_definition_repository.group_to_json(goal)),
-            exist_status_scenario=replace_curly_braces(state_machine_scenario_repository.group_to_json(goal)),
+            exist_status_definition=replace_curly_braces(state_machine_definition_repository.group_to_json(goal_name)),
+            exist_status_scenario=replace_curly_braces(state_machine_scenario_repository.group_to_json(goal_name)),
             guidance=TaskType.STATE_MACHINE_PLAN.value.guidance
         )
         rsp = await self._aask(prompt)

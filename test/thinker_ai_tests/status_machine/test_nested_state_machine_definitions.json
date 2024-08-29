@@ -1,104 +1,122 @@
 {
   "group_nested": {
     "outer_sm.outer_start.middle_start": {
-        "description": "",
-        "state_scenario_builder_full_class_name":"thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
-        "states_def": [
-          {
-            "name": "inner_start",
-            "is_start":true,
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "executors": [
-                {
-                  "on_command":"inner_start_command",
-                  "full_class_name":"thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
-                }
-            ],
-            "events": ["inner_start_command_result_success"]
-          },
-          {
-            "name": "inner_end",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
+      "description": "",
+      "label": "外部状态机.外部开始.中间开始",
+      "state_scenario_builder_full_class_name": "thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
+      "states_def": [
+        {
+          "name": "inner_start",
+          "label": "内部开始",
+          "is_start": true,
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.SampleContext",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "executors": [
+            {
+              "on_command": "inner_start_command",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.InnerStartAction"
+            }
+          ],
+          "events": {
+            "inner_start_command_result_success": "内部开始命令执行成功"
           }
-        ],
-        "transitions": [
-          {
-            "event": "inner_start_command_result_success",
-            "source": "inner_start",
-            "target": "inner_end"
-          }
-        ],
-        "inner_end_state_to_outer_event": {
-          "inner_end": "middle_start_command_result_success"
+        },
+        {
+          "name": "inner_end",
+          "label": "内部结束",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
         }
-      },
-      "outer_sm.outer_start": {
-        "description": "",
-        "state_scenario_builder_full_class_name":"thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
-        "states_def": [
-          {
-            "name": "middle_start",
-            "is_start":true,
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "executors": [
-                {
-                  "on_command":"middle_start_command",
-                  "full_class_name":"thinker_ai_tests.status_machine.sample_executors.MiddleStartAction"
-                }
-            ],
-            "events": ["middle_start_command_result_success"]
-          },
-          {
-            "name": "middle_end",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
-          }
-        ],
-        "transitions": [
-          {
-            "event": "middle_start_command_result_success",
-            "source": "middle_start",
-            "target": "middle_end"
-          }
-        ],
-        "inner_end_state_to_outer_event": {
-          "middle_end": "outer_start_command_result_success"
+      ],
+      "transitions": [
+        {
+          "event": "inner_start_command_result_success",
+          "label": "内部开始到内部结束的转换",
+          "source": "inner_start",
+          "target": "inner_end"
         }
-      },
-      "outer_sm": {
-        "is_root": true,
-        "description": "",
-        "state_scenario_builder_full_class_name":"thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
-        "states_def": [
-          {
-            "name": "outer_start",
-            "is_start":true,
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "executors": [
-              {
-                "on_command":"outer_start_command",
-                "full_class_name":"thinker_ai_tests.status_machine.sample_executors.OuterStartAction"
-              }
-            ],
-            "events": ["outer_start_command_result_success"]
-          },
-          {
-            "name": "outer_end",
-            "description": "what you should do in this state, one short phrase or sentence",
-            "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
-          }
-        ],
-        "transitions": [
-          {
-            "event": "outer_start_command_result_success",
-            "source": "outer_start",
-            "target": "outer_end"
-          }
-        ]
+      ],
+      "inner_end_state_to_outer_event": {
+        "inner_end": "middle_start_command_result_success"
       }
+    },
+    "outer_sm.outer_start": {
+      "description": "",
+      "label": "外部状态机.外部开始",
+      "state_scenario_builder_full_class_name": "thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
+      "states_def": [
+        {
+          "name": "middle_start",
+          "label": "中间开始",
+          "is_start": true,
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "executors": [
+            {
+              "on_command": "middle_start_command",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.MiddleStartAction"
+            }
+          ],
+          "events": {
+            "middle_start_command_result_success": "中间开始命令执行成功"
+          }
+        },
+        {
+          "name": "middle_end",
+          "label": "中间结束",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "middle_start_command_result_success",
+          "label": "中间开始到中间结束的转换",
+          "source": "middle_start",
+          "target": "middle_end"
+        }
+      ],
+      "inner_end_state_to_outer_event": {
+        "middle_end": "outer_start_command_result_success"
+      }
+    },
+    "outer_sm": {
+      "is_root": true,
+      "description": "",
+      "label": "外部状态机",
+      "state_scenario_builder_full_class_name": "thinker_ai.status_machine.state_machine_scenario.DefaultStateContextBuilder",
+      "states_def": [
+        {
+          "name": "outer_start",
+          "label": "外部开始",
+          "is_start": true,
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.CompositeSampleContext",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "executors": [
+            {
+              "on_command": "outer_start_command",
+              "full_class_name": "thinker_ai_tests.status_machine.sample_executors.OuterStartAction"
+            }
+          ],
+          "events": {
+            "outer_start_command_result_success": "外部开始命令执行成功"
+          }
+        },
+        {
+          "name": "outer_end",
+          "label": "外部结束",
+          "description": "what you should do in this state, one short phrase or sentence",
+          "state_scenario_class_name": "thinker_ai_tests.status_machine.sample_scenarios.EndSampleContext"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "outer_start_command_result_success",
+          "label": "外部开始到外部结束的转换",
+          "source": "outer_start",
+          "target": "outer_end"
+        }
+      ]
+    }
   }
 }

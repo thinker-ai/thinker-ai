@@ -38,3 +38,36 @@ function loadAxios() {
         document.head.appendChild(script);
     });
 }
+
+function makeRequest({ method, url, params }, { onSuccess, onError, clientParams, responseParamsExtractor }) {
+    loadAxios().then(function (axiosInstance) {
+        let request;
+        if (method === 'get') {
+            request = axiosInstance.get(url, { params });
+        } else if (method === 'post') {
+            request = axiosInstance.post(url, params, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+        }
+
+        request.then(function (response) {
+            if (response.status === 200) {
+                const responseParams = responseParamsExtractor(response);
+                onSuccess(clientParams, responseParams);
+            } else {
+                alert('HTTP error! status: ' + response.status);
+                throw new Error('HTTP error! status: ' + response.status);
+            }
+        }).catch(function (e) {
+            if (onError) {
+                onError(e);
+            } else {
+                alert('Error: ' + e.message);
+                console.error('Error:', e);
+            }
+        });
+    }).catch(function (error) {
+        alert('Failed to load axios: ' + error.message);
+        console.error('Error:', error);
+    });
+}

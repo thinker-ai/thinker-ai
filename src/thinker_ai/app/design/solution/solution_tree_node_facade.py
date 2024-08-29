@@ -9,7 +9,7 @@ from thinker_ai.app.design.solution.solution_node_repository import state_machin
     state_machine_scenario_repository
 from thinker_ai.common.logs import logger
 from thinker_ai.status_machine.base import Command
-from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder
+from thinker_ai.status_machine.state_machine_scenario import StateMachineScenarioBuilder
 
 
 class SolutionTreeNodefacade:
@@ -23,7 +23,7 @@ class SolutionTreeNodefacade:
         self.human_confirm = human_confirm
 
     async def try_plan(self,
-                       goal: str,
+                       goal_name: str,
                        task_name: str,
                        instruction: str,
                        max_retry) -> PlanResult:
@@ -32,7 +32,7 @@ class SolutionTreeNodefacade:
         plan_update_count = 0
         while plan_update_count < max_retry:
             plan_update_count += 1
-            plan_result=await self._write_plan(goal, task_name, instruction)
+            plan_result=await self._write_plan(goal_name, task_name, instruction)
             if plan_result:
                 return plan_result
         error_msg = "生成计划次数超限，任务失败"
@@ -40,18 +40,18 @@ class SolutionTreeNodefacade:
         return PlanResult(is_success=False, message=error_msg)
 
     async def _write_plan(self,
-                          goal: str,
+                          goal_name: str,
                           task_name: str,
                           instruction: str,
                           ) -> PlanResult:
         try:
             rsp_plan = await PlanAction().run(
-                goal=goal,
+                goal_name=goal_name,
                 task_name=task_name,
                 instruction=instruction,
                 exec_logger=self.exec_logger
             )
-            plan_result = self._pre_check_plan_from_rsp(rsp_plan, goal, task_name)
+            plan_result = self._pre_check_plan_from_rsp(rsp_plan, goal_name, task_name)
             self.exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=PlanAction))
             if not plan_result.is_success:
                 error_msg = f"The generated plan is not valid with error: {plan_result.message}, try regenerating, remember to generate either the whole plan or the single changed task only"
@@ -71,7 +71,7 @@ class SolutionTreeNodefacade:
     @staticmethod
     def _pre_check_plan_from_rsp(rsp: str, goal, task_name) -> PlanResult:
         try:
-            state_machine = (StateMachineContextBuilder
+            state_machine = (StateMachineScenarioBuilder
                              .new_from_group_def_json(state_machine_def_group_name=goal,
                                                       state_machine_def_name=task_name,
                                                       def_json=rsp,

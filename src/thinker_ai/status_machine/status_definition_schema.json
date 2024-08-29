@@ -1,14 +1,19 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "name": { "type": "string" },
   "definitions": {
     "Executor": {
       "type": "object",
       "properties": {
         "on_command": { "type": "string" },
         "full_class_name": { "type": "string" },
-        "pre_check_list": { "type": "array" },
-        "post_check_list": { "type": "array" }
+        "pre_check_list": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "post_check_list": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       },
       "required": ["on_command", "full_class_name"]
     },
@@ -16,6 +21,7 @@
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "label": { "type": "string" },
         "is_start": { "type": "boolean" },
         "state_scenario_class_name": { "type": "string" },
         "description": { "type": "string" },
@@ -24,20 +30,21 @@
           "items": { "$ref": "#/definitions/Executor" }
         },
         "events": {
-          "type": "array",
-          "items": { "type": "string" }
+          "type": "object",
+          "additionalProperties": { "type": "string" }
         }
       },
-      "required": ["id", "name", "description", "task_type", "executors", "events", "state_scenario_class_name"]
+      "required": ["name", "label", "description", "state_scenario_class_name"]
     },
     "BaseStateDefinition": {
       "type": "object",
       "properties": {
         "name": { "type": "string" },
+        "label": { "type": "string" },
         "description": { "type": "string" },
         "state_scenario_class_name": { "type": "string" }
       },
-      "required": ["name", "description", "state_scenario_class_name"]
+      "required": ["name", "label", "description", "state_scenario_class_name"]
     },
     "State_Definition": {
       "oneOf": [
@@ -49,17 +56,18 @@
       "type": "object",
       "properties": {
         "event": { "type": "string" },
+        "label": { "type": "string" },
         "source": { "type": "string" },
         "target": { "type": "string" }
       },
-      "required": ["event", "source", "target"]
+      "required": ["event", "label", "source", "target"]
     },
     "StateMachineDefinition": {
       "type": "object",
       "properties": {
         "is_root": { "type": "boolean" },
         "description": { "type": "string" },
-        "state_scenario_builder_full_class_name":  { "type": "string" },
+        "state_scenario_builder_full_class_name": { "type": "string" },
         "states_def": {
           "type": "array",
           "items": { "$ref": "#/definitions/State_Definition" }
@@ -73,8 +81,7 @@
           "additionalProperties": { "type": "string" }
         }
       },
-      "required": ["description", "states_def", "transitions"],
-      "additionalProperties": false
+      "required": ["description", "states_def", "transitions"]
     },
     "StateMachineGroup": {
       "type": "object",
