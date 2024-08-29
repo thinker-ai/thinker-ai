@@ -3,13 +3,13 @@ import os
 from json import JSONDecodeError
 
 from thinker_ai.status_machine.state_machine_definition import StateMachineDefinitionRepository
-from thinker_ai.status_machine.state_machine_scenario import StateMachineContextBuilder, StateMachineScenario, \
+from thinker_ai.status_machine.state_machine_scenario import StateMachineScenarioBuilder, StateMachineScenario, \
     StateMachineScenarioRepository
 
 
 class DefaultStateMachineScenarioRepository(StateMachineScenarioRepository):
 
-    def __init__(self, state_machine_builder: StateMachineContextBuilder,
+    def __init__(self, state_machine_builder: StateMachineScenarioBuilder,
                  state_machine_def_repo: StateMachineDefinitionRepository,
                  scenarios: dict = None,
                  base_dir: str = None,
@@ -24,7 +24,7 @@ class DefaultStateMachineScenarioRepository(StateMachineScenarioRepository):
         self.state_machine_def_repo = state_machine_def_repo
 
     @classmethod
-    def from_file(cls, base_dir: str, file_name: str, state_machine_builder: StateMachineContextBuilder,
+    def from_file(cls, base_dir: str, file_name: str, state_machine_builder: StateMachineScenarioBuilder,
                   state_machine_def_repo: StateMachineDefinitionRepository) -> "DefaultStateMachineScenarioRepository":
         file_path = os.path.join(base_dir, file_name)
         if os.path.exists(file_path):
@@ -38,14 +38,14 @@ class DefaultStateMachineScenarioRepository(StateMachineScenarioRepository):
                            scenarios=scenarios)
 
     @classmethod
-    def new(cls, state_machine_builder: StateMachineContextBuilder,
+    def new(cls, state_machine_builder: StateMachineScenarioBuilder,
             state_machine_def_repo: StateMachineDefinitionRepository
             ) -> "DefaultStateMachineScenarioRepository":
         return cls(state_machine_builder=state_machine_builder,
                    state_machine_def_repo=state_machine_def_repo)
 
     @classmethod
-    def form_json(cls, state_machine_builder: StateMachineContextBuilder,
+    def form_json(cls, state_machine_builder: StateMachineScenarioBuilder,
                   state_machine_def_repo: StateMachineDefinitionRepository,
                   json_text: str) -> "DefaultStateMachineScenarioRepository":
         if json_text:

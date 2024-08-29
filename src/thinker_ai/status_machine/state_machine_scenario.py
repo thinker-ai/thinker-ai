@@ -407,9 +407,9 @@ class CompositeStateScenario(StateScenario):
         if not result_state_machine:
             state_machine_definition = self.state_machine_definition_repository.get(self.get_state_def().group_def_name,
                                                                                     self.get_state_def().name)
-            result_state_machine = StateMachineContextBuilder.new_from_def(state_machine_definition,
-                                                                           self.state_machine_definition_repository,
-                                                                           self.state_machine_scenario_repository)
+            result_state_machine = StateMachineScenarioBuilder.new_from_def(state_machine_definition,
+                                                                            self.state_machine_definition_repository,
+                                                                            self.state_machine_scenario_repository)
         return result_state_machine
 
     def to_outer_event(self, inner_event: Event) -> Optional[Event]:
@@ -417,7 +417,7 @@ class CompositeStateScenario(StateScenario):
             return self.get_state_machine().to_outer_event(inner_event)
 
 
-class StateMachineContextBuilder:
+class StateMachineScenarioBuilder:
 
     @classmethod
     def new_from_group_def_json(cls, state_machine_def_group_name: str,
@@ -573,11 +573,11 @@ class StateMachineContextBuilder:
             for state_machine_id in group_data.keys():
                 state_machine_data = group_data.get(state_machine_id)
 
-                state_machine = StateMachineContextBuilder.state_machine_scenario_from_dict(scenario_root_id,
-                                                                                            state_machine_id,
-                                                                                            state_machine_data,
-                                                                                            state_machine_definition_repository,
-                                                                                            state_machine_scenario_repository)
+                state_machine = StateMachineScenarioBuilder.state_machine_scenario_from_dict(scenario_root_id,
+                                                                                             state_machine_id,
+                                                                                             state_machine_data,
+                                                                                             state_machine_definition_repository,
+                                                                                             state_machine_scenario_repository)
                 root_scenario[state_machine_id] = state_machine
             result[scenario_root_id] = root_scenario
         return result
