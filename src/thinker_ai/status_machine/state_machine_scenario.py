@@ -181,7 +181,6 @@ class StateScenarioDescription:
         self.scenario_id: str = scenario_id
         self.state_def = state_def
         self.state_scenario_builder_full_class_name = state_scenario_builder_full_class_name
-        # self.state_machine_definition_repository = state_machine_definition_repository
         self.state_machine_repository = state_machine_scenario_repository
 
     def get_state_scenario_builder_class(self) -> "StateScenarioBuilder":
