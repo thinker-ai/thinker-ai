@@ -265,8 +265,6 @@ class StateMachineScenario:
                  state_machine_def_group_name: str,
                  state_machine_def_name: str,
                  current_state_scenario_des: StateScenarioDescription,
-                 state_machine_repository: "StateMachineScenarioRepository",
-                 state_machine_definition_repository: StateMachineDefinitionRepository,
                  history: Optional[List[StateScenarioDescription]] = None):
         self.scenario_id = scenario_id
         self.scenario_root_id = scenario_root_id
@@ -274,8 +272,6 @@ class StateMachineScenario:
         self.state_machine_def_name = state_machine_def_name
         self.current_state_scenario_des: StateScenarioDescription = current_state_scenario_des
         self.history: List[StateScenarioDescription] = history or []
-        self.state_machine_repository: StateMachineScenarioRepository = state_machine_repository
-        self.state_machine_definition_repository: StateMachineDefinitionRepository = state_machine_definition_repository
 
     def handle(self, command: Command, **kwargs) -> ExecutorResult:
         is_validate = command.payload and command.payload.get("self_validate")
@@ -287,7 +283,7 @@ class StateMachineScenario:
                 f"Terminal State {self.current_state_scenario_des.state_def.name} can not handle the command {command.name}!")
 
     def on_event(self, event: Event):
-        if not self.state_machine_definition_repository:
+        if not self.current_state_scenario_des.state_machine_definition_repository:
             raise ValueError("Repositories are not set")
         state_machine_definition = self.get_state_machine_def()
         transitions = state_machine_definition.transitions
@@ -295,13 +291,13 @@ class StateMachineScenario:
             if transition.event == event.name and transition.source.name == self.current_state_scenario_des.state_def.name:
                 self.history.append(self.current_state_scenario_des)
                 self.current_state_scenario_des = self.creat_state_scenario_des(transition.target)
-                self.state_machine_repository.set_scenario(self.scenario_root_id, self)
+                self.current_state_scenario_des.state_machine_repository.set_scenario(self.scenario_root_id, self)
                 return
         raise ValueError(
             f"No transition from state '{self.current_state_scenario_des.state_def.name}' with event '{event.name}'")
 
     def get_state_machine_def(self) -> StateMachineDefinition:
-        return self.state_machine_definition_repository.get(self.state_machine_def_group_name,
+        return self.current_state_scenario_des.state_machine_definition_repository.get(self.state_machine_def_group_name,
                                                             self.state_machine_def_name)
 
     def last_state(self) -> Optional[StateScenario]:
@@ -311,8 +307,8 @@ class StateMachineScenario:
         return StateScenarioDescription(
             state_scenario_builder_full_class_name=self.get_state_machine_def().state_scenario_builder_full_class_name,
             state_def=state_def,
-            state_machine_definition_repository=self.state_machine_definition_repository,
-            state_machine_repository=self.state_machine_repository,
+            state_machine_definition_repository=self.current_state_scenario_des.state_machine_definition_repository,
+            state_machine_repository=self.current_state_scenario_des.state_machine_repository,
             scenario_root_id=self.scenario_root_id,
             scenario_id=str(uuid.uuid4())
         )
@@ -470,9 +466,7 @@ class StateMachineScenarioBuilder:
             state_machine_def_group_name=state_machine_def.group_def_name,
             state_machine_def_name=state_machine_def.name,
             current_state_scenario_des=start_state_scenario,
-            history=[],
-            state_machine_repository=state_machine_scenario_repository,
-            state_machine_definition_repository=state_machine_definition_repository
+            history=[]
         )
         return state_machine
 
@@ -534,9 +528,7 @@ class StateMachineScenarioBuilder:
             state_machine_def_group_name=data["state_machine_def_group_name"],
             state_machine_def_name=data["state_machine_def_name"],
             current_state_scenario_des=current_state_scenario,
-            history=history,
-            state_machine_repository=state_machine_scenario_repository,
-            state_machine_definition_repository=state_machine_definition_repository
+            history=history
         )
         return state_machine
 
