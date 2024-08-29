@@ -24,14 +24,29 @@ class BaseStateDefinition:
 class StateDefinition(BaseStateDefinition):
     def __init__(self, name: str, label: str, group_def_name: str, description: str,
                  state_scenario_class_name: str,
-                 executors_des: Set[ExecutorDescription], result_events: Set[EventDes], is_start: bool = False,
-                 is_composite: bool = False):
+                 executors_des: Set[ExecutorDescription], result_events: Set[EventDes], is_start: bool = False):
         super().__init__(name, label, description, state_scenario_class_name)
         self.group_def_name = group_def_name
         self.is_start = is_start
         self.events: Set[EventDes] = result_events
         self.executors_des: Set[ExecutorDescription] = executors_des
-        self.is_composite = is_composite
+
+
+class CompositeStateDefinition(StateDefinition):
+    def __init__(self, name: str, label: str, group_def_name: str, description: str, state_scenario_class_name: str,
+                 executors_des: Set[ExecutorDescription], result_events: Set[EventDes],
+                 state_machine_definition_repository: "StateMachineDefinitionRepository",
+                 state_machine_definition: "StateMachineDefinition" = None,
+                 is_start: bool = False):
+        super().__init__(name, label, group_def_name, description, state_scenario_class_name, executors_des,
+                         result_events, is_start)
+        self._state_machine_definition = state_machine_definition
+        self.state_machine_definition_repository = state_machine_definition_repository
+    @property
+    def state_machine_definition(self) -> Optional["StateMachineDefinition"]:
+        if self._state_machine_definition is None:
+            self._state_machine_definition = self.state_machine_definition_repository.get(self.group_def_name, self.name)
+        return self._state_machine_definition
 
 
 class Transition:
@@ -50,7 +65,7 @@ class StateMachineDefinition:
                  transitions: Set[Transition],
                  state_scenario_builder_full_class_name: Optional[str],
                  is_root: bool = False,
-                 inner_end_state_to_outer_event: Optional[Dict[str, EventDes]] = None):
+                 inner_end_state_to_outer_event: Optional[Dict[str, str]] = None):
         self.name = name
         self.state_scenario_builder_full_class_name = state_scenario_builder_full_class_name
         self.group_def_name = group_def_name
@@ -80,10 +95,10 @@ class StateMachineDefinition:
     def to_outer_event(self, inner_event: Event, state_def: BaseStateDefinition) -> Optional[Event]:
         if type(state_def) is not BaseStateDefinition:
             return None
-        outer_event_name = self.inner_end_state_to_outer_event.get(state_def.name)
-        if outer_event_name is None:
+        outer_event = self.inner_end_state_to_outer_event.get(state_def.name)
+        if outer_event is None:
             return None
-        return Event(id=inner_event.id, name=outer_event_name, payload=inner_event.payload)
+        return Event(id=inner_event.id, name=outer_event, payload=inner_event.payload)
 
     def get_self_validate_commands_in_order(self) -> List[List[Command]]:
         paths = self._get_state_validate_paths()
@@ -246,42 +261,50 @@ class StateMachineDefinition:
 class StateMachineDefinitionBuilder:
 
     @classmethod
-    def root_from_group_def_json(cls, group_def_name: str, groups_def_json: str) -> StateMachineDefinition:
+    def root_from_group_def_json(cls, group_def_name: str, groups_def_json: str,
+                                 state_machine_definition_repository: "StateMachineDefinitionRepository") -> StateMachineDefinition:
         groups_def_dict = json.loads(groups_def_json)
         group_def_data = groups_def_dict.get(group_def_name)
         if group_def_data:
-            return cls.root_from_group_def_dict(group_def_name, group_def_data)
+            return cls.root_from_group_def_dict(group_def_name, group_def_data, state_machine_definition_repository)
 
     @classmethod
-    def root_from_group_def_dict(cls, group_def_name: str, group_def_dict: dict) -> StateMachineDefinition:
+    def root_from_group_def_dict(cls, group_def_name: str, group_def_dict: dict,
+                                 state_machine_definition_repository: "StateMachineDefinitionRepository") -> StateMachineDefinition:
         for name, state_machine_def in iter(group_def_dict.items()):
             if state_machine_def.get("is_root"):
-                return cls.from_dict(group_def_name, name, state_machine_def, set(group_def_dict.keys()))
+                return cls.from_dict(group_def_name, name, state_machine_def, state_machine_definition_repository)
 
     @classmethod
     def from_group_def_json(cls, group_def_name: str, state_machine_def_name: str,
-                            groups_def_json: str) -> StateMachineDefinition:
+                            groups_def_json: str,
+                            state_machine_definition_repository: "StateMachineDefinitionRepository") -> StateMachineDefinition:
         groups_def_dict_data = json.loads(groups_def_json)
         group_def_data = groups_def_dict_data.get(group_def_name)
         if group_def_data:
             state_machine_def_data = group_def_data.get(state_machine_def_name)
             if state_machine_def_data:
                 return cls.from_dict(group_def_name, state_machine_def_name, state_machine_def_data,
-                                     set(group_def_data.keys()))
+                                     state_machine_definition_repository)
 
     @classmethod
     def from_json(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_json: str,
-                  exist_state_machine_names: Set):
+                  state_machine_definition_repository: "StateMachineDefinitionRepository"):
         groups_def_dict_data = json.loads(state_machine_def_json)
-        return cls.from_dict(group_def_name, state_machine_def_name, groups_def_dict_data, exist_state_machine_names)
-
+        return cls.from_dict(group_def_name, state_machine_def_name, groups_def_dict_data, state_machine_definition_repository)
+    @classmethod
+    def is_composite_state(cls, parent_state_machine_def_name: str, state_def_name: str, exist_state_machine_names):
+        state_machine_name = state_def_name
+        if parent_state_machine_def_name:
+            state_machine_name = f"{parent_state_machine_def_name}.{state_def_name}"
+        return state_machine_name in exist_state_machine_names
     @classmethod
     def from_dict(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_dict: Dict[str, Any],
-                  exist_state_machine_names: Set) -> StateMachineDefinition:
+                  state_machine_definition_repository: "StateMachineDefinitionRepository" = None) -> StateMachineDefinition:
         states = {cls._state_def_from_dict(data=sd,
                                            group_def_name=group_def_name,
                                            state_machine_def_name=state_machine_def_name,
-                                           exist_state_machine_names=exist_state_machine_names)
+                                           state_machine_definition_repository=state_machine_definition_repository)
                   for sd in state_machine_def_dict["states_def"]}
         transitions = {cls._transition_from_dict(t, states) for t in state_machine_def_dict["transitions"]}
         is_root = True if state_machine_def_dict.get("is_root") else False
@@ -306,7 +329,7 @@ class StateMachineDefinitionBuilder:
                             state_machine_def.transitions],
         }
         if state_machine_def.is_root:
-            result["is_root"]=state_machine_def.is_root
+            result["is_root"] = state_machine_def.is_root
         elif state_machine_def.inner_end_state_to_outer_event:
             result["inner_end_state_to_outer_event"] = state_machine_def.inner_end_state_to_outer_event
         return {state_machine_def.name: result}
@@ -341,24 +364,37 @@ class StateMachineDefinitionBuilder:
     def _state_def_from_dict(cls, data: Dict[str, Any],
                              group_def_name: str,
                              state_machine_def_name: str,
-                             exist_state_machine_names: Set) -> BaseStateDefinition:
+                             state_machine_definition_repository: Optional["StateMachineDefinitionRepository"] = None) -> BaseStateDefinition:
         is_composite = cls.is_composite_state(parent_state_machine_def_name=state_machine_def_name,
                                               state_def_name=data["name"],
-                                              exist_state_machine_names=exist_state_machine_names)
+                                              exist_state_machine_names=state_machine_definition_repository.get_state_machine_names(
+                                                  group_def_name))
         if data.get("executors"):
             events_des = {EventDes(name=event_name, label=event_label)
                           for event_name, event_label in data.get("events", {}).items()}
-            return StateDefinition(
-                name=data["name"],
-                label=data["label"],
-                group_def_name=group_def_name,
-                state_scenario_class_name=data["state_scenario_class_name"],
-                description=data.get("description", ""),
-                executors_des={ExecutorDescription(a) for a in data["executors"]},
-                result_events=events_des,
-                is_composite=is_composite,
-                is_start=data.get("is_start")
-            )
+            if is_composite:
+                return CompositeStateDefinition(
+                    name=data["name"],
+                    label=data["label"],
+                    group_def_name=group_def_name,
+                    state_scenario_class_name=data["state_scenario_class_name"],
+                    description=data.get("description", ""),
+                    executors_des={ExecutorDescription(a) for a in data["executors"]},
+                    result_events=events_des,
+                    is_start=data.get("is_start"),
+                    state_machine_definition_repository=state_machine_definition_repository
+                )
+            else:
+                return StateDefinition(
+                    name=data["name"],
+                    label=data["label"],
+                    group_def_name=group_def_name,
+                    state_scenario_class_name=data["state_scenario_class_name"],
+                    description=data.get("description", ""),
+                    executors_des={ExecutorDescription(a) for a in data["executors"]},
+                    result_events=events_des,
+                    is_start=data.get("is_start")
+                )
         else:
             return BaseStateDefinition(
                 name=data["name"],
@@ -366,13 +402,6 @@ class StateMachineDefinitionBuilder:
                 description=data.get("description", ""),
                 state_scenario_class_name=data.get("state_scenario_class_name")
             )
-
-    @classmethod
-    def is_composite_state(cls, parent_state_machine_def_name: str, state_def_name: str, exist_state_machine_names):
-        state_machine_name = state_def_name
-        if parent_state_machine_def_name:
-            state_machine_name = f"{parent_state_machine_def_name}.{state_def_name}"
-        return state_machine_name in exist_state_machine_names
 
     @classmethod
     def _transition_to_dict(cls, transition: Transition) -> Dict[str, str]:
@@ -404,7 +433,7 @@ class StateMachineDefinitionBuilder:
         if target is None:
             raise ValueError(f"Target state {data['target']} not found")
 
-        return Transition(event=data["event"],label=data["label"],source=source, target=target)
+        return Transition(event=data["event"], label=data["label"], source=source, target=target)
 
 
 class StateMachineDefinitionRepository(ABC):

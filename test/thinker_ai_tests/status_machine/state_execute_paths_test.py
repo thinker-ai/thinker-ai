@@ -66,8 +66,13 @@ class StateExecutePathsTest(unittest.TestCase):
                                                                       )
         results: list[tuple[list[Command], bool]] = state_machine.self_validate()
         success = True
+        index = 0
+        print()
         for command_list, result in results:
-            print(command_list)
+            index=index+1
+            print(f"=================path-{index}====================:")
+            for command in command_list:
+                print(command.name)
             success = success and result
         self.assertTrue(success)
 

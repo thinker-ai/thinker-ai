@@ -65,7 +65,8 @@ class PlanAction(Action):
          {exist_status_scenario}
         ```
         {guidance}
-        IMPORTANT: The original content of the user input should remain unchanged in the output, do not translate, in addition, you generate the state machine name, state name and its description must also be consistent with the user's local language at the time of input, the rest of the part of the use of the English output, in particular, the class name, method name, parameter name and so on will directly become the part of the code itself must be used entirely in English, and can not contain the user's local language
+        IMPORTANT:ONLY the label and description fields will be consistent with the user's local language, the rest of the fields MUST be output in English, please check CAREFUlLY, including group_name, state_machine_definition_name, pre_check_list, post_check_list and so on.
+Avoid unnecessary localization.
         """
 
         task_type_desc = "\n".join([f"- **{tt.type_name}**: {tt.value.desc}" for tt in TaskType])

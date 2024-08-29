@@ -48,7 +48,7 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)
         if state_machine_def_group:
             return StateMachineDefinitionBuilder.root_from_group_def_dict(state_machine_def_group_name,
-                                                                          state_machine_def_group)
+                                                                          state_machine_def_group,self)
 
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)
@@ -79,11 +79,12 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
         if state_machine_def_group:
             data = state_machine_def_group.get(state_machine_name)
             if data:
-                return (StateMachineDefinitionBuilder.from_dict(
+                return StateMachineDefinitionBuilder.from_dict(
                     group_def_name=state_machine_def_group_name,
                     state_machine_def_name=state_machine_name,
                     state_machine_def_dict=data,
-                    exist_state_machine_names=self.get_state_machine_names(state_machine_def_group_name)))
+                    state_machine_definition_repository=self
+                )
         return None
 
     def set_def(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
