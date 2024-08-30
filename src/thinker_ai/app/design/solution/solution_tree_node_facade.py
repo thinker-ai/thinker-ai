@@ -100,7 +100,7 @@ class SolutionTreeNodefacade:
     @staticmethod
     def _save_plan(rsp: str):
         groups_def_dict_data = json.loads(rsp)
-        group_id = next(groups_def_dict_data.keys())
+        group_id = next(iter(groups_def_dict_data.keys()))
         state_machine_def_dict = groups_def_dict_data.get(group_id)
         state_machine_definition_repository.set_dict(group_id, state_machine_def_dict)
         state_machine_definition_repository.save()

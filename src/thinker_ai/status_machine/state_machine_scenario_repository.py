@@ -9,52 +9,27 @@ from thinker_ai.status_machine.state_machine_scenario import StateMachineScenari
 
 class DefaultStateMachineScenarioRepository(StateMachineScenarioRepository):
 
-    def __init__(self, state_machine_builder: StateMachineScenarioBuilder,
-                 state_machine_def_repo: StateMachineDefinitionRepository,
-                 scenarios: dict = None,
-                 base_dir: str = None,
-                 file_name: str = None):
+    def __init__(self, base_dir: str,
+                 file_name: str,
+                 state_machine_builder: StateMachineScenarioBuilder,
+                 state_machine_def_repo: StateMachineDefinitionRepository
+                 ):
         self.base_dir = base_dir
         self.file_name = file_name
-        if not scenarios:
-            self.scenarios = {}
-        else:
-            self.scenarios = scenarios
+        file_path = os.path.join(base_dir, file_name)
+        if os.path.exists(file_path):
+            with open(file_path, 'r') as file:
+                try:
+                    self.scenarios = json.load(file)
+                except JSONDecodeError:
+                    self.scenarios = {}
         self.state_machine_builder = state_machine_builder
         self.state_machine_def_repo = state_machine_def_repo
 
     @classmethod
     def from_file(cls, base_dir: str, file_name: str, state_machine_builder: StateMachineScenarioBuilder,
                   state_machine_def_repo: StateMachineDefinitionRepository) -> "DefaultStateMachineScenarioRepository":
-        file_path = os.path.join(base_dir, file_name)
-        if os.path.exists(file_path):
-            with open(file_path, 'r') as file:
-                try:
-                    scenarios = json.load(file)
-                except JSONDecodeError:
-                    scenarios = {}
-                return cls(state_machine_builder=state_machine_builder,
-                           state_machine_def_repo=state_machine_def_repo,
-                           scenarios=scenarios)
-
-    @classmethod
-    def new(cls, state_machine_builder: StateMachineScenarioBuilder,
-            state_machine_def_repo: StateMachineDefinitionRepository
-            ) -> "DefaultStateMachineScenarioRepository":
-        return cls(state_machine_builder=state_machine_builder,
-                   state_machine_def_repo=state_machine_def_repo)
-
-    @classmethod
-    def form_json(cls, state_machine_builder: StateMachineScenarioBuilder,
-                  state_machine_def_repo: StateMachineDefinitionRepository,
-                  json_text: str) -> "DefaultStateMachineScenarioRepository":
-        if json_text:
-            scenarios: dict = json.loads(json_text)
-        else:
-            scenarios = {}
-        return cls(state_machine_builder=state_machine_builder,
-                   state_machine_def_repo=state_machine_def_repo,
-                   scenarios=scenarios)
+        return cls(base_dir,file_name,state_machine_builder=state_machine_builder,state_machine_def_repo=state_machine_def_repo)
 
     def group_to_json(self, scenario_group_id: str) -> str:
         group_data = self.scenarios.get(scenario_group_id)

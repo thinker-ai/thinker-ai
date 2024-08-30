@@ -9,18 +9,16 @@ from thinker_ai.status_machine.state_machine_definition import (StateMachineDefi
 
 class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionRepository):
 
-    def __init__(self, definitions: Dict[str, Dict[str, Any]] = None, base_dir: str = None, file_name: str = None):
+    def __init__(self,  base_dir: str, file_name: str):
         self.base_dir = base_dir
         self.file_name = file_name
-        if not definitions:
-            self.definitions = {}
-        else:
-            self.definitions = definitions
-
-    @classmethod
-    def from_json(cls, json_text) -> "DefaultBasedStateMachineDefinitionRepository":
-        definitions = json.loads(json_text)
-        return cls(definitions)
+        file_path = os.path.join(base_dir, file_name)
+        if os.path.exists(file_path):
+            try:
+                with open(file_path, 'r') as file:
+                    self.definitions = json.load(file)
+            except JSONDecodeError:
+                self.definitions = {}
 
     def to_json(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)
@@ -34,15 +32,7 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
 
     @classmethod
     def from_file(cls, base_dir: str, file_name: str) -> "DefaultBasedStateMachineDefinitionRepository":
-        file_path = os.path.join(base_dir, file_name)
-        definitions = {}
-        if os.path.exists(file_path):
-            try:
-                with open(file_path, 'r') as file:
-                    definitions = json.load(file)
-            except JSONDecodeError:
-                definitions = {}
-        return cls(definitions)
+        return cls(base_dir,file_name)
 
     def get_root(self, state_machine_def_group_name: str) -> StateMachineDefinition:
         state_machine_def_group = self.definitions.get(state_machine_def_group_name)

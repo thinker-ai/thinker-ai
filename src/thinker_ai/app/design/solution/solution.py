@@ -55,7 +55,9 @@ class Solution(Resource, BaseModel):
 
     def build_menu_tree(self, solution_tree) -> list:
         menu_tree = list()
-        if solution_tree:
+        if isinstance(solution_tree,str):
+            menu_tree.append(solution_tree)
+        else:
             states_def = solution_tree.states_def
             for child in states_def:
                 if isinstance(child, StateDefinition):

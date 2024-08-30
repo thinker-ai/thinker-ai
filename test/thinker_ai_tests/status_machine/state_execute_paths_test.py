@@ -11,10 +11,13 @@ from thinker_ai.status_machine.status_machine_definition_repository import Defau
 class StateExecutePathsTest(unittest.TestCase):
     def setUp(self):
         self.base_dir = os.path.dirname(__file__)
-        self.definitions_file_name = 'state_execute_paths_test.json'
+        self.definitions_file_name = 'state_execute_paths_test_definition_repo.json'
+        self.scenario_file_name = 'state_execute_paths_test_scenario_repo.json'
         self.definition_repo = DefaultBasedStateMachineDefinitionRepository.from_file(self.base_dir,
                                                                                       self.definitions_file_name)
-        self.scenario_repo = DefaultStateMachineScenarioRepository.new(StateMachineScenarioBuilder(),
+        self.scenario_repo = DefaultStateMachineScenarioRepository.from_file(self.base_dir,
+                                                                             self.scenario_file_name,
+                                                                             StateMachineScenarioBuilder(),
                                                                        self.definition_repo)
         self.state_machine_definition = self.definition_repo.get_root("paths_test")
 
