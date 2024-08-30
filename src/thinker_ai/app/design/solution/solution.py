@@ -37,7 +37,7 @@ class Solution(Resource, BaseModel):
 
     async def generate_state_machine_definition(self, state_machine_definition_name: str, description: str) -> Union[
         StateMachineDefinition, str]:
-        if self.description is not None:
+        if self.description:
             result = await facade.try_plan(group_id=self.id,
                                            state_machine_definition_name=state_machine_definition_name,
                                            description=description,

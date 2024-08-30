@@ -39,35 +39,49 @@ function loadAxios() {
     });
 }
 
-function makeRequest({ method, url, params }, { onSuccess, onError, clientParams, responseParamsExtractor }) {
-    loadAxios().then(function (axiosInstance) {
-        let request;
-        if (method === 'get') {
-            request = axiosInstance.get(url, { params });
-        } else if (method === 'post') {
-            request = axiosInstance.post(url, params, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-        }
+function RequestSender() {
+    this.callbacks = []; // 用于存储回调函数
 
-        request.then(function (response) {
-            if (response.status === 200) {
-                const responseParams = responseParamsExtractor(response);
-                onSuccess(clientParams, responseParams);
-            } else {
-                alert('HTTP error! status: ' + response.status);
-                throw new Error('HTTP error! status: ' + response.status);
+    // 注册回调函数
+    this.registerCallback = function(callback) {
+        this.callbacks.push(callback);
+    };
+
+    // 发送请求
+    this.makeRequest = function({ method, url, params }, { onError, clientParams, responseParamsExtractor }) {
+        loadAxios().then(function(axiosInstance) {
+            let request;
+            if (method === 'get') {
+                request = axiosInstance.get(url, { params });
+            } else if (method === 'post') {
+                request = axiosInstance.post(url, params, {
+                    headers: { 'Content-Type': 'application/json' }
+                });
             }
-        }).catch(function (e) {
-            if (onError) {
-                onError(e);
-            } else {
-                alert('Error: ' + e.message);
-                console.error('Error:', e);
-            }
+
+            request.then(function(response) {
+                if (response.status === 200) {
+                    const responseParams = responseParamsExtractor(response);
+                    this.callbacks.forEach(function(callback) {
+                        callback(clientParams, responseParams); // 分发响应参数给每个注册的回调函数
+                    });
+                } else {
+                    alert('HTTP error! status: ' + response.status);
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+            }.bind(this)).catch(function(e) {
+                if (onError) {
+                    onError(e);
+                } else {
+                    alert('Error: ' + e.message);
+                    console.error('Error:', e);
+                }
+            });
+        }.bind(this)).catch(function(error) {
+            alert('Failed to load axios: ' + error.message);
+            console.error('Error:', error);
         });
-    }).catch(function (error) {
-        alert('Failed to load axios: ' + error.message);
-        console.error('Error:', error);
-    });
+    };
 }
+
+const requestSender = new RequestSender();

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>solution</title>
     <link rel="stylesheet" type="text/css" href="../../../static/design/floating-panel.css">
+    <script type="text/javascript" src="../../../script/common.js"></script>
     <style>
         html, body {
             margin: 0;
@@ -139,31 +140,34 @@
     </div>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript" src="../../../script/common.js"></script>
     <script type="text/javascript" src="../../../script/design/floating-panel.js"></script>
     <script type="text/javascript">
         function submitProblem() {
+            document.getElementById('problem-title').value
             const params={
                 name:document.getElementById('problem-title').value,
                 description:document.getElementById('problem-description').value,
                 is_root:true,
             }
-             makeRequest(
+            if (params.name==="" || params.description===""){
+                alert("请输入您的问题!")
+                return;
+            }
+
+            // 发送请求
+            requestSender.makeRequest(
                 {
                     method: 'post',
-                    url: '/design/one/solution/generate_state_machine_def',
-                    params: params
+                    url: '/api/endpoint',
+                    params: { key: 'value' }
                 },
                 {
-                    onSuccess: function (clientParams, responseParams) {
-                        showPage(responseParams);
-                    },
-                    onError: function (error) {
-                        alert('Error: ' + error.message);
+                    onError: function(error) {
+                        console.error('Request failed:', error);
                     },
                     clientParams: {},
-                    responseParamsExtractor: function (response) {
-                        return response.data;
+                    responseParamsExtractor: function(response) {
+                        return response.data; // 假设响应数据在 response.data 中
                     }
                 }
             );
@@ -176,25 +180,28 @@
         }
 
         function showData() {
-                makeRequest(
-                    {
-                        method: 'get',
-                        url: '/design/one/solution/current',
-                        params: {}
+            // 注册回调函数
+                requestSender.registerCallback(function(clientParams, responseParams) {
+                    // 处理响应数据，填充界面元素1
+                    showPage(responseParams)
+                });
+
+                requestSender.makeRequest(
+                {
+                    method: 'get',
+                    url: '/design/one/solution/current',
+                    params: {}
+                },
+                {
+                    onError: function(error) {
+                        console.error('Request failed:', error);
                     },
-                    {
-                        onSuccess: function (clientParams, responseParams) {
-                            showPage(responseParams);
-                        },
-                        onError: function (error) {
-                            alert('Error: ' + error.message);
-                        },
-                        clientParams: {},
-                        responseParamsExtractor: function (response) {
-                            return response.data;
-                        }
+                    clientParams: {},
+                    responseParamsExtractor: function(response) {
+                        return response.data; // 假设响应数据在 response.data 中
                     }
-                );
+                }
+            );
         }
         function showPage(data) {
               showProblem(data);
