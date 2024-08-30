@@ -1,0 +1,145 @@
+{
+  "泰坦尼克号乘客存活": {
+    "泰坦尼克号乘客存活": {
+      "is_root": true,
+      "label": "泰坦尼克号乘客存活",
+      "description": "预测泰坦尼克号乘客的存活结果",
+      "state_scenario_builder_full_class_name": "com.example.titanic.TitanicSurvivalStateScenarioBuilder",
+      "states_def": [
+        {
+          "name": "data_analysis",
+          "label": "数据分析",
+          "is_start": true,
+          "state_scenario_class_name": "com.example.titanic.data_analysis.scenarios.DataAnalysisStateContext",
+          "description": "执行数据分析",
+          "executors": [
+            {
+              "on_command": "analyze_data",
+              "pre_check_list": [
+                "Ensure data is loaded",
+                "Check data integrity"
+              ],
+              "full_class_name": "com.example.titanic.data_analysis.executors.DataAnalysisExecutor",
+              "post_check_list": [
+                "Data analysis completed",
+                "Generate analysis report"
+              ]
+            }
+          ],
+          "events": {
+            "analyze_data_result_success": "数据分析成功",
+            "analyze_data_result_failure": "数据分析失败"
+          }
+        },
+        {
+          "name": "data_preprocessing",
+          "label": "数据预处理",
+          "is_start": false,
+          "state_scenario_class_name": "com.example.titanic.data_preprocessing.scenarios.DataPreprocessingStateContext",
+          "description": "执行数据预处理",
+          "executors": [
+            {
+              "on_command": "preprocess_data",
+              "pre_check_list": [
+                "Ensure data analysis is complete",
+                "Check for missing values"
+              ],
+              "full_class_name": "com.example.titanic.data_preprocessing.executors.DataPreprocessingExecutor",
+              "post_check_list": [
+                "Data preprocessing completed",
+                "Generate preprocessed data"
+              ]
+            }
+          ],
+          "events": {
+            "preprocess_data_result_success": "数据预处理成功",
+            "preprocess_data_result_failure": "数据预处理失败"
+          }
+        },
+        {
+          "name": "feature_engineering",
+          "label": "特征工程",
+          "is_start": false,
+          "state_scenario_class_name": "com.example.titanic.feature_engineering.scenarios.FeatureEngineeringStateContext",
+          "description": "执行特征工程",
+          "executors": [
+            {
+              "on_command": "engineer_features",
+              "pre_check_list": [
+                "Ensure data preprocessing is complete",
+                "Check for feature relevance"
+              ],
+              "full_class_name": "com.example.titanic.feature_engineering.executors.FeatureEngineeringExecutor",
+              "post_check_list": [
+                "Feature engineering completed",
+                "Generate feature set"
+              ]
+            }
+          ],
+          "events": {
+            "engineer_features_result_success": "特征工程成功",
+            "engineer_features_result_failure": "特征工程失败"
+          }
+        },
+        {
+          "name": "model_training",
+          "label": "模型训练",
+          "is_start": false,
+          "state_scenario_class_name": "com.example.titanic.model_training.scenarios.ModelTrainingStateContext",
+          "description": "训练模型",
+          "executors": [
+            {
+              "on_command": "train_model",
+              "pre_check_list": [
+                "Ensure feature engineering is complete",
+                "Check for training data availability"
+              ],
+              "full_class_name": "com.example.titanic.model_training.executors.ModelTrainingExecutor",
+              "post_check_list": [
+                "Model training completed",
+                "Generate trained model"
+              ]
+            }
+          ],
+          "events": {
+            "train_model_result_success": "模型训练成功",
+            "train_model_result_failure": "模型训练失败"
+          }
+        },
+        {
+          "name": "model_evaluation",
+          "label": "模型评估",
+          "description": "评估模型",
+          "state_scenario_class_name": "com.example.titanic.model_evaluation.scenarios.ModelEvaluationStateContext"
+        }
+      ],
+      "transitions": [
+        {
+          "event": "analyze_data_result_success",
+          "label": "数据分析成功",
+          "source": "data_analysis",
+          "target": "data_preprocessing"
+        },
+        {
+          "event": "preprocess_data_result_success",
+          "label": "数据预处理成功",
+          "source": "data_preprocessing",
+          "target": "feature_engineering"
+        },
+        {
+          "event": "engineer_features_result_success",
+          "label": "特征工程成功",
+          "source": "feature_engineering",
+          "target": "model_training"
+        },
+        {
+          "event": "train_model_result_success",
+          "label": "模型训练成功",
+          "source": "model_training",
+          "target": "model_evaluation"
+        }
+      ]
+    },
+    "is_root": true
+  }
+}

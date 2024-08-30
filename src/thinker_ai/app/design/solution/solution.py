@@ -62,7 +62,7 @@ class Solution(Resource, BaseModel):
             for child in states_def:
                 if isinstance(child, StateDefinition):
                     child_node = {
-                        "name": child.name,
+                        "name": child.label,
                         "description": child.description,
                     }
                     if isinstance(child, CompositeStateDefinition):
