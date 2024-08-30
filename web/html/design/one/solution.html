@@ -211,10 +211,30 @@
 
         function showSolution(data) {
             // 假设从服务器获取目录树的 JSON 数据
-            const treeData=data.solution_tree
+            const treeData = data.solution_tree;
             const solutionTree = document.getElementById('solution-tree');
             solutionTree.innerHTML = ''; // 清空已有的树结构
-            // 递归生成树结构
+
+            // 创建根节点
+            const rootNode = document.createElement('div');
+            rootNode.className = 'tree-node';
+
+            // 设置根节点的文本内容
+            const rootNodeText = document.createElement('span');
+            rootNodeText.className = 'node-text';
+            rootNodeText.textContent = data.name;
+
+            // 设置根节点的点击事件，显示根节点的描述
+            rootNodeText.onclick = function () {
+                updateContent(data.description);
+            };
+
+            rootNode.appendChild(rootNodeText);
+
+            // 添加根节点到 solution-tree 容器
+            solutionTree.appendChild(rootNode);
+
+            // 递归生成子节点
             function createTreeNode(nodeData) {
                 const treeNode = document.createElement('div');
                 treeNode.className = 'tree-node';
@@ -224,7 +244,7 @@
                     const toggleSymbol = document.createElement('span');
                     toggleSymbol.className = 'toggle-symbol';
                     toggleSymbol.textContent = '-'; // 默认展开
-                    toggleSymbol.onclick = function() {
+                    toggleSymbol.onclick = function () {
                         toggleNode(toggleSymbol);
                     };
                     treeNode.appendChild(toggleSymbol);
@@ -232,7 +252,7 @@
                     const nodeText = document.createElement('span');
                     nodeText.className = 'node-text';
                     nodeText.textContent = nodeData.name;
-                    nodeText.onclick = function() {
+                    nodeText.onclick = function () {
                         updateContent(nodeData.description);
                     };
                     treeNode.appendChild(nodeText);
@@ -257,7 +277,7 @@
                     const nodeText = document.createElement('span');
                     nodeText.className = 'node-text';
                     nodeText.textContent = nodeData.name;
-                    nodeText.onclick = function() {
+                    nodeText.onclick = function () {
                         updateContent(nodeData.description);
                     };
                     treeNode.appendChild(nodeText);
@@ -266,17 +286,14 @@
                 return treeNode;
             }
 
-            // 创建并添加每个根节点
+            // 创建并添加每个根节点下的子节点
             treeData.forEach(item => {
                 const treeNode = createTreeNode(item);
-                solutionTree.appendChild(treeNode);
+                rootNode.appendChild(treeNode);
             });
 
-            // 自动点击第一个节点以显示其内容
-            const firstNodeText = solutionTree.querySelector('.tree-node .node-text');
-            if (firstNodeText) {
-                firstNodeText.click();
-            }
+            // 自动点击根节点以显示其内容
+            rootNodeText.click();
         }
 
         function toggleNode(symbol) {
