@@ -8,8 +8,7 @@ from thinker_ai.app.design.solution.solution_node_repository import state_machin
 from thinker_ai.app.design.solution.solution_tree_node_facade import SolutionTreeNodefacade
 from thinker_ai.app.mindset.mindset import Mindset
 from thinker_ai.common.resource import Resource
-from thinker_ai.status_machine.state_machine_definition import StateMachineDefinition, StateMachineDefinitionBuilder, \
-    StateDefinition, CompositeStateDefinition
+from thinker_ai.status_machine.state_machine_definition import StateMachineDefinition, StateDefinition, CompositeStateDefinition
 
 facade = SolutionTreeNodefacade()
 
@@ -19,7 +18,7 @@ class Solution(Resource, BaseModel):
     user_id: str
     name: str = None
     description: str = None
-
+    done:bool = False
     resources: Set[Resource] = []
     mindsets: Set[Mindset] = []
     criterion: Set[Criterion] = []
@@ -49,17 +48,44 @@ class Solution(Resource, BaseModel):
                 return result.message
         return ""
 
-    async def to_dict(self) -> dict:
+    def to_dict(self) -> dict:
         result = dict()
         result['id'] = self.id
         result['user_id'] = self.user_id
-        result['name'] = self.name
-        result['description'] = self.description
-        result['solution_tree'] = self.build_menu_tree(await self.solution_tree)
+        result['name'] = self.name if self.name is not None else ""
+        result['description'] = self.description if self.description is not None else ""
+        result['done'] = self.done
         result['resources'] = self.resources
         result['mindsets'] = self.mindsets
         result['criterion'] = self.criterion
         return result
+
+    async def to_dict_include_menu_tree(self) -> dict:
+        result = self.to_dict()
+        result['solution_tree'] = self.build_menu_tree(await self.solution_tree)
+        return result
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'Solution':
+        id = data.get('id')
+        user_id = data.get('user_id')
+        name = data.get('name')
+        description = data.get('description')
+        done = data.get('done', False)
+        resources = set(data.get('resources', []))
+        mindsets = set(data.get('mindsets', []))
+        criterion = set(data.get('criterion', []))
+
+        return cls(
+            id=id,
+            user_id=user_id,
+            name=name,
+            description=description,
+            done=done,
+            resources=resources,
+            mindsets=mindsets,
+            criterion=criterion
+        )
 
     def build_menu_tree(self, solution_tree) -> list:
         menu_tree = list()

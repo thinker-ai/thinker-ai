@@ -77,72 +77,77 @@ async def design_one_resources_third_party(request: Request):
 @design_router.post("/design/one/solution/generate_state_machine_def", response_class=JSONResponse)
 async def design_one_solution_generate_state_machine_def(request: Request, session: dict = Depends(get_session)) -> dict:
     user_id = session.get("user_id")
-    solution = solution_manager.get_current_solution(user_id)
-    # 获取请求体中的 JSON 数据
-    body = await request.json()
-    name=body.get("name")
-    description=body.get("description")
-    is_root = body.get("is_root")
-    if is_root:
-        solution.name=name
-        solution.description = description
-    await solution.generate_state_machine_definition(name,description)
-    solution_manager.save_current_solution(user_id, solution)
-    return await solution.to_dict()
+    solution = solution_manager.get_not_done(user_id)
+    if solution:
+        # 获取请求体中的 JSON 数据
+        body = await request.json()
+        name=body.get("name")
+        description=body.get("description")
+        is_root = body.get("is_root")
+        if is_root:
+            solution.name=name
+            solution.description = description
+        await solution.generate_state_machine_definition(name,description)
+        solution_manager.save(solution)
+        return await solution.to_dict_include_menu_tree()
+    else:
+        return {}
 
 
 @design_router.get("/design/one/solution/current", response_class=JSONResponse)
 async def design_one_solution_current(session: dict = Depends(get_session)) -> dict:
     user_id = session.get("user_id")
-    solution = solution_manager.get_current_solution(user_id)
-    solution_dict = await solution.to_dict()
-    # # 这里返回的应该是 Python 的列表或字典
-    return {
-        "name": "solution.name",
-        "description": "solution.description",
-        "solution_tree":[
-        {
-            "name": "问题分解 1",
-            "description": "详情内容 1",
-            "children": [
-                {
-                    "name": "叶子节点 1.1",
-                    "description": "叶子节点 1.1 的详细内容",
-                    "children": []
-                },
-                {
-                    "name": "叶子节点 1.2",
-                    "description": "叶子节点 1.2 的详细内容",
-                    "children": []
-                }
-            ]
-        },
-        {
-            "name": "问题分解 2",
-            "description": "详情内容 2",
-            "children": [
-                {
-                    "name": "问题分解 2.1",
-                    "description": "问题分解 2.1 的详细内容",
-                    "children": [
-                        {
-                            "name": "叶子节点 2.1.1",
-                            "description": "叶子节点 2.1.1 的详细内容",
-                            "children": []
-                        },
-                        {
-                            "name": "叶子节点 2.1.2",
-                            "description": "叶子节点 2.1.2 的详细内容",
-                            "children": []
-                        }
-                    ]
-                },
-                {
-                    "name": "叶子节点 2.2",
-                    "description": "叶子节点 2.2 的详细内容",
-                    "children": []
-                }
-            ]
-        }
-    ]
-    }
+    solution = solution_manager.get_not_done(user_id)
+    solution_dict={}
+    if solution:
+        solution_dict = await solution.to_dict_include_menu_tree()
+    return solution_dict
+    # return {
+    #     "name": "solution.name",
+    #     "description": "solution.description",
+    #     "solution_tree":[
+    #     {
+    #         "name": "问题分解 1",
+    #         "description": "详情内容 1",
+    #         "children": [
+    #             {
+    #                 "name": "叶子节点 1.1",
+    #                 "description": "叶子节点 1.1 的详细内容",
+    #                 "children": []
+    #             },
+    #             {
+    #                 "name": "叶子节点 1.2",
+    #                 "description": "叶子节点 1.2 的详细内容",
+    #                 "children": []
+    #             }
+    #         ]
+    #     },
+    #     {
+    #         "name": "问题分解 2",
+    #         "description": "详情内容 2",
+    #         "children": [
+    #             {
+    #                 "name": "问题分解 2.1",
+    #                 "description": "问题分解 2.1 的详细内容",
+    #                 "children": [
+    #                     {
+    #                         "name": "叶子节点 2.1.1",
+    #                         "description": "叶子节点 2.1.1 的详细内容",
+    #                         "children": []
+    #                     },
+    #                     {
+    #                         "name": "叶子节点 2.1.2",
+    #                         "description": "叶子节点 2.1.2 的详细内容",
+    #                         "children": []
+    #                     }
+    #                 ]
+    #             },
+    #             {
+    #                 "name": "叶子节点 2.2",
+    #                 "description": "叶子节点 2.2 的详细内容",
+    #                 "children": []
+    #             }
+    #         ]
+    #     }
+    # ]
+    # }

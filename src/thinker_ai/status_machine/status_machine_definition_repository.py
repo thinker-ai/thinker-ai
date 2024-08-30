@@ -12,13 +12,15 @@ class DefaultBasedStateMachineDefinitionRepository(StateMachineDefinitionReposit
     def __init__(self,  base_dir: str, file_name: str):
         self.base_dir = base_dir
         self.file_name = file_name
+        os.makedirs(base_dir, exist_ok=True)
+        self.definitions = {}
         file_path = os.path.join(base_dir, file_name)
         if os.path.exists(file_path):
             try:
                 with open(file_path, 'r') as file:
                     self.definitions = json.load(file)
             except JSONDecodeError:
-                self.definitions = {}
+                pass
 
     def to_json(self) -> str:
         return json.dumps(self.definitions, indent=2, ensure_ascii=False)

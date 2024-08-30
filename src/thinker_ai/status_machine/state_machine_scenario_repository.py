@@ -16,13 +16,15 @@ class DefaultStateMachineScenarioRepository(StateMachineScenarioRepository):
                  ):
         self.base_dir = base_dir
         self.file_name = file_name
+        os.makedirs(base_dir, exist_ok=True)
+        self.scenarios = {}
         file_path = os.path.join(base_dir, file_name)
         if os.path.exists(file_path):
             with open(file_path, 'r') as file:
                 try:
                     self.scenarios = json.load(file)
                 except JSONDecodeError:
-                    self.scenarios = {}
+                    pass
         self.state_machine_builder = state_machine_builder
         self.state_machine_def_repo = state_machine_def_repo
 

@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from pydantic import field_validator, model_validator
 
-from thinker_ai.configs.const import DEFAULT_WORKSPACE_ROOT
+from thinker_ai.configs.const import DEFAULT_WORKSPACE_ROOT, DEFAULT_SOLUTIONS_FILE
 from thinker_ai.utils.yaml_model import YamlModel
 
 
@@ -12,6 +12,7 @@ class WorkspaceConfig(YamlModel):
     path: Path = DEFAULT_WORKSPACE_ROOT
     use_uid: bool = False
     uid: str = ""
+    user_solutions_file: str = DEFAULT_SOLUTIONS_FILE
 
     @field_validator("path")
     @classmethod

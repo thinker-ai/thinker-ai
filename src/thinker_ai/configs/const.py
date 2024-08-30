@@ -32,7 +32,7 @@ def _get_project_root():
 APP_HOME = Path.home() / ".thinker_ai"
 PROJECT_ROOT = _get_project_root()  # Dependent on THINKER_AI_PROJECT_ROOT
 DEFAULT_WORKSPACE_ROOT = PROJECT_ROOT / "workspace"
-
+DEFAULT_SOLUTIONS_FILE="user_solutions.json"
 EXAMPLE_PATH = PROJECT_ROOT / "examples"
 EXAMPLE_DATA_PATH = EXAMPLE_PATH / "data"
 DATA_PATH = PROJECT_ROOT / "data"
