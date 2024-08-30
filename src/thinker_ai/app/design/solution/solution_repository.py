@@ -26,12 +26,12 @@ class SolutionRepository:
         return None
 
     def set(self, solution: Solution):
-        self.solutions_dict[id] = solution.to_dict()
+        self.solutions_dict[solution.id] = solution.to_dict()
 
     def get_not_done(self, user_id) -> Optional[Solution]:
-        for solution in self.solutions_dict.values():
-            if solution.user_id == user_id and not Solution.done:
-                return solution
+        for solution_dict in self.solutions_dict.values():
+            if solution_dict.get("user_id") == user_id and not solution_dict.get("done"):
+                return Solution.from_dict(solution_dict)
         return None
 
     def to_file(self, base_dir: str, file_name: str):

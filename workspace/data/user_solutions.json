@@ -1,0 +1,12 @@
+{
+  "e2badf86-eb87-41fb-804d-ca369bd095d0": {
+    "id": "e2badf86-eb87-41fb-804d-ca369bd095d0",
+    "user_id": "abc",
+    "name": "泰坦尼克号乘客存活数据集",
+    "description": "这是一个泰坦尼克号乘客存活数据集，您的目标是预测乘客的存活结果。目标列为 “存活”。执行数据分析、数据预处理、特征工程和建模来预测目标。报告评估数据的准确性。训练数据路径：'.../data/titanic/train.csv'，评估数据路径：'.../data/titanic/test.csv'。",
+    "done": false,
+    "resources": [],
+    "mindsets": [],
+    "criterion": []
+  }
+}

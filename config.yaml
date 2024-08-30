@@ -8,7 +8,7 @@ state_machine:
   scenario: "state_machine_scenarios.json"
 
 workspace:
-  user_solutions_file: "user_solutions.js"
+  user_solutions_file: "user_solutions.json"
 
 llm:
   base_url: "https://api.openai.com/v1"

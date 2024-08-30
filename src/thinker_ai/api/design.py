@@ -88,7 +88,7 @@ async def design_one_solution_generate_state_machine_def(request: Request,
         if is_root:
             solution.name = name
             solution.description = description
-        await solution.generate_state_machine_definition(name, description)
+        # await solution.generate_state_machine_definition(name, description)
         solution_manager.save(solution)
         return await solution.to_dict_include_menu_tree()
     else:

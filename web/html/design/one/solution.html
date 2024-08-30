@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>solution</title>
     <link rel="stylesheet" type="text/css" href="../../../static/design/floating-panel.css">
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript" src="../../../script/common.js"></script>
     <style>
         html, body {
@@ -138,8 +140,6 @@
             </div>
         </div>
     </div>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script type="text/javascript" src="../../../script/design/floating-panel.js"></script>
     <script type="text/javascript">
         function submitProblem() {
@@ -158,8 +158,8 @@
             requestSender.makeRequest(
                 {
                     method: 'post',
-                    url: '/api/endpoint',
-                    params: { key: 'value' }
+                    url: '/design/one/solution/generate_state_machine_def',
+                    params: params
                 },
                 {
                     onError: function(error) {

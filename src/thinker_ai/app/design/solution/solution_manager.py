@@ -13,7 +13,8 @@ class SolutionManager:
         if user_id:
             current = self.solution_repository.get_not_done(user_id)
             if current is None:
-                return Solution(id=str(uuid.uuid4()), user_id=user_id)
+                current = Solution(id=str(uuid.uuid4()), user_id=user_id)
+            return current
         return None
 
     def save(self, solution: Solution):
