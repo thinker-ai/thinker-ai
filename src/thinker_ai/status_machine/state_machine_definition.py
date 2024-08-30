@@ -299,10 +299,10 @@ class StateMachineDefinitionBuilder:
             state_machine_name = f"{parent_state_machine_def_name}.{state_def_name}"
         return state_machine_name in exist_state_machine_names
     @classmethod
-    def from_dict(cls, group_def_name: str, state_machine_def_name: str, state_machine_def_dict: Dict[str, Any],
+    def from_dict(cls, group_def_id: str, state_machine_def_name: str, state_machine_def_dict: Dict[str, Any],
                   state_machine_definition_repository: "StateMachineDefinitionRepository" = None) -> StateMachineDefinition:
         states = {cls._state_def_from_dict(data=sd,
-                                           group_def_name=group_def_name,
+                                           group_def_name=group_def_id,
                                            state_machine_def_name=state_machine_def_name,
                                            state_machine_definition_repository=state_machine_definition_repository)
                   for sd in state_machine_def_dict["states_def"]}
@@ -310,7 +310,7 @@ class StateMachineDefinitionBuilder:
         is_root = True if state_machine_def_dict.get("is_root") else False
         return StateMachineDefinition(
             name=state_machine_def_name,
-            group_def_name=group_def_name,
+            group_def_name=group_def_id,
             is_root=is_root,
             state_scenario_builder_full_class_name=state_machine_def_dict.get("state_scenario_builder_full_class_name"),
             states_def=states,
@@ -438,15 +438,15 @@ class StateMachineDefinitionBuilder:
 
 class StateMachineDefinitionRepository(ABC):
     @abstractmethod
-    def get(self, state_machine_def_group_name: str, state_machine_name: str) -> StateMachineDefinition:
+    def get(self, state_machine_def_group_id: str, state_machine_name: str) -> StateMachineDefinition:
         raise NotImplementedError
 
     @abstractmethod
-    def set_def(self, state_machine_def_group_name: str, state_machine_def: StateMachineDefinition):
+    def set_def(self, state_machine_def_group_id: str, state_machine_def: StateMachineDefinition):
         raise NotImplementedError
 
     @abstractmethod
-    def set_dict(self, state_machine_def_group_name: str, data: dict):
+    def set_dict(self, state_machine_def_group_id: str, data: dict):
         raise NotImplementedError
 
     @abstractmethod
@@ -454,11 +454,11 @@ class StateMachineDefinitionRepository(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_root_state_machine_name(self, state_machine_def_group_name: str) -> str:
+    def get_root_state_machine_name(self, state_machine_def_group_id: str) -> str:
         raise NotImplementedError
 
     @abstractmethod
-    def get_state_machine_names(self, state_machine_def_group_name: str):
+    def get_state_machine_names(self, state_machine_def_group_id: str):
         raise NotImplementedError
 
     @abstractmethod

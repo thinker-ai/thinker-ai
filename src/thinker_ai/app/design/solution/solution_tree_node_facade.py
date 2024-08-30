@@ -3,7 +3,7 @@ from typing import List, Tuple
 
 from thinker_ai.agent.memory.memory import Memory
 from thinker_ai.agent.provider.schema import Message
-from thinker_ai.app.design.solution.ai_actions import PlanAction
+from thinker_ai.app.design.solution.ai_actions import StateMachineDefinitionAction
 from thinker_ai.app.design.solution.solution_node import SolutionResult, PlanResult
 from thinker_ai.app.design.solution.solution_node_repository import state_machine_definition_repository, \
     state_machine_scenario_repository
@@ -18,62 +18,66 @@ class SolutionTreeNodefacade:
                  human_confirm=True,
                  plan_update_max_retry: int = 3):
         self.plan_update_max_retry = plan_update_max_retry
-        self.plan_action = PlanAction()
+        self.plan_action = StateMachineDefinitionAction()
         self.exec_logger: Memory = Memory()
         self.human_confirm = human_confirm
 
     async def try_plan(self,
-                       goal_name: str,
-                       task_name: str,
-                       instruction: str,
-                       max_retry) -> PlanResult:
+                       group_id: str,
+                       state_machine_definition_name: str,
+                       description: str,
+                       max_retry: int) -> PlanResult:
 
         max_retry = max_retry if max_retry else self.plan_update_max_retry
         plan_update_count = 0
         while plan_update_count < max_retry:
             plan_update_count += 1
-            plan_result=await self._write_plan(goal_name, task_name, instruction)
-            if plan_result:
-                return plan_result
-        error_msg = "生成计划次数超限，任务失败"
+            state_machine_definition = await self._create_state_machine_definition(group_id=group_id,
+                                                                                   state_machine_definition_name=state_machine_definition_name,
+                                                                                   description=description
+                                                                                   )
+            if state_machine_definition:
+                return state_machine_definition
+        error_msg = "生成次数超限，任务失败"
         logger.info(error_msg)
         return PlanResult(is_success=False, message=error_msg)
 
-    async def _write_plan(self,
-                          goal_name: str,
-                          task_name: str,
-                          instruction: str,
-                          ) -> PlanResult:
+    async def _create_state_machine_definition(self,
+                                               group_id: str,
+                                               state_machine_definition_name: str,
+                                               description: str
+                                               ) -> PlanResult:
         try:
-            rsp_plan = await PlanAction().run(
-                goal_name=goal_name,
-                task_name=task_name,
-                instruction=instruction,
-                exec_logger=self.exec_logger
+            rsp_state_machine_definition = await StateMachineDefinitionAction().run(
+                group_id=group_id,
+                state_machine_definition_name=state_machine_definition_name,
+                description=description,
+                exec_logger=self.exec_logger,
             )
-            plan_result = self._pre_check_plan_from_rsp(rsp_plan, goal_name, task_name)
-            self.exec_logger.add(Message(content=rsp_plan, role="assistant", cause_by=PlanAction))
+            plan_result = self._pre_check_plan_from_rsp(rsp_state_machine_definition, group_id, state_machine_definition_name)
+            self.exec_logger.add(Message(content=rsp_state_machine_definition, role="assistant", cause_by=StateMachineDefinitionAction))
             if not plan_result.is_success:
                 error_msg = f"The generated plan is not valid with error: {plan_result.message}, try regenerating, remember to generate either the whole plan or the single changed task only"
                 logger.error(error_msg)
-                self.exec_logger.add(Message(content=error_msg, role="assistant", cause_by=PlanAction))
+                self.exec_logger.add(
+                    Message(content=error_msg, role="assistant", cause_by=StateMachineDefinitionAction))
                 return PlanResult(is_success=False, message=error_msg)
             else:
-                self._save_plan(rsp=rsp_plan)
+                self._save_plan(rsp=rsp_state_machine_definition)
                 self.exec_logger.clear()
                 return plan_result
         except Exception as e:
             error_msg = f"计划生成失败:{str(e)}"
             logger.error(error_msg)
-            self.exec_logger.add(Message(content=error_msg, role="assistant", cause_by=PlanAction))
+            self.exec_logger.add(Message(content=error_msg, role="assistant", cause_by=StateMachineDefinitionAction))
             return PlanResult(is_success=False, message=error_msg)
 
     @staticmethod
-    def _pre_check_plan_from_rsp(rsp: str, goal, task_name) -> PlanResult:
+    def _pre_check_plan_from_rsp(rsp: str, group_id, state_machine_definition_name) -> PlanResult:
         try:
             state_machine = (StateMachineScenarioBuilder
-                             .new_from_group_def_json(state_machine_def_group_name=goal,
-                                                      state_machine_def_name=task_name,
+                             .new_from_group_def_json(state_machine_def_group_id=group_id,
+                                                      state_machine_def_name=state_machine_definition_name,
                                                       def_json=rsp,
                                                       state_machine_definition_repository=state_machine_definition_repository,
                                                       state_machine_scenario_repository=state_machine_scenario_repository)

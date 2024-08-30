@@ -1,3 +1,4 @@
+import uuid
 from typing import Set, Union, Any
 
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ facade = SolutionTreeNodefacade()
 
 
 class Solution(Resource, BaseModel):
+    id: str
     user_id: str
     name: str = None
     description: str = None
@@ -27,14 +29,19 @@ class Solution(Resource, BaseModel):
 
     @property
     async def solution_tree(self) -> Union[StateMachineDefinition, str]:
-        result = state_machine_definition_repository.get_root(self.name)
-        if result is None and self.name is not None and self.description is not None:
-            result = await self.generate_solution_tree()
-        return result
+        if self.name:
+            result = state_machine_definition_repository.get_root(self.id)
+            if result is None and self.description is not None:
+                result = await self.generate_state_machine_definition(state_machine_definition_name=self.name,
+                                                                      description=self.description)
+            return result
 
-    async def generate_solution_tree(self) -> Union[StateMachineDefinition, str]:
+    async def generate_state_machine_definition(self, state_machine_definition_name: str, description: str) -> Union[
+        StateMachineDefinition, str]:
         if self.description is not None:
-            result = await facade.try_plan(goal_name=self.name, task_name=self.name, instruction=self.description,
+            result = await facade.try_plan(group_id=self.id,
+                                           state_machine_definition_name=state_machine_definition_name,
+                                           description=description,
                                            max_retry=3)
             if result.is_success:
                 return result.state_machine_definition
@@ -44,6 +51,7 @@ class Solution(Resource, BaseModel):
 
     async def to_dict(self) -> dict:
         result = dict()
+        result['id'] = self.id
         result['user_id'] = self.user_id
         result['name'] = self.name
         result['description'] = self.description
@@ -55,7 +63,9 @@ class Solution(Resource, BaseModel):
 
     def build_menu_tree(self, solution_tree) -> list:
         menu_tree = list()
-        if isinstance(solution_tree,str):
+        if not solution_tree:
+            return menu_tree
+        if isinstance(solution_tree, str):
             menu_tree.append(solution_tree)
         else:
             states_def = solution_tree.states_def

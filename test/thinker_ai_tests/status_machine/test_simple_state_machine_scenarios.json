@@ -3,7 +3,7 @@
        "simple_scenario": {
          "scenario_id": "simple_scenario",
          "state_machine_def_name": "test_state_machine",
-         "state_machine_def_group_name": "group_simple",
+         "state_machine_def_group_id": "group_simple",
          "current_state_scenario": {
            "scenario_id": "state_start_scenario",
            "state_def_name": "start"

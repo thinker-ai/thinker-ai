@@ -74,15 +74,20 @@ async def design_one_resources_third_party(request: Request):
     return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
 
 
-@design_router.post("/design/one/solution/submit", response_class=JSONResponse)
-async def design_one_solution_submit(request: Request, session: dict = Depends(get_session)) -> dict:
+@design_router.post("/design/one/solution/generate_state_machine_def", response_class=JSONResponse)
+async def design_one_solution_generate_state_machine_def(request: Request, session: dict = Depends(get_session)) -> dict:
     user_id = session.get("user_id")
     solution = solution_manager.get_current_solution(user_id)
     # 获取请求体中的 JSON 数据
     body = await request.json()
-    solution.name = body.get("name")
-    solution.description = body.get("description")
-    await solution.generate_solution_tree()
+    name=body.get("name")
+    description=body.get("description")
+    is_root = body.get("is_root")
+    if is_root:
+        solution.name=name
+        solution.description = description
+    await solution.generate_state_machine_definition(name,description)
+    solution_manager.save_current_solution(user_id, solution)
     return await solution.to_dict()
 
 

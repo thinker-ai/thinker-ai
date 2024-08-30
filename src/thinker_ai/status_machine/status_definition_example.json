@@ -1,5 +1,5 @@
 {
-  "group_name": {
+  "state_machine_definition_group_id": {
     "state_machine_definition_name": {
       "is_root": true,
       "label": "the label of the state_machine_definition_name,be consistent with user's local language",

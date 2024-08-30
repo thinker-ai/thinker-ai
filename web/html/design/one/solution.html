@@ -146,11 +146,12 @@
             const params={
                 name:document.getElementById('problem-title').value,
                 description:document.getElementById('problem-description').value,
+                is_root:true,
             }
              makeRequest(
                 {
                     method: 'post',
-                    url: '/design/one/solution/submit',
+                    url: '/design/one/solution/generate_state_machine_def',
                     params: params
                 },
                 {

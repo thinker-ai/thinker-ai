@@ -406,14 +406,14 @@ class CompositeStateScenario(StateScenario):
 class StateMachineScenarioBuilder:
 
     @classmethod
-    def new_from_group_def_json(cls, state_machine_def_group_name: str,
+    def new_from_group_def_json(cls, state_machine_def_group_id: str,
                                 state_machine_def_name: str,
                                 def_json: str,
                                 state_machine_definition_repository: StateMachineDefinitionRepository,
                                 state_machine_scenario_repository: StateMachineScenarioRepository,
                                 scenario_root_id: str = str(uuid.uuid4()),
                                 ) -> StateMachineScenario:
-        state_machine_def = StateMachineDefinitionBuilder.from_group_def_json(state_machine_def_group_name,
+        state_machine_def = StateMachineDefinitionBuilder.from_group_def_json(state_machine_def_group_id,
                                                                               state_machine_def_name, def_json,
                                                                               state_machine_definition_repository)
         state_machine = cls.new_from_def(state_machine_def,
@@ -421,12 +421,12 @@ class StateMachineScenarioBuilder:
         return state_machine
 
     @classmethod
-    def new_from_def_name(cls, state_machine_def_group_name: str,
+    def new_from_def_name(cls, state_machine_def_group_id: str,
                           state_machine_def_name: str,
                           state_machine_definition_repository: StateMachineDefinitionRepository,
                           state_machine_scenario_repository: StateMachineScenarioRepository,
                           scenario_root_id: str = str(uuid.uuid4())) -> StateMachineScenario:
-        state_machine_def = state_machine_definition_repository.get(state_machine_def_group_name,
+        state_machine_def = state_machine_definition_repository.get(state_machine_def_group_id,
                                                                     state_machine_def_name)
         state_machine = cls.new_from_def(state_machine_def,
                                          # state_machine_definition_repository,
@@ -471,7 +471,7 @@ class StateMachineScenarioBuilder:
         return {
             state_machine_scenario.scenario_id: {
                 "state_machine_def_name": state_machine_scenario.get_state_machine_def().name,
-                "state_machine_def_group_name": state_machine_scenario.get_state_machine_def().group_def_name,
+                "state_machine_def_group_id": state_machine_scenario.get_state_machine_def().group_def_name,
                 "current_state_scenario": current_state_scenario,
                 "history": history_data
             }
@@ -483,7 +483,7 @@ class StateMachineScenarioBuilder:
                                          state_machine_scenario_repository: StateMachineScenarioRepository
                                          ) -> StateMachineScenario:
         state_machine_def = (state_machine_definition_repository
-                             .get(data["state_machine_def_group_name"], data["state_machine_def_name"]))
+                             .get(data["state_machine_def_group_id"], data["state_machine_def_name"]))
         current_state_scenario_date = data["current_state_scenario"]
         current_state_def = next(
             sd for sd in state_machine_def.states_def if sd.name == current_state_scenario_date["state_def_name"]
