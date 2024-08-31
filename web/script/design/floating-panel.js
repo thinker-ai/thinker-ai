@@ -67,7 +67,12 @@ function highlightCode(message) {
     }
     return message;
 }
-// 使用 loadAxios 发送消息
+
+requestSender.registerCallback(function(clientParams, responseParams) {
+    // 处理响应数据，填充界面元素1
+    append_ai_message(responseParams)
+});
+
 function sendMessage() {
     const inputField = document.getElementById('input');
     let message = inputField.value;
@@ -76,31 +81,29 @@ function sendMessage() {
 
     append_human_message(message);
 
-    loadAxios().then(function(axiosInstance) {
-        axiosInstance.post('/chat', {
-            assistant_name: "assistant_1",
-            topic: "default",
-            content: message
-        }, {
-            headers: {
-                'Content-Type': 'application/json'
+    requestSender.makeRequest(
+        {
+            method: 'post',
+            url: '/chat',
+            params: {
+                assistant_name: "assistant_1",
+                topic: "default",
+                content: message
             }
-        }).then(function(response) {
-            if (response.status === 200) {
-                append_ai_message(response.data);
-            } else {
-                alert('HTTP error! status: ' + response.status);
-                throw new Error('HTTP error! status: ' + response.status);
+        },
+        {
+            onError: function (error) {
+                alert('Error: ' + error.message);
+                console.error('Error:', error);
+            },
+            clientParams: {},
+            responseParamsExtractor: function (response) {
+                return response.data;  // 假设响应数据在 response.data 中
             }
-        }).catch(function(e) {
-            alert(e);
-            console.error('Error:', e);
-        });
-    }).catch(function(error) {
-        alert('Failed to load axios: ' + error.message);
-        console.error('Error:', error);
-    });
+        }
+    );
 }
+
 let isPanelOpen = true;
 let isDragging = false;
 
