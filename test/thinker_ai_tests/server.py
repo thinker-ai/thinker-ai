@@ -3,22 +3,23 @@ import asyncio
 from fastapi import FastAPI
 import uvicorn
 
-from thinker_ai.web_socket_server import socket_router, process_message_queue, send_message_to_client
+from thinker_ai.api.web_socket_server import socket_router, WebsocketService
 
 app = FastAPI()
 app.include_router(socket_router)
+websocket_service = WebsocketService.get_instance()
 
 
 @app.on_event("startup")
-async def startup_event():
-    asyncio.create_task(process_message_queue())
+async def start_background_tasks():
+    await WebsocketService.start_background_tasks()
 
 
 # server.py (添加以下部分)
 @app.post("/send_message/{user_id}")
 async def send_message(user_id: str, message: dict):
     print(f"Server received message to send to {user_id}")
-    send_message_to_client(user_id, message)
+    await websocket_service.send_message_to_client(user_id, message)
     return {"status": "message sent"}
 
 

@@ -61,3 +61,61 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         return true; // 表示异步响应
     }
 });
+
+
+let reconnectInterval = 1000; // 1 second
+let socket;
+
+function connect() {
+    chrome.storage.local.get('user_id', (result) => {
+        const user_id = result.user_id;
+        if (user_id) {
+            socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
+            let heartbeatInterval;
+
+            socket.onopen = () => {
+                console.log('Connected to server');
+                reconnectInterval = 1000; // Reset the interval on successful connection
+
+                // Start sending heartbeat messages every 10 seconds
+                heartbeatInterval = setInterval(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'heartbeat' }));
+                    }
+                }, 10000);
+            };
+
+            socket.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                if (data.type !== 'heartbeat') {
+                    const url = `http://localhost:${data.port}${data.mount_path}`;
+                    // Example: send this data to a popup or content script
+                    chrome.runtime.sendMessage({ action: 'openTab', url: url, name: data.name });
+                }
+            };
+
+            socket.onclose = (event) => {
+                console.log('Connection closed', event);
+                clearInterval(heartbeatInterval); // Stop heartbeat messages
+                // Attempt to reconnect after a delay
+                setTimeout(connect, reconnectInterval);
+                // Increment the interval for each failed attempt
+                reconnectInterval = Math.min(reconnectInterval * 2, 5000); // Max 5 seconds
+            };
+
+            socket.onerror = (error) => {
+                console.log('WebSocket error', error);
+            };
+        }
+    });
+}
+
+// Call the connect function to start the WebSocket connection
+connect();
+
+// Handle incoming messages from other parts of the extension
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'getSocketState') {
+        sendResponse({ state: socket ? socket.readyState : WebSocket.CLOSED });
+    }
+});
