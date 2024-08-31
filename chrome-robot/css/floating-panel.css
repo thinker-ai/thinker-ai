@@ -81,6 +81,7 @@ html,body {
     display: flex;
     align-items: flex-start;
     gap: 10px;
+    margin:5px;
 }
 
 .ai-container,.human-container {

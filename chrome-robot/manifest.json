@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Thinker-AI",
   "version": "1.0",
-  "permissions": ["tabs", "activeTab", "storage", "scripting"],
+  "permissions": ["tabs","system.display", "activeTab", "storage", "scripting"],
   "background": {
     "service_worker": "js/background.js"
   },

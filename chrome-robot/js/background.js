@@ -3,14 +3,32 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.action.onClicked.addListener((tab) => {
-  chrome.windows.create({
-    url: 'popup.html',
-    type: 'popup',
-    width: 400,
-    height: 600
+  chrome.system.display.getInfo((displays) => {
+    // 检查 displays 是否定义并且数组长度大于 0
+    if (displays && displays.length > 0) {
+      const display = displays[0]; // 获取第一个显示器的信息
+      const screenWidth = display.bounds.width;
+      const screenHeight = display.bounds.height;
+
+      // 计算右上角的位置
+      const windowWidth = 400;
+      const windowHeight = 600;
+      const top = 0;
+      const left = screenWidth - windowWidth;
+
+      chrome.windows.create({
+        url: 'popup.html',
+        type: 'popup',
+        width: windowWidth,
+        height: windowHeight,
+        top: top,
+        left: left,
+      });
+    } else {
+      console.error("无法获取显示器信息：displays 未定义或为空");
+    }
   });
 });
-
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'storeData') {
         chrome.storage.local.set({ 'access_token': message.token, 'user_id': message.user_id }, function() {
