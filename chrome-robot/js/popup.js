@@ -20,7 +20,7 @@ function append_human_message(message) {
     const chat = document.getElementById('chat');
     const htmlMessage = to_inner_html(message);
     chat.innerHTML += `<div class="message-container human-container"><pre class="human_message">${htmlMessage}</pre>
-                                    <img class="human_avatar" src="../../static/design/human-avatar.jpg" alt="Human Avatar"></div>`;
+                                    <img class="human_avatar" src="../images/human-avatar.jpg" alt="Human Avatar"></div>`;
     chat.scrollTo({
         top: chat.scrollHeight,
         behavior: 'smooth'
@@ -37,7 +37,7 @@ function append_ai_message(message) {
     var htmlMessage = to_inner_html(message);
     const chat = document.getElementById('chat');
     chat.innerHTML += `<div class="message-container ai-container">
-                        <img class="ai_avatar" src="../../static/design/ai-avatar.jpg" alt="AI Avatar">
+                        <img class="ai_avatar" src="../images/ai-avatar.jpg" alt="AI Avatar">
                         <div class="ai_message">${htmlMessage}</div>
                        </div>`;
     chat.scrollTo({
@@ -79,7 +79,7 @@ function sendMessage() {
     requestSender.makeRequest(
         {
             method: 'post',
-            url: '/chat',
+            url: 'http://0.0.0.0:8000/chat',
             params: {
                 assistant_name: "assistant_1",
                 topic: "default",
@@ -98,67 +98,9 @@ function sendMessage() {
         }
     );
 }
+requestSender.registerCallback(function(clientParams, responseParams) {
+    // 处理响应数据，填充界面元素1
+    append_ai_message(responseParams)
+});
 
-let isPanelOpen = true;
-let isDragging = false;
-
-
-function toggleFloatingPanel() {
-    const panel = document.getElementById("floating-panel");
-    const toggleBtn = document.getElementById("toggle-button");
-    const panelContent = document.getElementById("panel-content");
-
-    if (isPanelOpen) {
-        panel.style.width = "50px";  // 只有足够的空间来显示 "+" 按钮
-        toggleBtn.textContent = "+";
-        panelContent.style.display = "none";
-    } else {
-        panel.style.width = "500px";  // 完整的面板宽度
-        toggleBtn.textContent = "-";
-        panelContent.style.display = "block";
-    }
-    panel.style.right = "0px";
-    panel.style.top = "0px";
-    isPanelOpen = !isPanelOpen;
-}
-
-// 在页面加载时调用，以确保面板的初始状态与 isPanelOpen 匹配
-window.addEventListener("load", function() {
-    const verticalText = document.querySelector(".vertical-text-wrapper"); // 获取vertical-text-wrapper元素
-    const panel = document.getElementById("floating-panel");
-    let prevX = 0;
-    let prevY = 0;
-    let panelPosition = { x: 0, y: 100 }; // 初始位置
-
-    verticalText.addEventListener("mousedown", function(event) {
-        isDragging = true;
-        prevX = event.clientX;
-        prevY = event.clientY;
-    });
-
-    window.addEventListener("mousemove", function(event) {
-        if (isDragging && isPanelOpen) {
-            let newX = event.clientX;
-            let newY = event.clientY;
-
-            const dx = newX - prevX;
-            const dy = newY - prevY;
-
-            panelPosition.x -= dx;  // 右侧对齐
-            panelPosition.y += dy;
-
-            panel.style.right = `${panelPosition.x}px`;
-            panel.style.top = `${panelPosition.y}px`;
-
-            prevX = newX;
-            prevY = newY;
-        }
-    });
-
-    window.addEventListener("mouseup", function() {
-        isDragging = false;
-    });
-
-
-    toggleFloatingPanel();  // 设置面板为关闭状态
-})
+document.getElementById('send').addEventListener('click', sendMessage);

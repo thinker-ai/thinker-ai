@@ -180,12 +180,6 @@
         }
 
         function showData() {
-            // 注册回调函数
-                requestSender.registerCallback(function(clientParams, responseParams) {
-                    // 处理响应数据，填充界面元素1
-                    showPage(responseParams)
-                });
-
                 requestSender.makeRequest(
                 {
                     method: 'get',
@@ -319,6 +313,10 @@
         }
         // 页面加载时自动显示解决方案树和第一个节点的详细信息
         window.onload = showData;
+        requestSender.registerCallback(function(clientParams, responseParams) {
+            // 处理响应数据，填充界面元素1
+            showPage(responseParams)
+        });
     </script>
 </body>
 </html>

@@ -1,24 +1,32 @@
+function getToken() {
+    return new Promise((resolve, reject) => {
+        chrome.storage.local.get('access_token', (result) => { // 使用 'access_token' 作为键
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+                resolve(result.access_token); // 获取 'access_token'
+            }
+        });
+    });
+}
 
 function loadAxios() {
     return new Promise((resolve, reject) => {
         const script = document.createElement('script');
-        script.src = 'https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js';
+        script.src = chrome.runtime.getURL('js/axios.min.js');
         script.onload = function () {
             // 在 axios 加载完毕后，设置拦截器
             const axiosInstance = axios.create();
 
-            axiosInstance.interceptors.request.use(
-                function (config) {
-                    const token = localStorage.getItem('access_token');
-                    if (token) {
-                        config.headers.Authorization = 'Bearer ' + token;
-                    }
-                    return config;
-                },
-                function (error) {
-                    return Promise.reject(error);
+            axiosInstance.interceptors.request.use(async function (config) {
+                const token = await getToken(); // 等待获取到 token
+                if (token) {
+                    config.headers.Authorization = 'Bearer ' + token;
                 }
-            );
+                return config;
+            }, function (error) {
+                return Promise.reject(error);
+            });
 
             resolve(axiosInstance); // 返回设置了拦截器的 axios 实例
         };
@@ -74,4 +82,5 @@ function RequestSender() {
     };
 }
 
+// 将 RequestSender 实例导出
 const requestSender = new RequestSender();
