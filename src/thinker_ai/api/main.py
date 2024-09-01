@@ -18,7 +18,7 @@ from thinker_ai.api.strategy import strategy_router
 from thinker_ai.api.design import design_router
 from thinker_ai.api.chat import chat_router
 from thinker_ai.api.train import train_router
-from thinker_ai.api.web_socket_server import socket_router, process_message_queue
+from thinker_ai.api.web_socket_server import socket_router,WebsocketService
 from thinker_ai.api.works import works_router
 from thinker_ai.tasks.dynamic.service_deployer import deploy_ui, DeployArgs
 from thinker_ai.tasks.dynamic.service_loader import ServiceLoader, LoadArgs
@@ -27,7 +27,6 @@ from thinker_ai.agent.openai_assistant_api import openai
 from thinker_ai.configs.const import PROJECT_ROOT
 
 main_loop = asyncio.get_event_loop()
-background_tasks = []
 
 # 假设 PROJECT_ROOT 是你的项目根目录
 web_root = os.path.join(PROJECT_ROOT, 'web')
@@ -56,8 +55,7 @@ async def home(request: Request):
 @app.on_event("startup")
 async def startup():
     # 启动消息队列处理任务，并存储任务引用
-    task = asyncio.create_task(process_message_queue())
-    background_tasks.append(task)
+    await WebsocketService.start_to_front_task()
     register_callables()
     include_router(chat_router)
     include_router(criterion_router)

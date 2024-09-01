@@ -6,7 +6,7 @@ from fastapi import APIRouter, FastAPI
 from starlette.routing import Route, Mount
 from langchain.pydantic_v1 import BaseModel, Field
 
-from thinker_ai.api.web_socket_server import send_message_to_client
+from thinker_ai.api.web_socket_server import WebsocketService
 from thinker_ai.tasks.dynamic.service import Service
 
 
@@ -47,7 +47,7 @@ class ServiceLoader:
             "name": name,
             "mount_path": mount_path
         }
-        send_message_to_client(user_id, message)
+        WebsocketService.send_to_front(user_id, message)
         return mount_path
 
     def load_ui_on_main_thread(self, name: str, user_id: Optional[str] = None) -> str:

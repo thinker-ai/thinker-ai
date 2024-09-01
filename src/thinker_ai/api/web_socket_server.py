@@ -36,10 +36,10 @@ class WebsocketService:
                     # 可以选择关闭新连接或覆盖旧连接
                     await existing_websocket.close()  # 这里选择关闭旧连接
             await websocket.accept()  # 等待建立连接，而非等待客户端消息
-            # data = await websocket.receive_text()
             instance.socket_clients[user_id] = websocket
             process_to_background = instance.process_to_background_message(websocket, user_id)
             process_to_background_task = asyncio.create_task(process_to_background)
+            await asyncio.gather(process_to_background_task, return_exceptions=True)
             tasks.append(process_to_background_task)
         except Exception as e:
             print(f"Exception: {e}")
@@ -53,6 +53,7 @@ class WebsocketService:
                 data = await websocket.receive_text()
                 message = json.loads(data)
                 if message.get("type") == "heartbeat":
+                    print(f"Received heartbeat from {user_id}")
                     continue
                 print(f"Received message from {user_id}: {message}")
             except WebSocketDisconnect:
@@ -89,6 +90,7 @@ class WebsocketService:
     async def start_to_front_task(cls):
         instance = cls.get_instance()
         to_front_task = asyncio.create_task(instance.process_to_front_message())
+        await asyncio.gather(to_front_task, return_exceptions=True)
         tasks.append(to_front_task)
 
 
