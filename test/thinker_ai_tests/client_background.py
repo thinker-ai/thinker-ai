@@ -2,7 +2,7 @@ import requests
 
 
 def send_message(user_id: str):
-    url = f"http://127.0.0.1:8000/send_message/{user_id}"
+    url = f"http://127.0.0.1:7000/send_to_front/{user_id}"
     message = {
         "mount_path": "/tasks/user_abc/calculator",
         "name": "calculator",

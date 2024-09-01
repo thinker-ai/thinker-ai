@@ -18,7 +18,7 @@ from thinker_ai.api.strategy import strategy_router
 from thinker_ai.api.design import design_router
 from thinker_ai.api.chat import chat_router
 from thinker_ai.api.train import train_router
-from thinker_ai.api.web_socket_server import socket_router,WebsocketService
+from thinker_ai.api.web_socket_server import start_background_tasks, socket_router
 from thinker_ai.api.works import works_router
 from thinker_ai.tasks.dynamic.service_deployer import deploy_ui, DeployArgs
 from thinker_ai.tasks.dynamic.service_loader import ServiceLoader, LoadArgs
@@ -54,8 +54,6 @@ async def home(request: Request):
 # 而app实例放在该文件中被其它文件import的时候，会成为另一个不同的实例，导致@asynccontextmanager不得不和app的创建分离。
 @app.on_event("startup")
 async def startup():
-    # 启动消息队列处理任务，并存储任务引用
-    await WebsocketService.start_to_front_task()
     register_callables()
     include_router(chat_router)
     include_router(criterion_router)
@@ -67,6 +65,8 @@ async def startup():
     include_router(design_router)
     include_router(login_router)
     include_router(socket_router)
+    # 启动消息队列处理任务，并存储任务引用
+    await start_background_tasks()
 
 
 def include_router(router: APIRouter):

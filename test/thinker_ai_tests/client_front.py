@@ -1,14 +1,21 @@
 import asyncio
 import websockets
-import json
 from multiprocessing import Queue as MPQueue
+from multiprocessing import Queue
+
+user_id = "test_user"
+result_queue = Queue()
 
 
 async def client_process(user_id, result_queue: MPQueue):
-    uri = f"ws://127.0.0.1:8000/ws/{user_id}"
+    uri = f"ws://127.0.0.1:7000/ws/{user_id}"
     print(f"Connecting to WebSocket at {uri}")
 
-    async with websockets.connect(uri) as websocket:
+    async with websockets.connect(uri=uri,
+                                  ping_interval=60,  # 每60秒发送一次ping
+                                  ping_timeout=300,  # 等待pong的超时时间
+                                  open_timeout=1000  # 连接打开的超时时间
+                                  ) as websocket:
         print(f"Connected to WebSocket as {user_id}")
         while True:
             # 客户端接收消息
@@ -19,10 +26,5 @@ async def client_process(user_id, result_queue: MPQueue):
 
 
 if __name__ == "__main__":
-    from multiprocessing import Queue
-
-    user_id = "test_user"
-    result_queue = Queue()
-
     # Run the client process
     asyncio.run(client_process(user_id, result_queue))
