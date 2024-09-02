@@ -68,7 +68,8 @@ def hash_password(password: str):
 
 @login_router.post("/login")
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = fake_users_db.get(form_data.username)
+    username=form_data.username.strip() if form_data.username is not None else None
+    user = fake_users_db.get(username)
     if not user or not bcrypt.checkpw(form_data.password.encode('utf-8'), user.get("hashed_password")):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 

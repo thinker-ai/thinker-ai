@@ -1,13 +1,3 @@
-document.getElementById('input').addEventListener('keydown', function (event) {
-    // 如果按下的是 Enter 键，并且没有同时按下 Shift 键，Alt 键或 Ctrl 键
-    if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey) {
-        // 阻止默认的 Enter 键行为，如提交表单或换行
-        event.preventDefault();
-        // 发送消息
-        sendMessage();
-    }
-});
-
 function to_inner_html(message) {
     var htmlMessage = marked.parse(message).slice(0, -1);
     if (htmlMessage.endsWith('\n')) {
@@ -70,7 +60,7 @@ function highlightCode(message) {
 
 requestSender.registerCallback(function(clientParams, responseParams) {
     // 处理响应数据，填充界面元素1
-    append_ai_message(responseParams)
+    // append_ai_message(responseParams)
 });
 
 function sendMessage() {
@@ -103,11 +93,8 @@ function sendMessage() {
         }
     );
 }
-
-let isPanelOpen = true;
 let isDragging = false;
-
-
+let isPanelOpen = true;
 function toggleFloatingPanel() {
     const panel = document.getElementById("floating-panel");
     const toggleBtn = document.getElementById("toggle-button");
@@ -128,42 +115,108 @@ function toggleFloatingPanel() {
 }
 
 // 在页面加载时调用，以确保面板的初始状态与 isPanelOpen 匹配
-window.addEventListener("load", function() {
-    const verticalText = document.querySelector(".vertical-text-wrapper"); // 获取vertical-text-wrapper元素
-    const panel = document.getElementById("floating-panel");
-    let prevX = 0;
-    let prevY = 0;
-    let panelPosition = { x: 0, y: 100 }; // 初始位置
 
-    verticalText.addEventListener("mousedown", function(event) {
-        isDragging = true;
-        prevX = event.clientX;
-        prevY = event.clientY;
+function initialize_floating_panel_if_extension_not_install(contentDiv) {
+    if (!!window.chrome) {
+        checkExtension().then((response) => {
+            if (response) {
+                console.log('Extension is installed');
+            } else {
+                initializeFloatingPanel(contentDiv);
+            }
+        })
+    }
+}
+
+function initializeFloatingPanel(contentDiv) {
+    const prismScript = document.createElement('script');
+    prismScript.type = 'text/javascript';
+    prismScript.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js';
+    document.head.appendChild(prismScript);
+
+    const markedScript = document.createElement('script');
+    markedScript.type = 'text/javascript';
+    markedScript.src = 'https://cdn.jsdelivr.net/npm/marked/marked.min.js';
+    document.head.appendChild(markedScript);
+
+    const floatingPanelHTML = `
+        <div id="floating-panel">
+            <div id="chat-container">
+                <button id="toggle-button" onclick="toggleFloatingPanel()">+</button>
+                <div id="sidebar" onclick="toggleFloatingPanel()">
+                    <div class="vertical-text-wrapper">
+                        <span class="vertical-text">聊天窗口</span>
+                    </div>
+                </div>
+                <div id="panel-content">
+                    <div id="chat"></div>
+                    <div id="input-container">
+                        <textarea id="input"></textarea>
+                        <div id="button-container">
+                            <button id="send" onclick="sendMessage()">
+                                <i class="fas fa-paper-plane">发送</i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    contentDiv.insertAdjacentHTML('beforeend', floatingPanelHTML);
+
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.type = 'text/css';
+    cssLink.href = '/static/design/floating-panel.css';
+    document.head.appendChild(cssLink);
+
+    document.getElementById('input').addEventListener('keydown', function (event) {
+        // 如果按下的是 Enter 键，并且没有同时按下 Shift 键，Alt 键或 Ctrl 键
+        if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey) {
+            // 阻止默认的 Enter 键行为，如提交表单或换行
+            event.preventDefault();
+            // 发送消息
+            sendMessage();
+            }
     });
 
-    window.addEventListener("mousemove", function(event) {
-        if (isDragging && isPanelOpen) {
-            let newX = event.clientX;
-            let newY = event.clientY;
+    window.addEventListener("load", function() {
+            const verticalText = document.querySelector(".vertical-text-wrapper"); // 获取vertical-text-wrapper元素
+            const panel = document.getElementById("floating-panel");
+            let prevX = 0;
+            let prevY = 0;
+            let panelPosition = { x: 0, y: 100 }; // 初始位置
 
-            const dx = newX - prevX;
-            const dy = newY - prevY;
+            verticalText.addEventListener("mousedown", function(event) {
+                isDragging = true;
+                prevX = event.clientX;
+                prevY = event.clientY;
+            });
 
-            panelPosition.x -= dx;  // 右侧对齐
-            panelPosition.y += dy;
+            window.addEventListener("mousemove", function(event) {
+                if (isDragging && isPanelOpen) {
+                    let newX = event.clientX;
+                    let newY = event.clientY;
 
-            panel.style.right = `${panelPosition.x}px`;
-            panel.style.top = `${panelPosition.y}px`;
+                    const dx = newX - prevX;
+                    const dy = newY - prevY;
 
-            prevX = newX;
-            prevY = newY;
-        }
-    });
+                    panelPosition.x -= dx;  // 右侧对齐
+                    panelPosition.y += dy;
 
-    window.addEventListener("mouseup", function() {
-        isDragging = false;
-    });
+                    panel.style.right = `${panelPosition.x}px`;
+                    panel.style.top = `${panelPosition.y}px`;
+
+                    prevX = newX;
+                    prevY = newY;
+                }
+            });
+
+        window.addEventListener("mouseup", function() {
+            isDragging = false;
+        });
 
 
-    toggleFloatingPanel();  // 设置面板为关闭状态
-})
+        toggleFloatingPanel();  // 设置面板为关闭状态
+    })
+}

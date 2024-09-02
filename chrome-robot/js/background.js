@@ -8,7 +8,6 @@ chrome.action.onClicked.addListener((tab) => {
     if (displays && displays.length > 0) {
       const display = displays[0]; // 获取第一个显示器的信息
       const screenWidth = display.bounds.width;
-      const screenHeight = display.bounds.height;
 
       // 计算右上角的位置
       const windowWidth = 400;
@@ -31,21 +30,20 @@ chrome.action.onClicked.addListener((tab) => {
 });
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'storeData') {
-        chrome.storage.local.set({ 'access_token': message.token, 'user_id': message.user_id }, function() {
-            console.log('Data stored in background script.');
+        const dataToStore = message.data || {};  // 从消息中获取要存储的数据对象
+        chrome.storage.local.set(dataToStore, function() {
+            console.log('Data stored in background script:', dataToStore);
             sendResponse({ status: 'success' });
         });
         return true;  // 表示异步响应
     }
 
     if (message.action === 'getData') {
-        chrome.storage.local.get(['access_token', 'user_id'], function(items) {
-            if (items.access_token && items.user_id) {
-                console.log('Data retrieved in background script.');
-                sendResponse({
-                    access_token: items.access_token,
-                    user_id: items.user_id
-                });
+        const keys = message.keys || []; // 从消息中获取要检索的键数组
+        chrome.storage.local.get(keys, function(items) {
+            if (Object.keys(items).length > 0) {
+                console.log('Data retrieved in background script:', items);
+                sendResponse(items);  // 直接返回获取到的所有数据
             } else {
                 console.log('Failed to retrieve data in background script.');
                 sendResponse(null);
@@ -60,74 +58,68 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         });
         return true; // 表示异步响应
     }
-});
 
-
-let reconnectInterval = 1000; // 1 second
-let socket;
-
-function connect() {
-    chrome.storage.local.get('user_id', (result) => {
-        const user_id = result.user_id;
-        if (user_id) {
-            // 如果已有连接未断开，不再建立新连接
-            if (socket && socket.readyState !== WebSocket.CLOSED && socket.readyState !== WebSocket.CLOSING) {
-                console.log('A connection is already open. No need to reconnect.');
-                return;
-            }
-
-            socket = new WebSocket(`ws://localhost:8000/ws/${user_id}`);
-            let heartbeatInterval;
-
-            socket.onopen = () => {
-                console.log('Connected to server');
-                reconnectInterval = 1000; // Reset the interval on successful connection
-
-                // Start sending heartbeat messages every 10 seconds
-                heartbeatInterval = setInterval(() => {
-                    if (socket.readyState === WebSocket.OPEN) {
-                        socket.send(JSON.stringify({ type: 'heartbeat' }));
-                    }
-                }, 10000);
-            };
-
-            socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type !== 'heartbeat') {
-                    const url = `http://localhost:${data.port}${data.mount_path}`;
-                    // Example: send this data to a popup or content script
-                    chrome.runtime.sendMessage({ action: 'openTab', url: url, name: data.name });
-                }
-            };
-
-            socket.onclose = (event) => {
-                console.log('Connection closed', event);
-                clearInterval(heartbeatInterval); // Stop heartbeat messages
-
-                // 判断是否是由于网络问题或服务器问题引起的关闭
-                if (event.wasClean === false) {
-                    console.log('Connection closed due to network or server issues.');
-                    setTimeout(connect, reconnectInterval); // Attempt to reconnect after a delay
-                    // Increment the interval for each failed attempt
-                    reconnectInterval = Math.min(reconnectInterval * 2, 5000); // Max 5 seconds
-                }
-            };
-
-            socket.onerror = (error) => {
-                console.log('WebSocket error', error);
-                // 处理网络问题或服务器问题引发的错误
-                socket.close(); // 关闭当前连接，触发 onclose 事件，进而重新连接
-            };
-        }
-    });
-}
-
-// Call the connect function to start the WebSocket connection
-connect();
-
-// Handle incoming messages from other parts of the extension
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'getSocketState') {
         sendResponse({ state: socket ? socket.readyState : WebSocket.CLOSED });
     }
+
+    if (message.action === 'login') {
+        login(message.username, message.password, sendResponse);
+        return true;  // 表示响应是异步的
+    }
+
+    if (message.action === 'getAuthorization') {
+        getAuthorization(sendResponse);
+        return true;  // 表示响应是异步的
+    }
 });
+
+function login(username, password, sendResponse) {
+    fetch('http://0.0.0.0:8000/login', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            username: username,
+            password: password,
+        }),
+    })
+    .then(response => {
+        if (!response.ok) {  // 检查响应状态码是否是 2xx
+            throw new Error(`HTTP error! status: ${response.status}`); // 抛出错误，以便在 .catch() 中捕获
+        }
+        return response.json();  // 如果状态码是 2xx，则继续解析 JSON
+    })
+    .then(data => {
+        // 将登录结果存储到 chrome.storage.local
+        const accessToken = data.access_token;
+        const userId = data.user_id;
+
+        chrome.storage.local.set({ access_token: accessToken, user_id: userId }, () => {
+            if (chrome.runtime.lastError) {
+                sendResponse({ status: 'error', message: chrome.runtime.lastError.message });
+            } else {
+                sendResponse({ status: 'success' });
+            }
+        });
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        sendResponse({ status: 'error', message: error.message });
+    });
+}
+
+function getAuthorization(sendResponse) {
+    // 从 chrome.storage.local 中读取 access_token 和 user_id
+    chrome.storage.local.get(['access_token', 'user_id'], (items) => {
+        if (chrome.runtime.lastError) {
+            sendResponse(null);
+        } else {
+            sendResponse({
+                access_token: items.access_token,
+                user_id: items.user_id
+            });
+        }
+    });
+}

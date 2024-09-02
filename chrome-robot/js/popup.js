@@ -103,4 +103,45 @@ requestSender.registerCallback(function(clientParams, responseParams) {
     append_ai_message(responseParams)
 });
 
-document.getElementById('send').addEventListener('click', sendMessage);
+document.getElementById('send').addEventListener('click', sendMessage)
+
+// 检查是否已登录
+function checkLoginStatus() {
+    chrome.runtime.sendMessage({ action: 'getAuthorization'}, (response) => {
+        if (response && response.access_token && response.user_id) {
+            // 已登录，显示聊天窗口
+            document.getElementById('chat-container').style.display = 'block';
+            document.getElementById('login-container').style.display = 'none';
+        } else {
+            // 未登录，显示登录表单
+            document.getElementById('chat-container').style.display = 'none';
+            document.getElementById('login-container').style.display = 'block';
+        }
+    });
+}
+
+// 处理登录表单提交
+document.getElementById('login-form').addEventListener('submit', function(event) {
+    event.preventDefault();
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+
+    // 发送登录信息到 background.js
+    chrome.runtime.sendMessage({
+        action: 'login',
+        username: username,
+        password: password
+    }, function(response) {
+        const loginStatus = document.getElementById('login-status');
+        if (response.status === 'success') {
+            checkLoginStatus();  // 重新检查登录状态，显示聊天窗口
+        } else {
+            alert('登录失败，请重试');
+        }
+    });
+});
+
+// 页面加载时检查登录状态
+document.addEventListener('DOMContentLoaded', function() {
+    checkLoginStatus();
+});
