@@ -6,7 +6,7 @@
     <title>solution</title>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js"></script>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script type="text/javascript" src="../../../script/common.js"></script>
+    <script type="text/javascript" src="../../../script/common.ts"></script>
     <style>
         html, body {
             margin: 0;
@@ -118,8 +118,9 @@
             <!-- 点击目录树节点后在这里显示详情 -->
         </div>
     </div>
-    <script type="text/javascript" src="../../../script/design/floating-panel.js"></script>
     <script type="text/javascript">
+        import {registerCallbackWithKey} from "../../../script/common";
+
         function submitProblem() {
             document.getElementById('problem-title').value
             const params={
@@ -133,13 +134,14 @@
             }
 
             // 发送请求
-            requestSender.makeRequest(
+            makeRequest(
                 {
                     method: 'post',
                     url: '/design/one/solution/generate_state_machine_def',
                     params: params
                 },
                 {
+                    callbacks: [showProblem, showSolution],
                     onError: function(error) {
                         console.error('Request failed:', error);
                     },
@@ -158,13 +160,14 @@
         }
 
         function showData() {
-                requestSender.makeRequest(
+                makeRequest(
                 {
                     method: 'get',
                     url: '/design/one/solution/current',
                     params: {}
                 },
                 {
+                    callbacks: [showProblem, showSolution],
                     onError: function(error) {
                         console.error('Request failed:', error);
                     },
@@ -174,10 +177,6 @@
                     }
                 }
             );
-        }
-        function showPage(data) {
-              showProblem(data);
-              showSolution(data);
         }
 
        function showProblem(data) {
@@ -291,11 +290,12 @@
         }
         // 页面加载时自动显示解决方案树和第一个节点的详细信息
         window.onload = showData;
-        requestSender.registerCallback(function(clientParams, responseParams) {
-            // 处理响应数据，填充界面元素1
-            showPage(responseParams)
-        });
+        import {initialize_floating_panel_if_extension_not_install} from "../../../script/design/floating-panel.js";
         initialize_floating_panel_if_extension_not_install(document.getElementById('content'));
+        registerCallbackWithKey('command',ai_executor)
+        function ai_executor(data) {
+            console.info(data)
+        }
     </script>
 </body>
 </html>

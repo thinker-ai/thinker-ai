@@ -1,7 +1,6 @@
-
-// 执行检查
+import {resolve_authorization_result} from "./common.ts";
 if (!!window.chrome) {
-    checkExtension().then((response) => {
+    resolve_authorization_result().then((response) => {
         if (response && response.user_id && response.access_token) {
             console.log('Extension is installed:', response);
             localStorage.setItem("user_id", response.user_id);

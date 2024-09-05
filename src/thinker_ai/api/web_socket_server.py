@@ -1,8 +1,10 @@
 import json
 import asyncio
-from fastapi import WebSocket, APIRouter, WebSocketDisconnect
+from fastapi import WebSocket, APIRouter, WebSocketDisconnect, Depends
 from starlette.websockets import WebSocketState
 from typing import Dict
+
+from thinker_ai.session_manager import get_session_ws
 
 # 创建 API 路由器
 socket_router = APIRouter()
@@ -75,9 +77,13 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@socket_router.websocket("/ws/{user_id}")
-async def connect(websocket: WebSocket, user_id: str):
-    print(f"Received connect from {user_id}")
+@socket_router.websocket("/ws/")
+async def connect(websocket: WebSocket, session: dict = Depends(get_session_ws)):
+    # 根据会话对象获取 user_id 或其他会话信息
+    user_id = session.get("user_id")
+    if not user_id:
+        print(f"user_id {user_id} not found")
+        return
     await manager.connect(user_id, websocket)
     try:
         while True:

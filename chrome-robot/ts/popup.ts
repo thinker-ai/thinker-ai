@@ -9,7 +9,7 @@ document.getElementById('input').addEventListener('keydown', function (event) {
 });
 
 function to_inner_html(message) {
-    var htmlMessage = marked.parse(message).slice(0, -1);
+    var htmlMessage = window.marked.parse(message).slice(0, -1);
     if (htmlMessage.endsWith('\n')) {
         htmlMessage = htmlMessage.slice(0, -1);
     }
@@ -45,7 +45,7 @@ function append_ai_message(message) {
         behavior: 'smooth'
     });
     // 重新触发Prism高亮，因为动态添加了代码块
-    Prism.highlightAll();
+    window.Prism.highlightAll();
     // 为生成的图片添加响应式类
     const images = chat.querySelectorAll('img');
     images.forEach(image => {
@@ -61,7 +61,7 @@ function highlightCode(message) {
         const language = match[1] || 'javascript';
         const codeBlock = match[2].trim();
         // 使用Prism来高亮代码
-        const highlightedCode = Prism.highlight(codeBlock, Prism.languages[language], language);
+        const highlightedCode = window.Prism.highlight(codeBlock, window.Prism.languages[language], language);
         const formattedCode = `<pre style="font-size: 12px; background-color: black;"><code class='language-${language}'>${highlightedCode}</code></pre>`;
         message = message.replace(match[0], formattedCode);
     }
@@ -72,35 +72,28 @@ function sendMessage() {
     const inputField = document.getElementById('input');
     let message = inputField.value;
     inputField.value = '';
+
     if (message.trim() === '') return;
 
     append_human_message(message);
 
-    requestSender.makeRequest(
-        {
-            method: 'post',
-            url: 'http://0.0.0.0:8000/chat',
-            params: {
-                assistant_name: "assistant_1",
-                topic: "default",
-                content: message
-            }
-        },
-        {
-            onError: function (error) {
-                alert('Error: ' + error.message);
-                console.error('Error:', error);
-            },
-            clientParams: {},
-            responseParamsExtractor: function (response) {
-                return response.data;  // 假设响应数据在 response.data 中
-            }
+    // 通过 Background Script 发送消息
+    chrome.runtime.sendMessage({
+        action: 'sendMessage',
+        content: message
+    }, function(response) {
+        if (response && response.status === 'success') {
+            console.log('Message sent successfully.');
+        } else {
+            console.error('Failed to send message.');
         }
-    );
+    });
 }
-requestSender.registerCallback(function(clientParams, responseParams) {
-    // 处理响应数据，填充界面元素1
-    append_ai_message(responseParams)
+// 接收来自 Background Script 的消息
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (message.action === 'aiMessage') {
+        append_ai_message(message.content);
+    }
 });
 
 document.getElementById('send').addEventListener('click', sendMessage)

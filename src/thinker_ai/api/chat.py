@@ -4,7 +4,7 @@ from thinker_ai.agent.assistant_api_builder import AssistantApiBuilder
 from thinker_ai.agent.assistant_api_repository import AssistantRepository
 from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.agent.openai_assistant_api import openai
-from thinker_ai.api.login import get_session
+from thinker_ai.session_manager import get_session
 
 chat_router = APIRouter()
 assistant_repository: AssistantRepository = AssistantRepository.get_instance()

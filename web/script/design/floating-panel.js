@@ -1,3 +1,5 @@
+import {makeRequest, registerCallbackWithKey, send_web_socket, send_websocket_message} from "../common";
+
 function to_inner_html(message) {
     var htmlMessage = marked.parse(message).slice(0, -1);
     if (htmlMessage.endsWith('\n')) {
@@ -58,11 +60,6 @@ function highlightCode(message) {
     return message;
 }
 
-requestSender.registerCallback(function(clientParams, responseParams) {
-    // 处理响应数据，填充界面元素1
-    // append_ai_message(responseParams)
-});
-
 function sendMessage() {
     const inputField = document.getElementById('input');
     let message = inputField.value;
@@ -70,28 +67,26 @@ function sendMessage() {
     if (message.trim() === '') return;
 
     append_human_message(message);
-
-    requestSender.makeRequest(
-        {
-            method: 'post',
-            url: '/chat',
-            params: {
+    // send_websocket_message({
+    //             assistant_name: "assistant_1",
+    //             topic: "default",
+    //             content: message
+    //         })
+    makeRequest(
+            'post',
+            '/chat',
+            {
                 assistant_name: "assistant_1",
                 topic: "default",
                 content: message
-            }
-        },
-        {
-            onError: function (error) {
-                alert('Error: ' + error.message);
-                console.error('Error:', error);
             },
-            clientParams: {},
-            responseParamsExtractor: function (response) {
-                return response.data;  // 假设响应数据在 response.data 中
-            }
-        }
-    );
+           true,
+           (response_data)=>append_ai_message,
+           (error)=>{
+                        alert('Error: ' + error.message);
+                        console.error('Error:', error);
+                    }
+            );
 }
 let isDragging = false;
 let isPanelOpen = true;
@@ -114,19 +109,7 @@ function toggleFloatingPanel() {
     isPanelOpen = !isPanelOpen;
 }
 
-// 在页面加载时调用，以确保面板的初始状态与 isPanelOpen 匹配
 
-function initialize_floating_panel_if_extension_not_install(contentDiv) {
-    if (!!window.chrome) {
-        checkExtension().then((response) => {
-            if (response) {
-                console.log('Extension is installed');
-            } else {
-                initializeFloatingPanel(contentDiv);
-            }
-        })
-    }
-}
 
 function initializeFloatingPanel(contentDiv) {
     const prismScript = document.createElement('script');
@@ -142,8 +125,8 @@ function initializeFloatingPanel(contentDiv) {
     const floatingPanelHTML = `
         <div id="floating-panel">
             <div id="chat-container">
-                <button id="toggle-button" onclick="toggleFloatingPanel()">+</button>
-                <div id="sidebar" onclick="toggleFloatingPanel()">
+                <button id="toggle-button">+</button>
+                <div id="sidebar">
                     <div class="vertical-text-wrapper">
                         <span class="vertical-text">聊天窗口</span>
                     </div>
@@ -153,7 +136,7 @@ function initializeFloatingPanel(contentDiv) {
                     <div id="input-container">
                         <textarea id="input"></textarea>
                         <div id="button-container">
-                            <button id="send" onclick="sendMessage()">
+                            <button id="send">
                                 <i class="fas fa-paper-plane">发送</i>
                             </button>
                         </div>
@@ -163,6 +146,11 @@ function initializeFloatingPanel(contentDiv) {
         </div>
     `;
     contentDiv.insertAdjacentHTML('beforeend', floatingPanelHTML);
+
+    // 使用 addEventListener 来添加事件处理
+    document.getElementById('toggle-button').addEventListener('click', toggleFloatingPanel);
+    document.getElementById('sidebar').addEventListener('click', toggleFloatingPanel);
+    document.getElementById('send').addEventListener('click', sendMessage);
 
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
@@ -215,8 +203,14 @@ function initializeFloatingPanel(contentDiv) {
         window.addEventListener("mouseup", function() {
             isDragging = false;
         });
-
-
         toggleFloatingPanel();  // 设置面板为关闭状态
     })
 }
+
+export function initialize_floating_panel_if_extension_not_install(contentDiv) {
+    run_after_plugin_checked(
+        null,
+        () => initializeFloatingPanel(contentDiv)
+    );
+}
+// registerCallbackWithKey('chat',append_ai_message)
