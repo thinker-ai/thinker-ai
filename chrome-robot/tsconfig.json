@@ -1,14 +1,14 @@
 {
   "compilerOptions": {
-    "target": "ES6",
-    "module": "commonjs",
-    "outDir": "./dist",
-    "rootDir": "./",
+    "target": "ES2020",  // 或者使用 "ES6"，视需求而定
+    "module": "ESNext",  // 更适合浏览器环境
+    "outDir": "./js",
+    "rootDir": "./ts",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["**/*.ts"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["./ts/**/*.ts"],
+  "exclude": ["node_modules", "./js"]
 }

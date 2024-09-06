@@ -1,13 +1,15 @@
 {
   "compilerOptions": {
-    "target": "ES6",                          // 编译目标 ECMAScript 版本
-    "module": "ES6",                          // 使用 ES 模块
-    "outDir": "./dist",                       // 编译后文件输出目录
-    "rootDir": "./web/script",                       // TypeScript 源代码目录
+    "target": "ES2020",  // 或者使用 "ES6"，视需求而定
+    "module": "ESNext",  // 更适合浏览器环境
+    "outDir": "./web/js",                       // 编译后文件输出目录
+    "rootDir": "./web/ts",                       // TypeScript 源代码目录
     "strict": true,                           // 启用严格类型检查
     "esModuleInterop": true,                   // ES 模块互操作性
     "moduleResolution": "node"  // 确保使用 Node.js 模块解析方式
   },
-  "include": ["./web/script/**/*.ts"],                 // 包含的文件
+  "include": [
+    "./web/ts/**/*.ts"
+  ],                 // 包含的文件
   "exclude": ["node_modules"]                 // 排除的文件
 }
