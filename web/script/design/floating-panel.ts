@@ -1,15 +1,23 @@
-import {makeRequest, registerCallbackWithKey, send_web_socket, send_websocket_message} from "../common";
+import { makeRequest, registerCallbackWithKey, run_after_plugin_checked,send_websocket_message } from "../common";
+declare var marked: {
+    parse: (markdown: string) => string;
+};
 
-function to_inner_html(message) {
-    var htmlMessage = marked.parse(message).slice(0, -1);
+declare var Prism: {
+    highlight: (code: string, grammar: any, language: string) => string;
+    languages: { [key: string]: any };
+    highlightAll: () => void;
+};
+function to_inner_html(message: string): string {
+    let htmlMessage = marked.parse(message).slice(0, -1);
     if (htmlMessage.endsWith('\n')) {
         htmlMessage = htmlMessage.slice(0, -1);
     }
     return htmlMessage;
 }
 
-function append_human_message(message) {
-    const chat = document.getElementById('chat');
+function append_human_message(message: string): void {
+    const chat = document.getElementById('chat') as HTMLElement;
     const htmlMessage = to_inner_html(message);
     chat.innerHTML += `<div class="message-container human-container"><pre class="human_message">${htmlMessage}</pre>
                                     <img class="human_avatar" src="../../static/design/human-avatar.jpg" alt="Human Avatar"></div>`;
@@ -17,17 +25,17 @@ function append_human_message(message) {
         top: chat.scrollHeight,
         behavior: 'smooth'
     });
-        // 为生成的图片添加响应式类
+    // 为生成的图片添加响应式类
     const images = chat.querySelectorAll('img');
     images.forEach(image => {
         image.classList.add('responsive-image');
     });
 }
 
-function append_ai_message(message) {
+function append_ai_message(message: string): void {
     message = highlightCode(message); // 对三引号中的代码进行高亮处理
-    var htmlMessage = to_inner_html(message);
-    const chat = document.getElementById('chat');
+    const htmlMessage = to_inner_html(message);
+    const chat = document.getElementById('chat') as HTMLElement;
     chat.innerHTML += `<div class="message-container ai-container">
                         <img class="ai_avatar" src="../../static/design/ai-avatar.jpg" alt="AI Avatar">
                         <div class="ai_message">${htmlMessage}</div>
@@ -45,9 +53,9 @@ function append_ai_message(message) {
     });
 }
 
-function highlightCode(message) {
+function highlightCode(message: string): string {
     const regex = /```(\w+)?\n([\s\S]*?)```/gm; // 匹配三引号里的内容以及可选的语言标识
-    let match;
+    let match: RegExpExecArray | null;
 
     while ((match = regex.exec(message)) !== null) {
         const language = match[1] || 'javascript';
@@ -60,40 +68,38 @@ function highlightCode(message) {
     return message;
 }
 
-function sendMessage() {
-    const inputField = document.getElementById('input');
+function sendMessage(): void {
+    const inputField = document.getElementById('input') as HTMLTextAreaElement;
     let message = inputField.value;
     inputField.value = '';
     if (message.trim() === '') return;
 
     append_human_message(message);
-    // send_websocket_message({
-    //             assistant_name: "assistant_1",
-    //             topic: "default",
-    //             content: message
-    //         })
+
     makeRequest(
-            'post',
-            '/chat',
-            {
-                assistant_name: "assistant_1",
-                topic: "default",
-                content: message
-            },
-           true,
-           (response_data)=>append_ai_message,
-           (error)=>{
-                        alert('Error: ' + error.message);
-                        console.error('Error:', error);
-                    }
-            );
+        'post',
+        '/chat',
+        {
+            assistant_name: "assistant_1",
+            topic: "default",
+            content: message
+        },
+        true,
+        (response_data) => append_ai_message(response_data),
+        (error) => {
+            alert('Error: ' + error);
+            console.error('Error:', error);
+        }
+    );
 }
+
 let isDragging = false;
 let isPanelOpen = true;
-function toggleFloatingPanel() {
-    const panel = document.getElementById("floating-panel");
-    const toggleBtn = document.getElementById("toggle-button");
-    const panelContent = document.getElementById("panel-content");
+
+function toggleFloatingPanel(): void {
+    const panel = document.getElementById("floating-panel") as HTMLElement;
+    const toggleBtn = document.getElementById("toggle-button") as HTMLElement;
+    const panelContent = document.getElementById("panel-content") as HTMLElement;
 
     if (isPanelOpen) {
         panel.style.width = "50px";  // 只有足够的空间来显示 "+" 按钮
@@ -109,9 +115,7 @@ function toggleFloatingPanel() {
     isPanelOpen = !isPanelOpen;
 }
 
-
-
-function initializeFloatingPanel(contentDiv) {
+function initializeFloatingPanel(contentDiv: HTMLElement): void {
     const prismScript = document.createElement('script');
     prismScript.type = 'text/javascript';
     prismScript.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js';
@@ -148,9 +152,9 @@ function initializeFloatingPanel(contentDiv) {
     contentDiv.insertAdjacentHTML('beforeend', floatingPanelHTML);
 
     // 使用 addEventListener 来添加事件处理
-    document.getElementById('toggle-button').addEventListener('click', toggleFloatingPanel);
-    document.getElementById('sidebar').addEventListener('click', toggleFloatingPanel);
-    document.getElementById('send').addEventListener('click', sendMessage);
+    document.getElementById('toggle-button')?.addEventListener('click', toggleFloatingPanel);
+    document.getElementById('sidebar')?.addEventListener('click', toggleFloatingPanel);
+    document.getElementById('send')?.addEventListener('click', sendMessage);
 
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
@@ -158,59 +162,59 @@ function initializeFloatingPanel(contentDiv) {
     cssLink.href = '/static/design/floating-panel.css';
     document.head.appendChild(cssLink);
 
-    document.getElementById('input').addEventListener('keydown', function (event) {
+    document.getElementById('input')?.addEventListener('keydown', function (event: KeyboardEvent) {
         // 如果按下的是 Enter 键，并且没有同时按下 Shift 键，Alt 键或 Ctrl 键
         if (event.key === 'Enter' && !event.shiftKey && !event.altKey && !event.ctrlKey) {
             // 阻止默认的 Enter 键行为，如提交表单或换行
             event.preventDefault();
             // 发送消息
             sendMessage();
-            }
+        }
     });
 
     window.addEventListener("load", function() {
-            const verticalText = document.querySelector(".vertical-text-wrapper"); // 获取vertical-text-wrapper元素
-            const panel = document.getElementById("floating-panel");
-            let prevX = 0;
-            let prevY = 0;
-            let panelPosition = { x: 0, y: 100 }; // 初始位置
+        const verticalText = document.querySelector(".vertical-text-wrapper") as HTMLElement; // 获取 vertical-text-wrapper 元素
+        const panel = document.getElementById("floating-panel") as HTMLElement;
+        let prevX = 0;
+        let prevY = 0;
+        let panelPosition = { x: 0, y: 100 }; // 初始位置
 
-            verticalText.addEventListener("mousedown", function(event) {
-                isDragging = true;
-                prevX = event.clientX;
-                prevY = event.clientY;
-            });
+        verticalText?.addEventListener("mousedown", function(event: MouseEvent) {
+            isDragging = true;
+            prevX = event.clientX;
+            prevY = event.clientY;
+        });
 
-            window.addEventListener("mousemove", function(event) {
-                if (isDragging && isPanelOpen) {
-                    let newX = event.clientX;
-                    let newY = event.clientY;
+        window.addEventListener("mousemove", function(event: MouseEvent) {
+            if (isDragging && isPanelOpen) {
+                let newX = event.clientX;
+                let newY = event.clientY;
 
-                    const dx = newX - prevX;
-                    const dy = newY - prevY;
+                const dx = newX - prevX;
+                const dy = newY - prevY;
 
-                    panelPosition.x -= dx;  // 右侧对齐
-                    panelPosition.y += dy;
+                panelPosition.x -= dx;  // 右侧对齐
+                panelPosition.y += dy;
 
-                    panel.style.right = `${panelPosition.x}px`;
-                    panel.style.top = `${panelPosition.y}px`;
+                panel.style.right = `${panelPosition.x}px`;
+                panel.style.top = `${panelPosition.y}px`;
 
-                    prevX = newX;
-                    prevY = newY;
-                }
-            });
+                prevX = newX;
+                prevY = newY;
+            }
+        });
 
         window.addEventListener("mouseup", function() {
             isDragging = false;
         });
+
         toggleFloatingPanel();  // 设置面板为关闭状态
-    })
+    });
 }
 
-export function initialize_floating_panel_if_extension_not_install(contentDiv) {
+export function initialize_floating_panel_if_extension_not_install(contentDiv: HTMLElement): void {
     run_after_plugin_checked(
-        null,
+        undefined, // 第一个参数可选，设为 undefined
         () => initializeFloatingPanel(contentDiv)
     );
 }
-// registerCallbackWithKey('chat',append_ai_message)

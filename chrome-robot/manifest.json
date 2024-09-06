@@ -4,7 +4,7 @@
   "version": "1.0",
   "permissions": ["tabs","system.display", "activeTab", "storage", "scripting"],
   "background": {
-    "service_worker": "js/background.js"
+    "service_worker": "ts/background.ts"
   },
   "action": {
     "default_icon": {
@@ -16,7 +16,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["js/content.js"],
+      "js": ["ts/content.ts"],
       "run_at": "document_start",
       "all_frames": true
     }
@@ -24,7 +24,7 @@
   "host_permissions": ["<all_urls>"],
   "web_accessible_resources": [
     {
-      "resources": ["js/common.js","js/request_sender.js","js/web_socket.js","js/listener_registry_in_plugin.js","listener_registry.js"],
+      "resources": ["ts/common.ts","ts/request_sender_background.ts","ts/web_socket_background.ts"],
       "matches": ["<all_urls>"]
     }
   ],
