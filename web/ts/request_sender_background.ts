@@ -1,5 +1,5 @@
 // 导入 axios 类型
-import { AxiosInstance, AxiosError,AxiosRequestConfig } from 'axios';
+import {AxiosInstance, AxiosError, AxiosRequestConfig, AxiosResponse} from 'axios';
 declare const axios: any;
 
 function loadAxios(axios_src: string, token: string | null = null): Promise<AxiosInstance> {
@@ -64,11 +64,11 @@ export class RequestSender implements RequestSenderInterface {
                     Authorization: `Bearer ${this.token}`
                 };
             }
-            axiosInstance(config).then(response => {
+            axiosInstance(config).then((response: AxiosResponse<any>) => {
                 if(on_response_ok){
                     on_response_ok(response.data);
                 }
-            }).catch((error) => {
+            }).catch((error: any) => {
                 const error_status = error.response?.status || 'Unknown';
                 if(on_response_error){
                     on_response_error(error_status);
