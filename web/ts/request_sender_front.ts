@@ -6,7 +6,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker=new SharedWorker('/script/request_sender_worker.ts');
         this.request_sender_worker.port.start();
     }
-    makeRequest(method: string,url: string, params?: any,body?: any, useToken?: boolean,
+    makeRequest(method: string,url: string, params?: URLSearchParams,body?: any, useToken?: boolean,
                 on_response_ok?:(response_data: any) => void,
                 on_response_error?:(error_status: number|string) => void) {
         // 获取 token

@@ -1,12 +1,6 @@
 import { registerCallbackWithKey, makeRequest } from "../../common";
 import { initialize_floating_panel_if_extension_not_install } from "../floating-panel";
 
-interface ProblemParams {
-    name: string;
-    description: string;
-    is_root: boolean;
-}
-
 interface ResponseData {
     name: string;
     description: string;
@@ -22,18 +16,14 @@ interface TreeNode {
 function submitProblem(): void {
     const titleElement = document.getElementById('problem-title') as HTMLInputElement;
     const descriptionElement = document.getElementById('problem-description') as HTMLTextAreaElement;
-
-    const params: ProblemParams = {
-        name: titleElement.value,
-        description: descriptionElement.value,
-        is_root: true
-    };
-
-    if (params.name === "" || params.description === "") {
+    if (titleElement.value === "" || descriptionElement.value === "") {
         alert("请输入您的问题!");
         return;
     }
-
+    const params=new URLSearchParams()
+    params.append("name",titleElement.value)
+    params.append("description",descriptionElement.value)
+    params.append("is_root","true")
     makeRequest(
              'post',
              '/design/one/solution/generate_state_machine_def',
@@ -51,7 +41,6 @@ function showData(): void {
     makeRequest(
              'get',
              '/design/one/solution/current',
-             {}
     )
 }
 

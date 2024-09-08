@@ -12,7 +12,7 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
     socket!:WebSocket;
     reconnectInterval = 1000; // 1 second
     constructor(url?: string) {
-        this.url = url || '/ws';  // 如果 url 未传递，使用默认值
+        this.url = url || this.url;  // 如果 url 未传递，使用默认值
     }
     // WebSocket 连接函数
     connect(token:string) {
@@ -28,8 +28,9 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
         }
 
         // 使用 Sec-WebSocket-Protocol 头传递 token
-        const protocols = ['protocolOne', `Bearer ${token}`];
-        this.socket = new WebSocket(this.url, protocols);
+            // 将 token 作为 URL 参数传递
+        const urlWithToken = `${this.url}?token=${token}`;
+        this.socket = new WebSocket(this.url);
 
         this.socket.onopen = () => {
             console.log('Connected to server');

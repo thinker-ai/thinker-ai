@@ -88,6 +88,7 @@
             visibility: hidden;
         }
     </style>
+    <script type="model" src="../../../js/solution.js"></script>
 </head>
 <body>
     <div id="editor-container">
@@ -96,7 +97,7 @@
             <input id="problem-title" placeholder="请输入问题标题...">
         </div>
         <textarea id="problem-description" placeholder="请输入问题描述..."></textarea>
-        <button id="problem-submit" onclick="submitProblem()">提交</button>
+        <button id="problem-submit" onclick=submitProblem()>提交</button>
     </div>
     <div id="content">
         <div id="solution-tree">
@@ -106,6 +107,5 @@
             <!-- 点击目录树节点后在这里显示详情 -->
         </div>
     </div>
-    <script src="../../../ts/design/one/solution.ts"></script>
 </body>
 </html>

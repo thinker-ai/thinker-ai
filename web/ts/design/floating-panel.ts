@@ -79,11 +79,12 @@ function sendMessage(): void {
     makeRequest(
         'post',
         '/chat',
-        {
-            assistant_name: "assistant_1",
-            topic: "default",
-            content: message
-        },
+        new URLSearchParams({
+              assistant_name:"assistant_1",
+              topic:"default",
+              content:message
+            }),
+        undefined,
         true,
         (response_data) => append_ai_message(response_data),
         (error) => {

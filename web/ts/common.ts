@@ -14,10 +14,10 @@ export function showContent(frame_id:string,menu_class_name:string,page:string,e
     element.classList.add('active');
 }
 const request_sender_worker_client = new RequestSenderWorkerFront()
-export function makeRequest(method:'get'|'post', url:string, params={},useToken=true,
+export function makeRequest(method:'get'|'post', url:string, params?: URLSearchParams,body?: any,useToken=true,
                             on_response_ok?:(response_data: any) => void,
                             on_response_error?:(error_status: number|string) => void) {
-    request_sender_worker_client.makeRequest(method, url, params, useToken,on_response_ok,on_response_error);
+    request_sender_worker_client.makeRequest(method, url, params, body,useToken,on_response_ok,on_response_error);
 }
 const web_socket_worker_client = new WebSocketWorkerFront()
 export function send_websocket_message(message:string):void {

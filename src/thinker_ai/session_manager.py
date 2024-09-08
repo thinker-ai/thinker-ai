@@ -2,11 +2,10 @@ import os
 import pickle
 
 import bcrypt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from starlette import status
-from starlette.websockets import WebSocketDisconnect
-from websocket import WebSocket
+from fastapi import WebSocket, WebSocketDisconnect
 
 from thinker_ai.configs.const import PROJECT_ROOT
 
@@ -24,30 +23,23 @@ else:
 
 # 针对 WebSocket 连接获取 token 和会话对象
 async def get_session_ws(websocket: WebSocket) -> dict:
-    subprotocols = websocket.headers.get('sec-websocket-protocol')
+    from urllib.parse import urlparse, parse_qs
+    query_params = parse_qs(urlparse(str(websocket.url)).query)
 
-    if subprotocols:
-        protocols = [proto.strip() for proto in subprotocols.split(',')]
-        # 提取 Bearer token
-        bearer_token = None
-        for proto in protocols:
-            if proto.startswith("Bearer "):
-                bearer_token = proto[len("Bearer "):]  # 提取 token
+    token = query_params.get('token', [None])[0]
+    if not token:
+        print("Token not found")
+        raise WebSocketDisconnect(code=4001)  # 自定义错误码
 
-        if not bearer_token:
-            raise WebSocketDisconnect(code=4001)
+    # 假设 session_store 是存储会话信息的字典
+    token_bytes = token.encode('utf-8')
+    session = session_store.get(token_bytes)
 
-        # 获取会话对象
-        token_bytes = bearer_token.encode('utf-8')
-        session = session_store.get(token_bytes)
+    if not session:
+        print("Session not found for token")
+        raise WebSocketDisconnect(code=4001)  # 自定义错误码
 
-        if not session:
-            raise WebSocketDisconnect(code=4001)
-
-        return session
-    else:
-        raise WebSocketDisconnect(code=4001)
-
+    return session
 
 # 依赖项，用于解析 token 并获取会话对象
 def get_session(token: str = Depends(oauth2_scheme)) -> dict:

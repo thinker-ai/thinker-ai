@@ -35,7 +35,7 @@ export interface RequestSenderInterface {
     makeRequest(
         method: 'get' | 'post',
         url: string,
-        params?: URLSearchParams| null,
+        params?: URLSearchParams,
         body?: any,
         useToken?: boolean,
         on_response_ok?:(response_data: any) => void,
@@ -51,7 +51,7 @@ export class RequestSender implements RequestSenderInterface {
     public makeRequest(
         method: 'get' | 'post',
         url: string,
-        params?: URLSearchParams| null,
+        params?: URLSearchParams,
         body?: any,
         useToken?: boolean,
         on_response_ok?: (response_data: any) => void,

@@ -5,28 +5,20 @@ interface AuthorizationResponse {
     user_id: string;
     access_token: string;
 }
-
-if (!!window.chrome) {
-    resolve_authorization_result().then((response: AuthorizationResponse | null) => {
-        if (response && response.user_id && response.access_token) {
-            console.log('Extension is installed:', response);
-            localStorage.setItem("user_id", response.user_id);
-            localStorage.setItem("access_token", response.access_token);
-        } else {
-            console.log('Extension not installed or not responding, or received invalid data');
-            if (!localStorage.getItem('access_token')) {
-                login();  // 如果没有登录信息，调用 login 函数
-            }
+resolve_authorization_result().then((response: AuthorizationResponse | null) => {
+    if (response && response.user_id && response.access_token) {
+        console.log('Extension is installed:', response);
+        localStorage.setItem("user_id", response.user_id);
+        localStorage.setItem("access_token", response.access_token);
+    } else {
+        console.log('Extension not installed or not responding, or received invalid data');
+        if (!localStorage.getItem('access_token')) {
+            login();  // 如果没有登录信息，调用 login 函数
         }
-    }).catch(error => {
-        console.error('Error during authorization:', error);
-    });
-} else {
-    console.warn("This feature is designed to work with Google Chrome only.");
-    if (!localStorage.getItem('access_token')) {
-        login();
     }
-}
+}).catch(error => {
+    console.error('Error during authorization:', error);
+});
 
 // 定义 login 函数，带有 fetch 请求
 function login(): void {
