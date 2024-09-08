@@ -6,7 +6,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker=new SharedWorker('/script/request_sender_worker.ts');
         this.request_sender_worker.port.start();
     }
-    makeRequest(method: string,url: string, params?: any, useToken?: boolean,
+    makeRequest(method: string,url: string, params?: any,body?: any, useToken?: boolean,
                 on_response_ok?:(response_data: any) => void,
                 on_response_error?:(error_status: number|string) => void) {
         // 获取 token
@@ -16,7 +16,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         // 发送请求信息给 SharedWorker
         this.request_sender_worker.port.postMessage({
             action: "makeRequest",
-            request: { method, url, params, useToken },
+            request: { method, url, params, body, useToken },
             token: token,
             axios_src: "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"
         });
