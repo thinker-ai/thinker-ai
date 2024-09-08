@@ -1,7 +1,7 @@
 from ctypes import cast
 from typing import List, Dict, Callable, Optional, Type
 
-from langchain.agents import load_tools
+from langchain_community.agent_toolkits.load_tools import load_tools
 from langchain_community.tools import StructuredTool
 from langchain_core.utils.function_calling import convert_to_openai_function
 from openai.types import FunctionDefinition

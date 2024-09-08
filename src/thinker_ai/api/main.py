@@ -32,7 +32,9 @@ main_loop = asyncio.get_event_loop()
 web_root = os.path.join(PROJECT_ROOT, 'web')
 # 将整个 web 目录挂载为静态文件目录，这样可以使用相对路径访问静态文件
 app.mount("/static", StaticFiles(directory=web_root + "/static"), name="static")
-app.mount("/script", StaticFiles(directory=web_root + "/script"), name="script")
+app.mount("/ts", StaticFiles(directory=web_root + "/ts"), name="ts")
+app.mount("/js", StaticFiles(directory=web_root + "/js"), name="js")
+app.mount("/libs", StaticFiles(directory=web_root + "/libs"), name="libs")
 service_loader = ServiceLoader(app=app, main_loop=main_loop)
 
 
@@ -89,4 +91,4 @@ def is_router_included(router: APIRouter) -> bool:
 
 
 if __name__ == '__main__':
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)#, reload=True)

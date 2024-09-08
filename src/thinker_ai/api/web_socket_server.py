@@ -78,7 +78,8 @@ manager = ConnectionManager()
 
 
 @socket_router.websocket("/ws/")
-async def connect(websocket: WebSocket, session: dict = Depends(get_session_ws)):
+async def connect(websocket: WebSocket):
+    session = await get_session_ws(websocket)
     # 根据会话对象获取 user_id 或其他会话信息
     user_id = session.get("user_id")
     if not user_id:

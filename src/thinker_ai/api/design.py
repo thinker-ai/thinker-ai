@@ -4,9 +4,9 @@ from fastapi import APIRouter, Depends
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 from fastapi import Request
-from thinker_ai.api.login import get_session
 from thinker_ai.app.design.solution.solution_manager import SolutionManager
 from thinker_ai.configs.const import PROJECT_ROOT
+from thinker_ai.session_manager import get_session
 
 design_router = APIRouter()
 design_root = os.path.join(PROJECT_ROOT, 'web', 'html', 'design')
