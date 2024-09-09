@@ -30,20 +30,20 @@ function submitProblem(): void {
               params
     );
 }
-
+(window as any).submitProblem = submitProblem;
 function updateContent(content: string): void {
     const detailContainer = document.getElementById('detail-container') as HTMLElement;
     detailContainer.style.display = 'block';
     detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
 }
-
+(window as any).updateContent = updateContent;
 function showData(): void {
     makeRequest(
              'get',
              '/design/one/solution/current',
     )
 }
-
+(window as any).showData = showData;
 function showProblem(data: { name: string; description: string }): void {
     const problemTitle = document.getElementById('problem-title') as HTMLInputElement;
     problemTitle.value = data.name;
@@ -51,7 +51,7 @@ function showProblem(data: { name: string; description: string }): void {
     const problemDescription = document.getElementById('problem-description') as HTMLTextAreaElement;
     problemDescription.value = data.description;
 }
-
+(window as any).showProblem = showProblem;
 function showSolution(data: ResponseData): void {
     const solutionTree = document.getElementById('solution-tree') as HTMLElement;
     solutionTree.innerHTML = '';
@@ -126,7 +126,7 @@ function showSolution(data: ResponseData): void {
 
     rootNodeText.click();
 }
-
+(window as any).showSolution = showSolution;
 function toggleNode(symbol: HTMLElement): void {
     const node = symbol.parentElement;
     const childNodes = node?.querySelector('.child-nodes') as HTMLElement;
@@ -141,7 +141,6 @@ function toggleNode(symbol: HTMLElement): void {
         }
     }
 }
-
 window.onload = showData;
 
 initialize_floating_panel_if_extension_not_install(document.getElementById('content') as HTMLElement);
