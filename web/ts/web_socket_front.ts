@@ -43,7 +43,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     }
 
     // 处理来自全局注册器的消息
-    private handleWorkerMessage(callbackId: string, data: any): void {
+    private handleCallback(callbackId: string, data: any): void {
         const callback = this.callbackRegistry[callbackId];  // 根据 callbackId 获取回调函数
         if (callback) {
             callback(data);  // 调用实际的回调函数
@@ -87,8 +87,11 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
             if (action === "socket_error") {
                 this.on_socket_error(content);
             }
-            if (action === 'notifyListener') {
-                this.handleWorkerMessage(content.callbackId, content.data);
+            if (action === 'callback') {
+                this.handleCallback(content.callbackId, content.data);
+            }
+            if (action === "web_socket_worker_started") {
+                console.info("Web socket worker started.");
             }
         };
     }
@@ -98,11 +101,11 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     }
 
     on_connected(event: any): void {
-        console.error("web socket connected.",any_to_string(event))
+        console.info("web socket connected.",any_to_string(event))
     }
 
     on_disconnected(event: any): void {
-        console.error("web socket closed.",any_to_string(event))
+        console.info("web socket closed.",any_to_string(event))
     }
 
     on_socket_error(error: any): void {

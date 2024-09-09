@@ -8,11 +8,11 @@ onconnect = (e:any) => {
     port.start();
 
     const on_response_ok=(response_data: any) =>{
-        port.postMessage({ action: 'response_data', response_data });
+        port.postMessage({ action: 'response_ok', response_data });
 }
 
     const on_response_error=(error_status: number|string) =>{
-        port.postMessage({ action: 'error', error: 'HTTP error! status: ' + error_status });
+        port.postMessage({ action: 'response_error', error: 'HTTP error! status: ' + error_status });
     }
     // 监听来自页面的消息
     port.onmessage = (event:any) => {
@@ -49,7 +49,7 @@ onconnect = (e:any) => {
                 );
             } catch (error) {
                 console.error('Failed to make request:', error);
-                port.postMessage({ action: 'error', error: (error as Error).message });
+                port.postMessage({ action: 'response_error', error: (error as Error).message });
             }
         } else {
             console.warn(`Unrecognized action: ${action}`);
@@ -57,5 +57,5 @@ onconnect = (e:any) => {
     };
 
     // 通知页面 SharedWorker 已连接
-    port.postMessage({ action: 'request sender worker started' });
+    port.postMessage({ action: 'request_sender_worker_started' });
 };

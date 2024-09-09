@@ -25,7 +25,7 @@ onconnect = (e) => {
             const { matchingFunction, callbackId } = content;
             // 注册带有匹配函数的监听器
             web_socket_sender_worker.registerFunctionListener(matchingFunction, callbackId);
-        } else if (action === 'registerKeyListener') {
+        } else if (action === 'callback') {
             const { key, callbackId } = content;
             // 通过 key 注册监听器
             web_socket_sender_worker.registerKeyListener(key, callbackId);
@@ -37,5 +37,5 @@ onconnect = (e) => {
         }
     };
     // 通知页面 SharedWorker 已连接
-    port.postMessage({ action: 'web socket worker started' });
+    port.postMessage({ action: 'web_socket_worker_started' });
 };
