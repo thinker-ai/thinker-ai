@@ -29,7 +29,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
                 on_response_error(response_data);
             }
             if (action === "request_sender_worker_started") {
-                console.error("Request sender worker started.");
+                console.info("Request sender worker started.");
             }
         };
     }
