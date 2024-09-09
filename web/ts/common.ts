@@ -32,29 +32,7 @@ export function registerCallbackWithFunction(matchingFunction: (data: any) => an
 }
 
 
-export function resolve_authorization_result(): Promise<{ user_id: string; access_token: string } | null> {
-    return new Promise((resolve, reject) => {
-        // 监听来自 content script 的消息
-        const messageHandler = (event: MessageEvent) => {
-            if (event.data && event.data.action === 'authorizationResult') {
-                window.removeEventListener('message', messageHandler);  // 确保只处理一次消息
-                resolve(event.data.response);  // 解析消息数据并返回
-            }
-        };
 
-        window.addEventListener('message', messageHandler);
-
-        // 发送消息给 content script，请求获取 authorizationResult 信息
-        window.postMessage({ action: 'getAuthorization' }, '*');
-
-        // 设置超时，如果超过一定时间没有接收到消息，则 reject
-        const timeout = setTimeout(() => {
-            window.removeEventListener('message', messageHandler);  // 超时后移除事件监听器
-            reject(new Error('Authorization result not received within timeout period'));
-        }, 5000); // 5秒超时，可以根据实际需求调整
-
-    });
-}
 export function run_after_plugin_checked(onInstalled?:() => void, onNotInstalled?:() => void) {
     let pluginChecked = false;
 
@@ -84,5 +62,5 @@ export function run_after_plugin_checked(onInstalled?:() => void, onNotInstalled
 }
 run_after_plugin_checked(
     undefined,
-    web_socket_worker_client.connect
+    () => web_socket_worker_client.connect()
 );

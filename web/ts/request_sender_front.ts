@@ -3,7 +3,7 @@ import {RequestSenderInterface} from "./request_sender_background";
 export class RequestSenderWorkerFront implements RequestSenderInterface{
     request_sender_worker:SharedWorker;
     constructor() {
-        this.request_sender_worker=new SharedWorker('/script/request_sender_worker.ts');
+        this.request_sender_worker=new SharedWorker('/js/request_sender_worker.js');
         this.request_sender_worker.port.start();
     }
     makeRequest(method: string,url: string, params?: URLSearchParams,body?: any, useToken?: boolean,
@@ -17,8 +17,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker.port.postMessage({
             action: "makeRequest",
             request: { method, url, params, body, useToken },
-            token: token,
-            axios_src: "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"
+            token: token
         });
         // 处理来自 SharedWorker 的响应
         this.request_sender_worker.port.onmessage = (event: MessageEvent) => {

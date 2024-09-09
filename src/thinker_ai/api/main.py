@@ -28,7 +28,7 @@ from thinker_ai.configs.const import PROJECT_ROOT
 
 main_loop = asyncio.get_event_loop()
 
-# 假设 PROJECT_ROOT 是你的项目根目录
+#  PROJECT_ROOT 是根目录
 web_root = os.path.join(PROJECT_ROOT, 'web')
 # 将整个 web 目录挂载为静态文件目录，这样可以使用相对路径访问静态文件
 app.mount("/static", StaticFiles(directory=web_root + "/static"), name="static")

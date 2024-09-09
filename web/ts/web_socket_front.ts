@@ -13,7 +13,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     private web_socket_worker:SharedWorker;
     private callbackRegistry: { [callbackId: string]: (data: any) => void };
     constructor() {
-        this.web_socket_worker=new SharedWorker('/script/web_socket_worker.ts');
+        this.web_socket_worker=new SharedWorker('/js/web_socket_worker.js');
         this.web_socket_worker.port.start();
         this.callbackRegistry = {};  // 存储回调函数的对象
     }
