@@ -13,6 +13,9 @@ export function showContent(frame_id:string,menu_class_name:string,page:string,e
     }
     element.classList.add('active');
 }
+// 将 showContent 函数挂载到 window 对象上
+(window as any).showContent = showContent;
+
 const request_sender_worker_client = new RequestSenderWorkerFront()
 export function makeRequest(method:'get'|'post', url:string, params?: URLSearchParams,body?: any,useToken=true,
                             on_response_ok?:(response_data: any) => void,
