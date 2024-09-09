@@ -8,15 +8,15 @@ onconnect = (e:any) => {
     port.start();
 
     const on_response_ok=(response_data: any) =>{
-        port.postMessage({ action: 'response_ok', response_data });
+        port.postMessage({ action: 'response_ok', response_data:response_data });
     }
 
     const on_response_error=(error_status: number|string) =>{
-        port.postMessage({ action: 'response_error', error: 'HTTP error! status: ' + error_status });
+        port.postMessage({ action: 'response_error', error_status: error_status });
     }
     // 监听来自页面的消息
     port.onmessage = (event:any) => {
-        const { action, request, options, token } = event.data || {};
+        const { action, request, token } = event.data || {};
         const sender = new RequestSender(token);
 
         if (!action) {
@@ -29,19 +29,13 @@ onconnect = (e:any) => {
                 console.error('Invalid request format');
                 return;
             }
-
-            // 确保 options 存在并包含必要的字段
-            if (!options || typeof options !== 'object') {
-                console.error('Invalid options format');
-                return;
-            }
-
+            const params = new URLSearchParams(request.paramsObject);
             // 处理请求并捕获错误
             try {
                 sender.makeRequest(
                         request.method,
                         request.url,
-                        request.params,
+                        params,
                         request.body,
                         token ?request.useToken : false,// 如果有 token 则使用，否则关闭 useToken
                         on_response_ok,

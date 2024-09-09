@@ -88,8 +88,8 @@ function sendMessage(): void {
         true,
         (response_data) => append_ai_message(response_data),
         (error) => {
-            alert('Error: ' + error);
-            console.error('Error:', error);
+            alert('服务器错误，状态码: ' + error);
+            console.error('服务器错误，状态码:', error);
         }
     );
 }

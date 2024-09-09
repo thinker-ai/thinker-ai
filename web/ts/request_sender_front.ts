@@ -14,19 +14,21 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         // 设置 useToken 标志
         useToken = token ? useToken : false;
         // 发送请求信息给 SharedWorker
+        // 将 URLSearchParams 转换为键值对对象
+        const paramsObject = params ? Object.fromEntries(params.entries()) : {};
         this.request_sender_worker.port.postMessage({
             action: "makeRequest",
-            request: { method, url, params, body, useToken },
+            request: { method, url, paramsObject, body, useToken },
             token: token
         });
         // 处理来自 SharedWorker 的响应
         this.request_sender_worker.port.onmessage = (event: MessageEvent) => {
-            const { action, response_data } = event.data;
+            const { action, response_data, error_status } = event.data;
             if (action === "response_ok" && on_response_ok) {
                 on_response_ok(response_data)
             }
             else if (action === "response_error" && on_response_error) {
-                on_response_error(response_data);
+                on_response_error(error_status);
             }
             else if (action === "request_sender_worker_started") {
                 console.info("Request sender worker started.");
