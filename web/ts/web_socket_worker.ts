@@ -36,4 +36,6 @@ onconnect = (e) => {
             web_socket_sender_worker.notifyListeners(data);
         }
     };
+    // 通知页面 SharedWorker 已连接
+    port.postMessage({ action: 'web socket worker started' });
 };

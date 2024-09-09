@@ -57,5 +57,5 @@ onconnect = (e:any) => {
     };
 
     // 通知页面 SharedWorker 已连接
-    port.postMessage({ action: 'request_sender_worker_started' });
+    port.postMessage({ action: 'request sender worker started' });
 };
