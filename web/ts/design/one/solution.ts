@@ -141,11 +141,11 @@ function toggleNode(symbol: HTMLElement): void {
         }
     }
 }
-window.onload = showData;
-
-initialize_floating_panel_if_extension_not_install(document.getElementById('content') as HTMLElement);
+document.addEventListener('DOMContentLoaded', function() {
+    initialize_floating_panel_if_extension_not_install(document.getElementById('content') as HTMLElement);
+});
+window.addEventListener('load', showData);
 registerCallbackWithKey('command', ai_executor);
-
 function ai_executor(data: any): void {
     console.info(data);
 }

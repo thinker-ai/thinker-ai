@@ -130,7 +130,7 @@ function initializeFloatingPanel(contentDiv: HTMLElement): void {
     const floatingPanelHTML = `
         <div id="floating-panel">
             <div id="chat-container">
-                <button id="toggle-button">+</button>
+                <button id="toggle-button">-</button>
                 <div id="sidebar">
                     <div class="vertical-text-wrapper">
                         <span class="vertical-text">聊天窗口</span>
@@ -173,44 +173,42 @@ function initializeFloatingPanel(contentDiv: HTMLElement): void {
         }
     });
 
-    window.addEventListener("load", function() {
-        const verticalText = document.querySelector(".vertical-text-wrapper") as HTMLElement; // 获取 vertical-text-wrapper 元素
-        const panel = document.getElementById("floating-panel") as HTMLElement;
-        let prevX = 0;
-        let prevY = 0;
-        let panelPosition = { x: 0, y: 100 }; // 初始位置
+    const verticalText = document.querySelector(".vertical-text-wrapper") as HTMLElement; // 获取 vertical-text-wrapper 元素
+    const panel = document.getElementById("floating-panel") as HTMLElement;
+    let prevX = 0;
+    let prevY = 0;
+    let panelPosition = { x: 0, y: 100 }; // 初始位置
 
-        verticalText?.addEventListener("mousedown", function(event: MouseEvent) {
-            isDragging = true;
-            prevX = event.clientX;
-            prevY = event.clientY;
-        });
-
-        window.addEventListener("mousemove", function(event: MouseEvent) {
-            if (isDragging && isPanelOpen) {
-                let newX = event.clientX;
-                let newY = event.clientY;
-
-                const dx = newX - prevX;
-                const dy = newY - prevY;
-
-                panelPosition.x -= dx;  // 右侧对齐
-                panelPosition.y += dy;
-
-                panel.style.right = `${panelPosition.x}px`;
-                panel.style.top = `${panelPosition.y}px`;
-
-                prevX = newX;
-                prevY = newY;
-            }
-        });
-
-        window.addEventListener("mouseup", function() {
-            isDragging = false;
-        });
-
-        toggleFloatingPanel();  // 设置面板为关闭状态
+    verticalText?.addEventListener("mousedown", function(event: MouseEvent) {
+        isDragging = true;
+        prevX = event.clientX;
+        prevY = event.clientY;
     });
+
+    window.addEventListener("mousemove", function(event: MouseEvent) {
+        if (isDragging && isPanelOpen) {
+            let newX = event.clientX;
+            let newY = event.clientY;
+
+            const dx = newX - prevX;
+            const dy = newY - prevY;
+
+            panelPosition.x -= dx;  // 右侧对齐
+            panelPosition.y += dy;
+
+            panel.style.right = `${panelPosition.x}px`;
+            panel.style.top = `${panelPosition.y}px`;
+
+            prevX = newX;
+            prevY = newY;
+        }
+    });
+
+    window.addEventListener("mouseup", function() {
+        isDragging = false;
+    });
+
+    toggleFloatingPanel();  // 设置面板为关闭状态
 }
 
 export function initialize_floating_panel_if_extension_not_install(contentDiv: HTMLElement): void {

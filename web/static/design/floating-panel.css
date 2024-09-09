@@ -4,8 +4,9 @@
     position: fixed;
     border: 2px solid #ccc;
     right: 0;
-    top: 100px;
+    top: 0;
     height: 550px;
+    width: 500px;
     background: white;
     overflow: hidden; /* 禁止滚动 */
     transition: all 0.3s ease-in-out;
@@ -67,7 +68,7 @@
 }
 
 #panel-content {
-    display: flex;
+    display: block;
     flex-direction: column;
     width: 100%;
     overflow: hidden;
