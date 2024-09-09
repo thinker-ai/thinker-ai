@@ -11,21 +11,23 @@ onconnect = (e) => {
     port.onmessage = (event) => {
         const { action, content } = event.data;
         if (action === 'connect') {
+            console.log("web_socket_sender_worker action is connect");
             web_socket_sender_worker.connect(content);   // 调用包含 token 的 connect 函数
         }
         // 处理发送消息的逻辑
-        if (action === 'sendMessage') {
+        if (action === 'send_message') {
+            console.log("web_socket_sender_worker action is send_message");
             if (web_socket_sender_worker.socket && web_socket_sender_worker.socket.readyState === WebSocket.OPEN) {
                 web_socket_sender_worker.sendMessage(content)
             } else {
                 web_socket_sender_worker.on_send_error('Socket is not open');
             }
         }
-        if (action === 'registerFunctionListener') {
+        if (action === 'register_function_listener') {
             const { matchingFunction, callbackId } = content;
             // 注册带有匹配函数的监听器
             web_socket_sender_worker.registerFunctionListener(matchingFunction, callbackId);
-        } else if (action === 'callback') {
+        } else if (action === 'register_key_listener') {
             const { key, callbackId } = content;
             // 通过 key 注册监听器
             web_socket_sender_worker.registerKeyListener(key, callbackId);

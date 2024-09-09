@@ -24,7 +24,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
 
         // 传递回调 ID 和匹配函数给全局注册器
         this.web_socket_worker.port.postMessage({
-            action: 'registerListenerWithFunction',
+            action: 'register_function_listener',
             callbackId: callback.toString(),
             matchingFunction: matchingFunction  // 假设 matchingFunction 可序列化
         });
@@ -36,7 +36,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
 
         // 传递回调 ID 和 key 给全局注册器
         this.web_socket_worker.port.postMessage({
-            action: 'registerListenerWithKey',
+            action: 'register_key_listener',
             callbackId: callback.toString(),
             key: key  // 通过 key 创建 matchingFunction
         });
@@ -61,7 +61,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
                 // 获取 token
         // 发送请求信息给 SharedWorker
         this.web_socket_worker.port.postMessage({
-            action: "sendMessage",
+            action: "send_message",
             content: {message},
             axios_src: "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"
         });

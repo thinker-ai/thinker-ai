@@ -140,7 +140,7 @@ export class WebSocketSenderBackgroundWithCallback extends AbstractWebSocketSend
             const result = listener.matchingFunction(message);
             if (result) {
                 // 通过 port 发送匹配结果和 callbackId 给页面
-                this.send_response({ action: 'notifyListener', callbackId: listener.callbackId, data: result });
+                this.send_response({ action: 'callback', callbackId: listener.callbackId, data: result });
             }
         });
     }
