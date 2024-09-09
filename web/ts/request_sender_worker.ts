@@ -9,7 +9,7 @@ onconnect = (e:any) => {
 
     const on_response_ok=(response_data: any) =>{
         port.postMessage({ action: 'response_ok', response_data });
-}
+    }
 
     const on_response_error=(error_status: number|string) =>{
         port.postMessage({ action: 'response_error', error: 'HTTP error! status: ' + error_status });

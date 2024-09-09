@@ -25,10 +25,10 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
             if (action === "response_ok" && on_response_ok) {
                 on_response_ok(response_data)
             }
-            if (action === "response_error" && on_response_error) {
+            else if (action === "response_error" && on_response_error) {
                 on_response_error(response_data);
             }
-            if (action === "request_sender_worker_started") {
+            else if (action === "request_sender_worker_started") {
                 console.info("Request sender worker started.");
             }
         };

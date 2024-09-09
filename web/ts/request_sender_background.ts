@@ -25,7 +25,6 @@ function loadAxios(token: string | null = null): AxiosInstance {
             return Promise.reject(error); // 错误处理保持不变
         }
     );
-
     return axiosInstance;
 }
 

@@ -44,6 +44,12 @@ async def main(request: Request):
     return main_dir.TemplateResponse("/html/main.html", {"request": request})
 
 
+@app.get("/index", response_class=HTMLResponse)
+async def index(request: Request):
+    main_dir = Jinja2Templates(directory=web_root)
+    return main_dir.TemplateResponse("/html/index.html", {"request": request})
+
+
 @app.get("/home", response_class=HTMLResponse)
 async def home(request: Request):
     main_dir = Jinja2Templates(directory=web_root)
@@ -91,4 +97,4 @@ def is_router_included(router: APIRouter) -> bool:
 
 
 if __name__ == '__main__':
-    uvicorn.run("main:app", host="0.0.0.0", port=8000)#, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000)  #, reload=True)

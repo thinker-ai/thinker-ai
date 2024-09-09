@@ -30,7 +30,7 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
         // 使用 Sec-WebSocket-Protocol 头传递 token
             // 将 token 作为 URL 参数传递
         const urlWithToken = `${this.url}?token=${token}`;
-        this.socket = new WebSocket(this.url);
+        this.socket = new WebSocket(urlWithToken);
 
         this.socket.onopen = () => {
             console.log('Connected to server');
@@ -109,17 +109,6 @@ export class WebSocketSenderBackgroundWithCallback extends AbstractWebSocketSend
     public registerKeyListener(key: string, callbackId: string): void {
         const matchingFunction = this.createKeyMatcher(key);
         this.listeners.push({ matchingFunction, callbackId });
-    }
-
-    // 遍历所有监听器，检查匹配并通过 port 向页面发送匹配结果
-    public notifyListeners(data: any): void {
-        this.listeners.forEach(listener => {
-            const result = listener.matchingFunction(data);
-            if (result) {
-                // 通过 port 发送匹配结果和 callbackId 给页面
-                this.send_response({ action: 'notifyListener', callbackId: listener.callbackId, data: result });
-            }
-        });
     }
 
     // 定义 createKeyMatcher 函数，生成一个匹配函数

@@ -77,7 +77,7 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 
-@socket_router.websocket("/ws/")
+@socket_router.websocket("/ws")
 async def connect(websocket: WebSocket):
     session = await get_session_ws(websocket)
     # 根据会话对象获取 user_id 或其他会话信息

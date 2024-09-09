@@ -62,8 +62,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
         // 发送请求信息给 SharedWorker
         this.web_socket_worker.port.postMessage({
             action: "send_message",
-            content: {message},
-            axios_src: "https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"
+            content: {message}
         });
     }
 
@@ -71,27 +70,39 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
         const token = localStorage.getItem("access_token");
         this.web_socket_worker.port.postMessage({
             action: "connect",
-            content: {token}
+            content: token
         });
-       this.web_socket_worker.port.onmessage = (event: MessageEvent) => {
+        this.web_socket_worker.port.onmessage = (event: MessageEvent) => {
             const { action, content } = event.data;
-            if (action === "connected") {
-                this.on_connected(content);
-            }
-            if (action === "disconnected") {
-                this.on_disconnected(content);
-            }
-            if (action === "send_error") {
-                this.on_send_error(content);
-            }
-            if (action === "socket_error") {
-                this.on_socket_error(content);
-            }
-            if (action === 'callback') {
-                this.handleCallback(content.callbackId, content.data);
-            }
-            if (action === "web_socket_worker_started") {
-                console.info("Web socket worker started.");
+
+            switch (action) {
+                case "connected":
+                    this.on_connected(content);
+                    break;
+
+                case "disconnected":
+                    this.on_disconnected(content);
+                    break;
+
+                case "send_error":
+                    this.on_send_error(content);
+                    break;
+
+                case "socket_error":
+                    this.on_socket_error(content);
+                    break;
+
+                case "callback":
+                    this.handleCallback(content.callbackId, content.data);
+                    break;
+
+                case "web_socket_worker_started":
+                    console.info("Web socket worker started.");
+                    break;
+
+                default:
+                    console.warn(`Unrecognized action: ${action}`);
+                    break;
             }
         };
     }
