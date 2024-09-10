@@ -84,7 +84,7 @@ export class RequestSender implements RequestSenderInterface {
                 }
             })
             .catch((error: any) => {
-                const detail = error.response?.detail || 'Unknown';
+                const detail = error.response?.data.detail || 'Unknown';
                 if (on_response_error) {
                     on_response_error(detail);
                 }
