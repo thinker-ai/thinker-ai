@@ -1,4 +1,6 @@
 // 定义接口类型
+import {makeRequest} from "./common";
+
 interface AuthorizationResponse {
     user_id: string;
     access_token: string;
@@ -41,24 +43,34 @@ resolve_authorization_result().then((response: AuthorizationResponse | null) => 
 
 // 定义 login 函数，带有 fetch 请求
 function login(): void {
-    fetch('/login', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded', // 修改为表单数据类型
-        },
-        body: new URLSearchParams({
+    const on_response_ok=(response_data: any) =>{
+                            if (response_data && response_data.access_token && response_data.user_id) {
+                                const access_token = response_data.access_token;
+                                const user_id = response_data.user_id;
+                                localStorage.setItem('access_token', access_token);
+                                localStorage.setItem('user_id', user_id);
+                            } else {
+                                console.error({ status: 'error', message: 'Invalid login response' });
+                            }
+                         }
+    const on_response_error= (error:number|string) => {
+                        let message=error
+                        if (typeof error === 'number') {
+                            message='服务器错误，错误码:'+error;
+                        }
+                        console.error('Error:', message);
+               }
+     makeRequest(
+        'post',
+        'http://0.0.0.0:8000/login',
+        undefined,
+        new URLSearchParams({
             username: 'testuser',
             password: 'testpassword',
         }),
-    })
-    .then(response => response.json())  // 推断 response.json() 返回的是一个对象
-    .then((data: { access_token: string; user_id: string }) => {
-        const token = data.access_token;
-        const user_id = data.user_id;
-        localStorage.setItem('access_token', token);
-        localStorage.setItem('user_id', user_id);
-    })
-    .catch(error => {
-        console.error('Error:', error);
-    });
+        false,
+        'application/x-www-form-urlencoded',
+        on_response_ok,
+        on_response_error
+    )
 }
