@@ -118,7 +118,7 @@ function toggleFloatingPanel(): void {
 function initializeFloatingPanel(contentDiv: HTMLElement): void {
     const prismScript = document.createElement('script');
     prismScript.type = 'text/javascript';
-    prismScript.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.js';
+    prismScript.src = 'https://cdn.jsdelivr.net/npm/prismjs@1.25.0/prism.min.js';
     document.head.appendChild(prismScript);
 
     const markedScript = document.createElement('script');
