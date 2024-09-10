@@ -62,7 +62,7 @@ function login(): void {
         undefined,
         new URLSearchParams({
             username: 'testuser',
-            password: 'testpassword1',
+            password: 'testpassword',
         }),
         false,
         'application/x-www-form-urlencoded',
