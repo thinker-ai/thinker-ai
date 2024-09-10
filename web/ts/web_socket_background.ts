@@ -9,13 +9,13 @@ export interface WebSocketSenderInterface {
 }
 export abstract class AbstractWebSocketSender implements WebSocketSenderInterface{
     url=`ws://localhost:8000/ws`
-    socket!:WebSocket;
+    socket!:WebSocket|null;
     reconnectInterval = 1000; // 1 second
     constructor(url?: string) {
         this.url = url || this.url;  // 如果 url 未传递，使用默认值
     }
     // WebSocket 连接函数
-    connect(token:string) {
+    public connect(token:string) {
         if (!token) {
             console.log('No token found.');
             return;
@@ -71,13 +71,27 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
         // };
     }
 // 使用 WebSocket 发送消息
-    sendMessage(message:any) {
+    public sendMessage(message:any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify({type: 'message', message}));
         } else {
             console.log('WebSocket is not open. Message not sent.');
         }
 
+    }
+    public disconnect(): void{
+        if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+            try{
+                this.socket.close();
+                this.on_disconnected("closed")
+            }catch(e){
+                console.log('WebSocket close error');
+            }finally {
+                this.socket=null;
+            }
+        } else {
+            console.log('WebSocket is not open');
+        }
     }
     protected abstract on_receive_message(message: any): void;
     abstract on_send_error(error: any): void;

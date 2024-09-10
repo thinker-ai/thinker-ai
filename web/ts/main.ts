@@ -10,14 +10,14 @@ function resolve_authorization_result(): Promise<{ user_id: string; access_token
     return new Promise((resolve, reject) => {
         // 监听来自 content script 的消息
         const messageHandler = (event: MessageEvent) => {
-            if (event.data && event.data.action === 'authorizationResult') {
+            if (event.data && event.data.action === 'authorization_result') {
                 window.removeEventListener('message', messageHandler);  // 确保只处理一次消息
                 resolve(event.data.response);  // 解析消息数据并返回
             }
         };
         window.addEventListener('message', messageHandler);
         // 发送消息给 content script，请求获取 authorizationResult 信息
-        window.postMessage({ action: 'getAuthorization' }, '*');
+        window.postMessage({ action: 'get_authorization' }, '*');
         // 设置超时，如果超过一定时间没有接收到消息，则 reject
         const timeout = setTimeout(() => {
             window.removeEventListener('message', messageHandler);  // 超时后移除事件监听器
