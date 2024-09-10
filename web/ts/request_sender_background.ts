@@ -28,10 +28,7 @@ function loadAxios(token: string | null = null): AxiosInstance {
     return axiosInstance;
 }
 
-
-// 定义请求配置的接口
-export interface RequestSenderInterface {
-    makeRequest(
+export type RequestMessage = {
         method: 'get' | 'post',
         url: string,
         params?: URLSearchParams,
@@ -40,7 +37,10 @@ export interface RequestSenderInterface {
         content_type?:string,
         on_response_ok?:(response_data: any) => void,
         on_response_error?:(error_status: number|string) => void,
-    ): void;
+};
+// 定义请求配置的接口
+export interface RequestSenderInterface {
+    makeRequest(message:RequestMessage): void;
 }
 // 定义 BaseRequestSender 类
 export class RequestSender implements RequestSenderInterface {
@@ -48,29 +48,20 @@ export class RequestSender implements RequestSenderInterface {
     public constructor(token: string | null = null) {
         this.token = token;
     }
-    public makeRequest(
-        method: 'get' | 'post',
-        url: string,
-        params: URLSearchParams = new URLSearchParams(),
-        body: any = null,
-        useToken: boolean = true,
-        content_type: string = 'application/json',
-        on_response_ok: (response_data: any) => void = () => {},
-        on_response_error: (error: string) => void = () => {}
-    ): void {
+    public makeRequest(message:RequestMessage): void {
         let axiosInstance = loadAxios(this.token);
         const config: AxiosRequestConfig = {
-            method:method,
-            url:url,
-            params:params,
-            data: body,
+            method:message.method,
+            url:message.url,
+            params:message.params,
+            data: message.body,
             headers: {
-                 'Content-Type': content_type,
+                 'Content-Type': message.content_type,
             },
         };
 
         // 如果需要 token，则在请求头中添加 Authorization
-        if (useToken && this.token) {
+        if (message.useToken && this.token) {
             config.headers = {
                 ...config.headers, // 保留已有 headers
                 Authorization: `Bearer ${this.token}`
@@ -79,14 +70,14 @@ export class RequestSender implements RequestSenderInterface {
 
         axiosInstance(config)
             .then((response: AxiosResponse<any>) => {
-                if (on_response_ok) {
-                    on_response_ok(response.data);
+                if (message.on_response_ok) {
+                    message.on_response_ok(response.data);
                 }
             })
             .catch((error: any) => {
                 const detail = error.response?.data.detail || 'Unknown';
-                if (on_response_error) {
-                    on_response_error(detail);
+                if (message.on_response_error) {
+                    message.on_response_error(detail);
                 }
             });
     }
