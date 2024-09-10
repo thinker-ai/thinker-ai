@@ -35,40 +35,40 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
         this.socket.onopen = () => {
             console.log('Connected to server');
             this.on_connected('Connected to server')
-            this.reconnectInterval = 1000; // Reset the interval on successful connection
-
-            // Start sending heartbeat messages every 10 seconds
-            const heartbeatInterval = setInterval(() => {
-                if (this.socket.readyState === WebSocket.OPEN) {
-                    this.socket.send(JSON.stringify({type: 'heartbeat'}));
-                }
-            }, 10000);
-            this.socket.onclose = () => clearInterval(heartbeatInterval);
+            // this.reconnectInterval = 1000; // Reset the interval on successful connection
+            //
+            // // Start sending heartbeat messages every 10 seconds
+            // const heartbeatInterval = setInterval(() => {
+            //     if (this.socket.readyState === WebSocket.OPEN) {
+            //         this.socket.send(JSON.stringify({type: 'heartbeat'}));
+            //     }
+            // }, 10000);
+            // this.socket.onclose = () => clearInterval(heartbeatInterval);
         };
 
         this.socket.onmessage = (event:MessageEvent) => {
             const data = JSON.parse(event.data);
             if (data.type !== 'heartbeat') {
                 // 如果是在插件环境或普通网页中，使用其他方法，例如 chrome.runtime 或直接触发事件
-                this.on_receive_message(data.data)
+                this.on_receive_message(data.message)
             }
         }
 
-        this.socket.onclose = (event:CloseEvent) => {
-            console.log('Connection closed', event);
-            this.on_disconnected(event)
-            if (!event.wasClean) {
-                console.log('Connection closed due to network or server issues.');
-                setTimeout(() => this.connect(token), this.reconnectInterval); // Attempt to reconnect after a delay
-                this.reconnectInterval = Math.min(this.reconnectInterval * 2, 5000); // Max 5 seconds
-            }
-        };
-
-        this.socket.onerror = (error:Event) => {
-            console.log('WebSocket error', error);
-            this.socket.close(); // 关闭当前连接，触发 onclose 事件，进而重新连接
-            this.on_socket_error(error)
-        };
+        // this.socket.onclose = (event:CloseEvent) => {
+        //     console.log('Connection closed', event);
+        //     this.on_disconnected(event)
+        //     if (!event.wasClean) {
+        //         console.log('Connection closed due to network or server issues.');
+        //         setTimeout(() => this.connect(token), this.reconnectInterval); // Attempt to reconnect after a delay
+        //         this.reconnectInterval = Math.min(this.reconnectInterval * 2, 5000); // Max 5 seconds
+        //     }
+        // };
+        //
+        // this.socket.onerror = (error:Event) => {
+        //     console.log('WebSocket error', error);
+        //     this.socket.close(); // 关闭当前连接，触发 onclose 事件，进而重新连接
+        //     this.on_socket_error(error)
+        // };
     }
 // 使用 WebSocket 发送消息
     sendMessage(message:any) {
