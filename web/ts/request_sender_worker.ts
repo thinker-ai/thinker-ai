@@ -11,8 +11,8 @@ onconnect = (e:any) => {
         port.postMessage({ action: 'response_ok', response_data:response_data });
     }
 
-    const on_response_error=(error_status: number|string) =>{
-        port.postMessage({ action: 'response_error', error_status: error_status });
+    const on_response_error=(error: string) =>{
+        port.postMessage({ action: 'response_error', error: error });
     }
     // 监听来自页面的消息
     port.onmessage = (event:any) => {

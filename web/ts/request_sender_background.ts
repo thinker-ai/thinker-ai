@@ -56,7 +56,7 @@ export class RequestSender implements RequestSenderInterface {
         useToken: boolean = true,
         content_type: string = 'application/json',
         on_response_ok: (response_data: any) => void = () => {},
-        on_response_error: (error_status: number | string) => void = () => {}
+        on_response_error: (error: string) => void = () => {}
     ): void {
         let axiosInstance = loadAxios(this.token);
         const config: AxiosRequestConfig = {
@@ -84,9 +84,9 @@ export class RequestSender implements RequestSenderInterface {
                 }
             })
             .catch((error: any) => {
-                const error_status = error.response?.status || 'Unknown';
+                const detail = error.response?.detail || 'Unknown';
                 if (on_response_error) {
-                    on_response_error(error_status);
+                    on_response_error(detail);
                 }
             });
     }

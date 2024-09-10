@@ -53,12 +53,8 @@ function login(): void {
                                 console.error({ status: 'error', message: 'Invalid login response' });
                             }
                          }
-    const on_response_error= (error:number|string) => {
-                        let message=error
-                        if (typeof error === 'number') {
-                            message='服务器错误，错误码:'+error;
-                        }
-                        console.error('Error:', message);
+    const on_response_error= (error:string) => {
+                    console.error('Error:', error);
                }
      makeRequest(
         'post',
@@ -66,7 +62,7 @@ function login(): void {
         undefined,
         new URLSearchParams({
             username: 'testuser',
-            password: 'testpassword',
+            password: 'testpassword1',
         }),
         false,
         'application/x-www-form-urlencoded',

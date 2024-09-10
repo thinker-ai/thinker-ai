@@ -14,7 +14,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         useToken?: boolean,
         content_type?:string,
         on_response_ok?:(response_data: any) => void,
-        on_response_error?:(error_status: number|string) => void,
+        on_response_error?:(error: string) => void,
     ): void
     {
         // 获取 token
@@ -31,12 +31,12 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         });
         // 处理来自 SharedWorker 的响应
         this.request_sender_worker.port.onmessage = (event: MessageEvent) => {
-            const { action, response_data, error_status } = event.data;
+            const { action, response_data, error } = event.data;
             if (action === "response_ok" && on_response_ok) {
                 on_response_ok(response_data)
             }
             else if (action === "response_error" && on_response_error) {
-                on_response_error(error_status);
+                on_response_error(error);
             }
             else if (action === "request_sender_worker_started") {
                 console.info("Request sender worker started.");

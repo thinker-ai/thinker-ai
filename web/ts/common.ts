@@ -25,7 +25,7 @@ export function makeRequest(
         useToken?: boolean,
         content_type?:string,
         on_response_ok?: (response_data: any) => void,
-        on_response_error?: (error_status: number | string) => void
+        on_response_error?: (error: string) => void
 ):void
 {
     request_sender_worker_client.makeRequest(method, url, params, body,useToken,content_type,on_response_ok,on_response_error);

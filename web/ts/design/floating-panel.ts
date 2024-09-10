@@ -87,12 +87,8 @@ function sendMessage(): void {
         "application/json",
         (response_data) => append_ai_message(response_data),
         (error) => {
-            let message=error
-            if (typeof error === 'number') {
-                message='服务器错误，状态码:'+error;
-            }
-            alert(message);
-            console.error(message);
+            alert(error);
+            console.error(error);
         }
     );
 }
