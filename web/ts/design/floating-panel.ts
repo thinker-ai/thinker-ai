@@ -73,19 +73,18 @@ function sendMessage(): void {
     let message = inputField.value;
     inputField.value = '';
     if (message.trim() === '') return;
-
     append_human_message(message);
-
     makeRequest(
         'post',
         '/chat',
-        new URLSearchParams({
+        undefined,
+        {
               assistant_name:"assistant_1",
               topic:"default",
               content:message
-            }),
-        undefined,
+            },
         true,
+        "application/json",
         (response_data) => append_ai_message(response_data),
         (error) => {
             alert('服务器错误，状态码: ' + error);

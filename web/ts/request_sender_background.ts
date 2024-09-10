@@ -37,6 +37,7 @@ export interface RequestSenderInterface {
         params?: URLSearchParams,
         body?: any,
         useToken?: boolean,
+        content_type?:string,
         on_response_ok?:(response_data: any) => void,
         on_response_error?:(error_status: number|string) => void,
     ): void;
@@ -50,11 +51,12 @@ export class RequestSender implements RequestSenderInterface {
     public makeRequest(
         method: 'get' | 'post',
         url: string,
-        params?: URLSearchParams,
-        body?: any,
-        useToken?: boolean,
-        on_response_ok?: (response_data: any) => void,
-        on_response_error?: (error_status: number | string) => void
+        params: URLSearchParams = new URLSearchParams(),
+        body: any = null,
+        useToken: boolean = true,
+        content_type: string = 'application/json',
+        on_response_ok: (response_data: any) => void = () => {},
+        on_response_error: (error_status: number | string) => void = () => {}
     ): void {
         let axiosInstance = loadAxios(this.token);
         const config: AxiosRequestConfig = {
@@ -63,7 +65,7 @@ export class RequestSender implements RequestSenderInterface {
             params:params,
             data: body,
             headers: {
-                 'Content-Type': 'application/x-www-form-urlencoded',
+                 'Content-Type': content_type,
             },
         };
 

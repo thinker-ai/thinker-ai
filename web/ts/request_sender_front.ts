@@ -6,9 +6,17 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker=new SharedWorker('/js/request_sender_worker.js');
         this.request_sender_worker.port.start();
     }
-    makeRequest(method: string,url: string, params?: URLSearchParams,body?: any, useToken?: boolean,
-                on_response_ok?:(response_data: any) => void,
-                on_response_error?:(error_status: number|string) => void) {
+    makeRequest(
+        method: 'get' | 'post',
+        url: string,
+        params?: URLSearchParams,
+        body?: any,
+        useToken?: boolean,
+        content_type?:string,
+        on_response_ok?:(response_data: any) => void,
+        on_response_error?:(error_status: number|string) => void,
+    ): void
+    {
         // 获取 token
         const token = localStorage.getItem("access_token");
         // 设置 useToken 标志
@@ -18,7 +26,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         const paramsObject = params ? Object.fromEntries(params.entries()) : {};
         this.request_sender_worker.port.postMessage({
             action: "makeRequest",
-            request: { method, url, paramsObject, body, useToken },
+            request: { method, url, paramsObject, body, useToken,content_type},
             token: token
         });
         // 处理来自 SharedWorker 的响应

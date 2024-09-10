@@ -38,6 +38,7 @@ onconnect = (e:any) => {
                         params,
                         request.body,
                         token ?request.useToken : false,// 如果有 token 则使用，否则关闭 useToken
+                        request.content_type,
                         on_response_ok,
                         on_response_error,
                 );

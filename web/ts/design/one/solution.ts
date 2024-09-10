@@ -20,14 +20,16 @@ function submitProblem(): void {
         alert("请输入您的问题!");
         return;
     }
-    const params=new URLSearchParams()
-    params.append("name",titleElement.value)
-    params.append("description",descriptionElement.value)
-    params.append("is_root","true")
+    const data={
+        name:titleElement.value,
+        description:descriptionElement.value,
+        is_root:true,
+    }
     makeRequest(
              'post',
              '/design/one/solution/generate_state_machine_def',
-              params
+             undefined,
+              data,
     );
 }
 (window as any).submitProblem = submitProblem;
