@@ -8,11 +8,11 @@ onconnect = (e:any) => {
     port.start();
 
     const on_response_ok=(response_data: any) =>{
-        port.postMessage({ action: 'response_ok', response_data:response_data });
+        port.postMessage({ action: 'on_response_ok', response_data:response_data });
     }
 
     const on_response_error=(error: string) =>{
-        port.postMessage({ action: 'response_error', error: error });
+        port.postMessage({ action: 'on_response_error', error: error });
     }
     // 监听来自页面的消息
     port.onmessage = (event:any) => {
@@ -36,7 +36,9 @@ onconnect = (e:any) => {
                 params:params,
                 body:request.body,
                 token:request.token,
-                content_type:request.content_type
+                content_type:request.content_type,
+                on_response_ok:(response_data: any)=>on_response_ok(response_data),
+                on_response_error:(error: string)=>on_response_error(error)
             }
             // 处理请求并捕获错误
             try {

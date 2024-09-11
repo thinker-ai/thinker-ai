@@ -20,7 +20,7 @@ async def chat(request: Request, session: dict = Depends(get_session)) -> str:
     topic = data.get("topic")
     content = data.get("content")
     if user_id:
-        assistant_name = request.query_params.get("assistant_name")
+        assistant_name = data.get("assistant_name")
         if assistant_name:
             assistant_id = assistant_repository.get_by_name(assistant_name)
             if not assistant_id:

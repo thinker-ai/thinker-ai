@@ -28,10 +28,10 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         // 处理来自 SharedWorker 的响应
         this.request_sender_worker.port.onmessage = (event: MessageEvent) => {
             const { action, response_data, error } = event.data;
-            if (action === "response_ok" && message.on_response_ok) {
+            if (action === "on_response_ok" && message.on_response_ok) {
                 message.on_response_ok(response_data)
             }
-            else if (action === "response_error" && message.on_response_error) {
+            else if (action === "on_response_error" && message.on_response_error) {
                 message.on_response_error(error);
             }
             else if (action === "request_sender_worker_started") {
