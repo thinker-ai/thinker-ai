@@ -1,4 +1,4 @@
-import { registerCallbackWithKey, makeRequest } from "../../common";
+import { registerCallbackWithKey, send_http } from "../../common";
 import { initialize_floating_panel_if_extension_not_install } from "../floating-panel";
 import {RequestMessage} from "../../request_sender_background";
 
@@ -32,7 +32,7 @@ function submitProblem(): void {
             params:undefined,
             body:data
     }
-    makeRequest(request_message);
+    send_http(request_message);
 }
 (window as any).submitProblem = submitProblem;
 function updateContent(content: string): void {
@@ -46,7 +46,7 @@ function showData(): void {
             method:'get',
             url:'/design/one/solution/current',
     }
-    makeRequest(request_message)
+    send_http(request_message)
 }
 (window as any).showData = showData;
 function showProblem(data: { name: string; description: string }): void {

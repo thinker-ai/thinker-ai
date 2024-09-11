@@ -12,11 +12,11 @@ export type RequestMessage = {
 };
 // 定义请求配置的接口
 export interface RequestSenderInterface {
-    makeRequest(message:RequestMessage): void;
+    send_http(message:RequestMessage): void;
 }
 // 定义 BaseRequestSender 类
 export class RequestSender implements RequestSenderInterface {
-    public makeRequest(message:RequestMessage): void {
+    public send_http(message:RequestMessage): void {
         let axiosInstance = axios.create();
         const config: AxiosRequestConfig = {
             method:message.method,

@@ -6,7 +6,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker=new SharedWorker('/js/request_sender_worker.js');
         this.request_sender_worker.port.start();
     }
-    makeRequest(message:RequestMessage): void
+    send_http(message:RequestMessage): void
     {
         // 获取 token
         const token = localStorage.getItem("access_token");

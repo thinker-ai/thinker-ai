@@ -1,4 +1,4 @@
-import { makeRequest, registerCallbackWithKey, run_after_plugin_checked,send_websocket_message } from "../common";
+import { send_http, registerCallbackWithKey, run_after_plugin_checked,send_websocket } from "../common";
 import {RequestMessage} from "../request_sender_background";
 declare var marked: {
     parse: (markdown: string) => string;
@@ -92,7 +92,7 @@ function sendMessage(): void {
                     console.error(error);
                 }
         }
-    makeRequest(request_message);
+    send_http(request_message);
 }
 
 let isDragging = false;

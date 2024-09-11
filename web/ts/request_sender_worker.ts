@@ -42,7 +42,7 @@ onconnect = (e:any) => {
             }
             // 处理请求并捕获错误
             try {
-                sender.makeRequest(request_message);
+                sender.send_http(request_message);
             } catch (error) {
                 console.error('Failed to make request:', error);
                 port.postMessage({ action: 'response_error', error: (error as Error).message });

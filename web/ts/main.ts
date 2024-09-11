@@ -1,5 +1,5 @@
 // 定义接口类型
-import {makeRequest} from "./common";
+import {send_http} from "./common";
 
 interface AuthorizationResponse {
     user_id: string;
@@ -57,7 +57,7 @@ function login(): void {
                     console.error('Error:', error);
                }
 
-    makeRequest({
+    send_http({
          method:'post',
          url:'http://0.0.0.0:8000/login',
          params:undefined,

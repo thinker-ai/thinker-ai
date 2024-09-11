@@ -18,12 +18,12 @@ export function showContent(frame_id:string,menu_class_name:string,page:string,e
 (window as any).showContent = showContent;
 
 const request_sender_worker_client = new RequestSenderWorkerFront()
-export function makeRequest(message:RequestMessage):void
+export function send_http(message:RequestMessage):void
 {
-    request_sender_worker_client.makeRequest(message);
+    request_sender_worker_client.send_http(message);
 }
 const web_socket_worker_client = new WebSocketWorkerFront()
-export function send_websocket_message(message:string):void {
+export function send_websocket(message:string):void {
     web_socket_worker_client.sendMessage(message);
 }
 
