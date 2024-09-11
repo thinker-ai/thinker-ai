@@ -1,4 +1,4 @@
-import {RequestSenderInterface} from "./request_sender_background";
+import {RequestMessage, RequestSenderInterface} from "./request_sender_background";
 
 export class RequestSenderWorkerFront implements RequestSenderInterface{
     request_sender_worker:SharedWorker;
@@ -6,37 +6,33 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         this.request_sender_worker=new SharedWorker('/js/request_sender_worker.js');
         this.request_sender_worker.port.start();
     }
-    makeRequest(
-        method: 'get' | 'post',
-        url: string,
-        params?: URLSearchParams,
-        body?: any,
-        useToken?: boolean,
-        content_type?:string,
-        on_response_ok?:(response_data: any) => void,
-        on_response_error?:(error: string) => void,
-    ): void
+    makeRequest(message:RequestMessage): void
     {
         // 获取 token
         const token = localStorage.getItem("access_token");
-        // 设置 useToken 标志
-        useToken = token ? useToken : false;
         // 发送请求信息给 SharedWorker
         // 将 URLSearchParams 转换为键值对对象
-        const paramsObject = params ? Object.fromEntries(params.entries()) : {};
+        const paramsObject = message.params ? Object.fromEntries(message.params.entries()) : {};
         this.request_sender_worker.port.postMessage({
             action: "makeRequest",
-            request: { method, url, paramsObject, body, useToken,content_type},
+            request: {
+                method:message.method,
+                url:message.url,
+                paramsObject:paramsObject,
+                body:message.body,
+                token:message.token,
+                content_type:message.content_type
+            },
             token: token
         });
         // 处理来自 SharedWorker 的响应
         this.request_sender_worker.port.onmessage = (event: MessageEvent) => {
             const { action, response_data, error } = event.data;
-            if (action === "response_ok" && on_response_ok) {
-                on_response_ok(response_data)
+            if (action === "response_ok" && message.on_response_ok) {
+                message.on_response_ok(response_data)
             }
-            else if (action === "response_error" && on_response_error) {
-                on_response_error(error);
+            else if (action === "response_error" && message.on_response_error) {
+                message.on_response_error(error);
             }
             else if (action === "request_sender_worker_started") {
                 console.info("Request sender worker started.");

@@ -1,5 +1,6 @@
 import { RequestSenderWorkerFront } from "./request_sender_front";
 import { WebSocketWorkerFront } from "./web_socket_front";
+import {RequestMessage} from "./request_sender_background";
 export function showContent(frame_id:string,menu_class_name:string,page:string,element:Element):void {
     // Update the iframe's src attribute to load the corresponding page
     const html_element = window.document.getElementById(frame_id)
@@ -17,18 +18,9 @@ export function showContent(frame_id:string,menu_class_name:string,page:string,e
 (window as any).showContent = showContent;
 
 const request_sender_worker_client = new RequestSenderWorkerFront()
-export function makeRequest(
-        method: 'get' | 'post',
-        url: string,
-        params?: URLSearchParams,
-        body?: any,
-        useToken?: boolean,
-        content_type?:string,
-        on_response_ok?: (response_data: any) => void,
-        on_response_error?: (error: string) => void
-):void
+export function makeRequest(message:RequestMessage):void
 {
-    request_sender_worker_client.makeRequest(method, url, params, body,useToken,content_type,on_response_ok,on_response_error);
+    request_sender_worker_client.makeRequest(message);
 }
 const web_socket_worker_client = new WebSocketWorkerFront()
 export function send_websocket_message(message:string):void {

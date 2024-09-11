@@ -1,5 +1,6 @@
 import { registerCallbackWithKey, makeRequest } from "../../common";
 import { initialize_floating_panel_if_extension_not_install } from "../floating-panel";
+import {RequestMessage} from "../../request_sender_background";
 
 interface ResponseData {
     name: string;
@@ -25,12 +26,13 @@ function submitProblem(): void {
         description:descriptionElement.value,
         is_root:true,
     }
-    makeRequest(
-             'post',
-             '/design/one/solution/generate_state_machine_def',
-             undefined,
-              data,
-    );
+    const request_message:RequestMessage={
+            method:'post',
+            url:'/design/one/solution/generate_state_machine_def',
+            params:undefined,
+            body:data
+    }
+    makeRequest(request_message);
 }
 (window as any).submitProblem = submitProblem;
 function updateContent(content: string): void {
@@ -40,10 +42,11 @@ function updateContent(content: string): void {
 }
 (window as any).updateContent = updateContent;
 function showData(): void {
-    makeRequest(
-             'get',
-             '/design/one/solution/current',
-    )
+    const request_message:RequestMessage={
+            method:'get',
+            url:'/design/one/solution/current',
+    }
+    makeRequest(request_message)
 }
 (window as any).showData = showData;
 function showProblem(data: { name: string; description: string }): void {

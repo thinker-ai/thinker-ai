@@ -1,4 +1,5 @@
 import { makeRequest, registerCallbackWithKey, run_after_plugin_checked,send_websocket_message } from "../common";
+import {RequestMessage} from "../request_sender_background";
 declare var marked: {
     parse: (markdown: string) => string;
 };
@@ -74,23 +75,24 @@ function sendMessage(): void {
     inputField.value = '';
     if (message.trim() === '') return;
     append_human_message(message);
-    makeRequest(
-        'post',
-        '/chat',
-        undefined,
-        {
-              assistant_name:"assistant_1",
-              topic:"default",
-              content:message
-            },
-        true,
-        "application/json",
-        (response_data) => append_ai_message(response_data),
-        (error) => {
-            alert(error);
-            console.error(error);
+    const request_message:RequestMessage={
+            method:'post',
+            url:'/chat',
+            params:undefined,
+            body:{
+                  assistant_name:"assistant_1",
+                  topic:"default",
+                  content:message
+                },
+            token: localStorage.getItem("access_token") as string,
+            content_type:"application/json",
+            on_response_ok: (response_data) => append_ai_message(response_data),
+            on_response_error:(error) => {
+                    alert(error);
+                    console.error(error);
+                }
         }
-    );
+    makeRequest(request_message);
 }
 
 let isDragging = false;

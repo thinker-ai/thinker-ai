@@ -1,4 +1,4 @@
-import {RequestSender} from "./request_sender_background";
+import {RequestMessage, RequestSender} from "./request_sender_background";
 
 // 声明 onconnect 是 SharedWorker 的全局事件
 declare let onconnect: (e: MessageEvent) => void;
@@ -17,7 +17,7 @@ onconnect = (e:any) => {
     // 监听来自页面的消息
     port.onmessage = (event:any) => {
         const { action, request, token } = event.data || {};
-        const sender = new RequestSender(token);
+        const sender = new RequestSender();
 
         if (!action) {
             console.error('Invalid message: missing action');
@@ -30,18 +30,17 @@ onconnect = (e:any) => {
                 return;
             }
             const params = new URLSearchParams(request.paramsObject);
+            const request_message:RequestMessage={
+                method:request.method,
+                url:request.url,
+                params:params,
+                body:request.body,
+                token:request.token,
+                content_type:request.content_type
+            }
             // 处理请求并捕获错误
             try {
-                sender.makeRequest(
-                        request.method,
-                        request.url,
-                        params,
-                        request.body,
-                        token ?request.useToken : false,// 如果有 token 则使用，否则关闭 useToken
-                        request.content_type,
-                        on_response_ok,
-                        on_response_error,
-                );
+                sender.makeRequest(request_message);
             } catch (error) {
                 console.error('Failed to make request:', error);
                 port.postMessage({ action: 'response_error', error: (error as Error).message });

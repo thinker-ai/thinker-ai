@@ -56,17 +56,19 @@ function login(): void {
     const on_response_error= (error:string) => {
                     console.error('Error:', error);
                }
-     makeRequest(
-        'post',
-        'http://0.0.0.0:8000/login',
-        undefined,
-        new URLSearchParams({
-            username: 'testuser',
-            password: 'testpassword',
-        }),
-        false,
-        'application/x-www-form-urlencoded',
-        on_response_ok,
-        on_response_error
+
+    makeRequest({
+         method:'post',
+         url:'http://0.0.0.0:8000/login',
+         params:undefined,
+         body:new URLSearchParams({
+             username: 'testuser',
+             password: 'testpassword',
+         }),
+         token:localStorage.getItem("access_token") as string,
+         content_type:'application/x-www-form-urlencoded',
+         on_response_ok:(response_data: any)=>on_response_ok(response_data),
+         on_response_error:(error:string)=>on_response_error(error)
+        }
     )
 }
