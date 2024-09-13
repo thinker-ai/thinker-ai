@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional,ClassVar
 
 from pydantic import BaseModel, Field
 
@@ -21,23 +21,22 @@ class BrainMemory(BaseModel):
     last_talk: Optional[str] = None
     cacheable: bool = True
     llm: Optional[BaseLLM] = Field(default=None, exclude=True)
-    cache_key: Optional[str] = None  # New attribute to store cache key
-
-    cache = {}  # In-memory cache
+    cache_key: Optional[str] = None  # 用于存储缓存键
+    cache: ClassVar[Dict[str, str]] = {}  # 内存缓存
 
     class Config:
         arbitrary_types_allowed = True
 
     def add_talk(self, msg: Message):
         """
-        Add message from user.
+        添加用户消息。
         """
         msg.role = "user"
         self.add_history(msg)
         self.is_dirty = True
 
     def add_answer(self, msg: Message):
-        """Add message from LLM"""
+        """添加 LLM 的回复"""
         msg.role = "assistant"
         self.add_history(msg)
         self.is_dirty = True
@@ -59,17 +58,15 @@ class BrainMemory(BaseModel):
             return bm
         return BrainMemory(cache_key=cache_key)
 
-    async def dumps(self, cache_key: Optional[str] = None, timeout_sec: int = 30 * 60):
+    async def dumps(self):
         if not self.is_dirty:
             return
-        if cache_key is None:
-            cache_key = self.cache_key
-        if not cache_key:
+        if not self.cache_key:
             return False
         v = self.model_dump_json()
         if self.cacheable:
-            BrainMemory.cache[cache_key] = v
-            logger.debug(f"Cache SET {cache_key} {v}")
+            BrainMemory.cache[self.cache_key] = v
+            logger.debug(f"Cache SET {self.cache_key} {v}")
         self.is_dirty = False
 
     @staticmethod
@@ -168,7 +165,7 @@ class BrainMemory(BaseModel):
         return json.dumps(mmsg, ensure_ascii=False)
 
     async def get_title(self, llm, max_words=5, **kwargs) -> str:
-        """Generate text title"""
+        """生成文本标题"""
         if isinstance(llm, OpenAILLM):
             return self.history[0].content if self.history else "New"
 
@@ -198,7 +195,7 @@ class BrainMemory(BaseModel):
         rsp = await llm.aask(
             msg=context,
             system_msgs=[
-                "You are a tool capable of determining whether two paragraphs are semantically related."
+                "You are a tool capable of determining whether two paragraphs are semantically related.",
                 'Return "TRUE" if "Paragraph 1" is semantically relevant to "Paragraph 2", otherwise return "FALSE".'
             ],
             stream=False,
@@ -250,7 +247,7 @@ class BrainMemory(BaseModel):
         if len(self.history) == 0 and not self.historical_summary:
             return ""
         texts = [self.historical_summary] if self.historical_summary else []
-        for m in self.history[:-1]:
+        for m in self.history:  # 包含所有消息
             if isinstance(m, Dict):
                 t = Message(**m).content
             elif isinstance(m, Message):
@@ -258,7 +255,6 @@ class BrainMemory(BaseModel):
             else:
                 continue
             texts.append(t)
-
         return "\n".join(texts)
 
     async def _summarize(self, text: str, max_words=200, keep_language: bool = False, limit: int = -1) -> str:
@@ -284,15 +280,15 @@ class BrainMemory(BaseModel):
                 summary = summaries[0]
                 break
 
-            # Merged and retry
+            # 合并并重试
             text = "\n".join(summaries)
             text_length = len(text)
 
-            max_count -= 1  # safeguard
+            max_count -= 1  # 安全措施，防止死循环
         return summary
 
     async def _get_summary(self, text: str, max_words=20, keep_language: bool = False):
-        """Generate text summary"""
+        """生成文本摘要"""
         if len(text) < max_words:
             return text
         system_msgs = [
@@ -307,7 +303,7 @@ class BrainMemory(BaseModel):
 
     @staticmethod
     def split_texts(text: str, window_size) -> List[str]:
-        """Splitting long text into sliding windows text"""
+        """将长文本拆分为滑动窗口的文本"""
         if window_size <= 0:
             window_size = DEFAULT_TOKEN_SIZE
         total_len = len(text)
@@ -322,7 +318,7 @@ class BrainMemory(BaseModel):
             if window_size + idx > total_len:
                 windows.append(text[idx:])
                 break
-            w = text[idx : idx + window_size]
+            w = text[idx: idx + window_size]
             windows.append(w)
             idx += data_len
 
