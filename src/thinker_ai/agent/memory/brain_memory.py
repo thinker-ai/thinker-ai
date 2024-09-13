@@ -1,12 +1,10 @@
 import json
 import re
-from typing import Dict, List, Optional,ClassVar
+from typing import Dict, List, Optional, ClassVar
 
 from pydantic import BaseModel, Field
 
 from thinker_ai.agent.provider.llm_schema import Message
-from thinker_ai.agent.provider import OpenAILLM
-from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.common.logs import logger
 from thinker_ai.configs.config import config
 from thinker_ai.configs.const import DEFAULT_MAX_TOKENS, DEFAULT_TOKEN_SIZE
@@ -20,8 +18,8 @@ class BrainMemory(BaseModel):
     is_dirty: bool = False
     last_talk: Optional[str] = None
     cacheable: bool = True
-    llm: Optional[BaseLLM] = Field(default=None, exclude=True)
     cache_key: Optional[str] = None  # 用于存储缓存键
+
     cache: ClassVar[Dict[str, str]] = {}  # 内存缓存
 
     class Config:
@@ -109,64 +107,22 @@ class BrainMemory(BaseModel):
         return v
 
     async def summarize(self, llm, max_words=200, keep_language: bool = False, limit: int = -1, **kwargs):
-        if isinstance(llm, OpenAILLM):
-            return await self._thinker_ai_summarize(max_words=max_words)
-
-        self.llm = llm
-        return await self._openai_summarize(llm=llm, max_words=max_words, keep_language=keep_language, limit=limit)
-
-    async def _openai_summarize(self, llm, max_words=200, keep_language: bool = False, limit: int = -1):
-        texts = [self.historical_summary]
-        for m in self.history:
-            texts.append(m.content)
+        texts = [self.historical_summary] if self.historical_summary else []
+        texts.extend(m.content for m in self.history)
         text = "\n".join(texts)
 
         text_length = len(text)
         if limit > 0 and text_length < limit:
             return text
-        summary = await self._summarize(text=text, max_words=max_words, keep_language=keep_language, limit=limit)
+        summary = await self._summarize(text=text, llm=llm, max_words=max_words, keep_language=keep_language, limit=limit)
         if summary:
             await self.set_history_summary(history_summary=summary)
             return summary
         raise ValueError(f"text too long:{text_length}")
 
-    async def _thinker_ai_summarize(self, max_words=200):
-        if not self.history:
-            return ""
-
-        total_length = 0
-        msgs = []
-        for m in reversed(self.history):
-            delta = len(m.content)
-            if total_length + delta > max_words:
-                left = max_words - total_length
-                if left == 0:
-                    break
-                m.content = m.content[0:left]
-                msgs.append(m)
-                break
-            msgs.append(m)
-            total_length += delta
-        msgs.reverse()
-        self.history = msgs
-        self.is_dirty = True
-        await self.dumps()
-        self.is_dirty = False
-
-        return BrainMemory.to_thinker_ai_history_format(self.history)
-
-    @staticmethod
-    def to_thinker_ai_history_format(history) -> str:
-        mmsg = [m.model_dump() for m in history]
-        return json.dumps(mmsg, ensure_ascii=False)
-
     async def get_title(self, llm, max_words=5, **kwargs) -> str:
         """生成文本标题"""
-        if isinstance(llm, OpenAILLM):
-            return self.history[0].content if self.history else "New"
-
-        summary = await self.summarize(llm=llm, max_words=500)
-
+        summary = await self.summarize(llm=llm, max_words=max_words)
         language = config.language
         command = f"Translate the above summary into a {language} title of less than {max_words} words."
         summaries = [summary, command]
@@ -177,16 +133,6 @@ class BrainMemory(BaseModel):
         return response
 
     async def is_related(self, text1, text2, llm):
-        if isinstance(llm, OpenAILLM):
-            return await self._thinker_ai_is_related(text1=text1, text2=text2, llm=llm)
-        return await self._openai_is_related(text1=text1, text2=text2, llm=llm)
-
-    @staticmethod
-    async def _thinker_ai_is_related(**kwargs):
-        return False
-
-    @staticmethod
-    async def _openai_is_related(text1, text2, llm, **kwargs):
         context = f"## Paragraph 1\n{text2}\n---\n## Paragraph 2\n{text1}\n"
         rsp = await llm.aask(
             msg=context,
@@ -203,16 +149,6 @@ class BrainMemory(BaseModel):
         return result
 
     async def rewrite(self, sentence: str, context: str, llm):
-        if isinstance(llm, OpenAILLM):
-            return await self._thinker_ai_rewrite(sentence=sentence, context=context, llm=llm)
-        return await self._openai_rewrite(sentence=sentence, context=context, llm=llm)
-
-    @staticmethod
-    async def _thinker_ai_rewrite(sentence: str, **kwargs):
-        return sentence
-
-    @staticmethod
-    async def _openai_rewrite(sentence: str, context: str, llm):
         prompt = f"## Context\n{context}\n---\n## Sentence\n{sentence}\n"
         rsp = await llm.aask(
             msg=prompt,
@@ -243,7 +179,7 @@ class BrainMemory(BaseModel):
         if len(self.history) == 0 and not self.historical_summary:
             return ""
         texts = [self.historical_summary] if self.historical_summary else []
-        for m in self.history:  # 包含所有消息
+        for m in self.history:
             if isinstance(m, Dict):
                 t = Message(**m).content
             elif isinstance(m, Message):
@@ -251,9 +187,10 @@ class BrainMemory(BaseModel):
             else:
                 continue
             texts.append(t)
+
         return "\n".join(texts)
 
-    async def _summarize(self, text: str, max_words=200, keep_language: bool = False, limit: int = -1) -> str:
+    async def _summarize(self, text: str, llm, max_words=200, keep_language: bool = False, limit: int = -1) -> str:
         max_token_count = DEFAULT_MAX_TOKENS
         max_count = 100
         text_length = len(text)
@@ -262,7 +199,7 @@ class BrainMemory(BaseModel):
         summary = ""
         while max_count > 0:
             if text_length < max_token_count:
-                summary = await self._get_summary(text=text, max_words=max_words, keep_language=keep_language)
+                summary = await self._get_summary(text=text, llm=llm, max_words=max_words, keep_language=keep_language)
                 break
 
             padding_size = 20 if max_token_count > 20 else 0
@@ -270,7 +207,7 @@ class BrainMemory(BaseModel):
             part_max_words = min(int(max_words / len(text_windows)) + 1, 100)
             summaries = []
             for ws in text_windows:
-                response = await self._get_summary(text=ws, max_words=part_max_words, keep_language=keep_language)
+                response = await self._get_summary(text=ws, llm=llm, max_words=part_max_words, keep_language=keep_language)
                 summaries.append(response)
             if len(summaries) == 1:
                 summary = summaries[0]
@@ -283,7 +220,7 @@ class BrainMemory(BaseModel):
             max_count -= 1  # 安全措施，防止死循环
         return summary
 
-    async def _get_summary(self, text: str, max_words=20, keep_language: bool = False):
+    async def _get_summary(self, text: str, llm, max_words=20, keep_language: bool = False):
         """生成文本摘要"""
         if len(text) < max_words:
             return text
@@ -293,7 +230,7 @@ class BrainMemory(BaseModel):
         ]
         if keep_language:
             system_msgs.append("The generated summary should be in the same language as the original text.")
-        response = await self.llm.aask(msg=text, system_msgs=system_msgs, stream=False)
+        response = await llm.aask(msg=text, system_msgs=system_msgs, stream=False)
         logger.debug(f"{text}\nsummary rsp: {response}")
         return response
 

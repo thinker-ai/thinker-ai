@@ -1,13 +1,12 @@
 import unittest
-
+from unittest.mock import AsyncMock
 from thinker_ai.agent.memory.brain_memory import BrainMemory
 from thinker_ai.agent.provider.base_llm import BaseLLM
-from unittest.mock import AsyncMock
-
 from thinker_ai.agent.provider.llm_schema import Message
 
 
 class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
+
     async def asyncSetUp(self):
         self.brain_memory = BrainMemory(cache_key="test_cache")
         self.mock_llm = AsyncMock(spec=BaseLLM)
@@ -35,7 +34,7 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
         await self.brain_memory.dumps()
         self.assertIn("test_cache", BrainMemory.cache)
 
-        # 加载缓存
+        # 清除实例，重新加载
         loaded_brain_memory = await BrainMemory.loads("test_cache")
         self.assertEqual(len(loaded_brain_memory.history), 1)
         self.assertEqual(loaded_brain_memory.history[0].content, "Hello")
@@ -54,17 +53,17 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
             else:
                 self.brain_memory.add_answer(msg)
 
-        self.brain_memory.llm = self.mock_llm
-        summary = await self.brain_memory.summarize(llm=self.mock_llm,max_words=10)
+        # 设置 max_words，确保调用 llm.aask
+        summary = await self.brain_memory.summarize(llm=self.mock_llm, max_words=10)
         self.assertEqual(summary, "Summary")
         self.mock_llm.aask.assert_called()
 
     async def test_get_title(self):
         msg = Message(content="This is a conversation.", role="user")
         self.brain_memory.add_talk(msg)
-        self.brain_memory.llm = self.mock_llm
-        title = await self.brain_memory.get_title(llm=self.mock_llm)
+        title = await self.brain_memory.get_title(llm=self.mock_llm, max_words=5)
         self.assertEqual(title, "Summary")
+        self.mock_llm.aask.assert_called()
 
     async def test_exists(self):
         msg = Message(content="Hello", role="user")
