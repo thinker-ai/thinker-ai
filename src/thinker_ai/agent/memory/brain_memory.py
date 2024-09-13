@@ -4,7 +4,8 @@ from typing import Dict, List, Optional,ClassVar
 
 from pydantic import BaseModel, Field
 
-from thinker_ai.agent.provider.schema import Message, SimpleMessage
+from thinker_ai.agent.provider.llm_schema import Message
+from thinker_ai.agent.provider.schema import SimpleMessage
 from thinker_ai.agent.provider import OpenAILLM
 from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.common.logs import logger
@@ -16,7 +17,7 @@ class BrainMemory(BaseModel):
     history: List[Message] = Field(default_factory=list)
     knowledge: List[Message] = Field(default_factory=list)
     historical_summary: str = ""
-    last_history_id: str = ""
+    last_history: Message = None
     is_dirty: bool = False
     last_talk: Optional[str] = None
     cacheable: bool = True
@@ -86,12 +87,8 @@ class BrainMemory(BaseModel):
         self.is_dirty = False
 
     def add_history(self, msg: Message):
-        if msg.id:
-            if self.to_int(msg.id, 0) <= self.to_int(self.last_history_id, -1):
-                return
-
         self.history.append(msg)
-        self.last_history_id = str(msg.id)
+        self.last_history = msg
         self.is_dirty = True
 
     def exists(self, text) -> bool:

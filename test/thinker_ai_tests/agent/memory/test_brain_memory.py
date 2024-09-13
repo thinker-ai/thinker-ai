@@ -1,9 +1,10 @@
 import unittest
 
 from thinker_ai.agent.memory.brain_memory import BrainMemory
-from thinker_ai.agent.provider.schema import Message
 from thinker_ai.agent.provider.base_llm import BaseLLM
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
+
+from thinker_ai.agent.provider.llm_schema import Message
 
 
 class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
@@ -13,7 +14,7 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
         self.mock_llm.aask = AsyncMock(return_value="Summary")
 
     async def test_add_talk(self):
-        msg = Message(id="1", content="Hello", role="user")
+        msg = Message(content="Hello", role="user")
         self.brain_memory.add_talk(msg)
         self.assertTrue(self.brain_memory.is_dirty)
         self.assertEqual(len(self.brain_memory.history), 1)
@@ -21,7 +22,7 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.brain_memory.history[0].role, "user")
 
     async def test_add_answer(self):
-        msg = Message(id="2", content="Hi there!", role="assistant")
+        msg = Message(content="Hi there!", role="assistant")
         self.brain_memory.add_answer(msg)
         self.assertTrue(self.brain_memory.is_dirty)
         self.assertEqual(len(self.brain_memory.history), 1)
@@ -29,7 +30,7 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.brain_memory.history[0].role, "assistant")
 
     async def test_dumps_and_loads(self):
-        msg = Message(id="1", content="Hello", role="user")
+        msg = Message(content="Hello", role="user")
         self.brain_memory.add_talk(msg)
         await self.brain_memory.dumps()
         self.assertIn("test_cache", BrainMemory.cache)
@@ -42,10 +43,10 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
     async def test_summarize(self):
         # 添加多条消息
         msgs = [
-            Message(id="1", content="Hello", role="user"),
-            Message(id="2", content="Hi there!", role="assistant"),
-            Message(id="3", content="How are you?", role="user"),
-            Message(id="4", content="I'm fine, thanks!", role="assistant")
+            Message(content="Hello", role="user"),
+            Message(content="Hi there!", role="assistant"),
+            Message(content="How are you?", role="user"),
+            Message(content="I'm fine, thanks!", role="assistant")
         ]
         for msg in msgs:
             if msg.role == "user":
@@ -59,20 +60,20 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
         self.mock_llm.aask.assert_called()
 
     async def test_get_title(self):
-        msg = Message(id="1", content="This is a conversation.", role="user")
+        msg = Message(content="This is a conversation.", role="user")
         self.brain_memory.add_talk(msg)
         self.brain_memory.llm = self.mock_llm
         title = await self.brain_memory.get_title(llm=self.mock_llm)
         self.assertEqual(title, "Summary")
 
     async def test_exists(self):
-        msg = Message(id="1", content="Hello", role="user")
+        msg = Message(content="Hello", role="user")
         self.brain_memory.add_talk(msg)
         self.assertTrue(self.brain_memory.exists("Hello"))
         self.assertFalse(self.brain_memory.exists("Hi"))
 
     async def test_save_and_load_cache_to_disk(self):
-        msg = Message(id="1", content="Hello", role="user")
+        msg = Message(content="Hello", role="user")
         self.brain_memory.add_talk(msg)
         await self.brain_memory.dumps()
 
@@ -111,8 +112,8 @@ class TestBrainMemory(unittest.IsolatedAsyncioTestCase):
 
     async def test_history_text(self):
         msgs = [
-            Message(id="1", content="Hello", role="user"),
-            Message(id="2", content="Hi there!", role="assistant")
+            Message(content="Hello", role="user"),
+            Message(content="Hi there!", role="assistant")
         ]
         for msg in msgs:
             if msg.role == "user":
