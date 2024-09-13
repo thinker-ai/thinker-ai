@@ -14,7 +14,7 @@ export class RequestSenderWorkerFront implements RequestSenderInterface{
         // 将 URLSearchParams 转换为键值对对象
         const paramsObject = message.params ? Object.fromEntries(message.params.entries()) : {};
         this.request_sender_worker.port.postMessage({
-            action: "makeRequest",
+            action: "make_request",
             request: {
                 method:message.method,
                 url:message.url,

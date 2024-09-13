@@ -24,7 +24,7 @@ onconnect = (e:any) => {
             return;
         }
 
-        if (action === 'makeRequest') {
+        if (action === 'make_request') {
             if (!request || typeof request !== 'object') {
                 console.error('Invalid request format');
                 return;

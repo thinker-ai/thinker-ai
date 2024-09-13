@@ -3,6 +3,7 @@ PUPPETEER_CONFIG: "./puppeteer-config.q"
 MMDC: "/Users/wangli/.npm-global/bin/mmdc"
 model_size_threshold : "500 * 1024 * 1024"
 PYTORCH_ENABLE_MPS_FALLBACK: "user_1"
+web_socket_url: "ws://localhost:8000/ws"
 state_machine:
   definition : "state_machine_definitions.json"
   scenario: "state_machine_scenarios.json"
@@ -12,7 +13,7 @@ workspace:
 
 llm:
   base_url: "https://api.openai.com/v1"
-  model: "gpt-4o"
+  model: "gpt-4o-2024-08-06"
   temperature: "0"
   timeout: "20.0"
   rpm: "1"

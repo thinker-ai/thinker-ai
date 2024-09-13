@@ -24,14 +24,14 @@ export function send_http(message:RequestMessage):void
 }
 const web_socket_worker_client = new WebSocketWorkerFront()
 export function send_websocket(message:string):void {
-    web_socket_worker_client.sendMessage(message);
+    web_socket_worker_client.send_message(message);
 }
 
 export function registerCallbackWithKey(key:string,callback: (data: any) => void):void {
-    web_socket_worker_client.registerCallbackWithKey(key,callback)
+    web_socket_worker_client.register_callback_with_key(key,callback)
 }
 export function registerCallbackWithFunction(matchingFunction: (data: any) => any,callback: (data: any) => void):void {
-    web_socket_worker_client.registerCallbackWithFunction(matchingFunction,callback)
+    web_socket_worker_client.register_callback_with_function(matchingFunction,callback)
 }
 
 

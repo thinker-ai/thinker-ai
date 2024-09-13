@@ -2,16 +2,16 @@
 export interface WebSocketSenderInterface {
     on_send_error(error: any): void;
     connect(token:string): void;
-    sendMessage(message:string): void;
+    send_message(message:string): void;
     on_connected(event: any): void;
     on_disconnected(event: any): void;
     on_socket_error(error: any): void;
 }
 export abstract class AbstractWebSocketSender implements WebSocketSenderInterface{
-    url=`ws://localhost:8000/ws`
+    url='ws://localhost:8000/ws'
     socket!:WebSocket|null;
-    reconnectInterval = 1000; // 1 second
-    constructor(url?: string) {
+    reconnectInterval = 10000; // 30 second
+    protected constructor(url?: string) {
         this.url = url || this.url;  // 如果 url 未传递，使用默认值
     }
     // WebSocket 连接函数
@@ -35,15 +35,15 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
         this.socket.onopen = () => {
             console.log('Connected to server');
             this.on_connected('Connected to server')
-            // this.reconnectInterval = 1000; // Reset the interval on successful connection
-            //
-            // // Start sending heartbeat messages every 10 seconds
-            // const heartbeatInterval = setInterval(() => {
-            //     if (this.socket.readyState === WebSocket.OPEN) {
-            //         this.socket.send(JSON.stringify({type: 'heartbeat'}));
-            //     }
-            // }, 10000);
-            // this.socket.onclose = () => clearInterval(heartbeatInterval);
+            this.reconnectInterval = 1000; // Reset the interval on successful connection
+
+            // Start sending heartbeat messages every 10 seconds
+            const heartbeatInterval = setInterval(() => {
+                if (this.socket!.readyState === WebSocket.OPEN) {
+                    this.socket!.send(JSON.stringify({type: 'heartbeat'}));
+                }
+            }, 10000);
+            this.socket!.onclose = () => clearInterval(heartbeatInterval);
         };
 
         this.socket.onmessage = (event:MessageEvent) => {
@@ -54,24 +54,24 @@ export abstract class AbstractWebSocketSender implements WebSocketSenderInterfac
             }
         }
 
-        // this.socket.onclose = (event:CloseEvent) => {
-        //     console.log('Connection closed', event);
-        //     this.on_disconnected(event)
-        //     if (!event.wasClean) {
-        //         console.log('Connection closed due to network or server issues.');
-        //         setTimeout(() => this.connect(token), this.reconnectInterval); // Attempt to reconnect after a delay
-        //         this.reconnectInterval = Math.min(this.reconnectInterval * 2, 5000); // Max 5 seconds
-        //     }
-        // };
-        //
-        // this.socket.onerror = (error:Event) => {
-        //     console.log('WebSocket error', error);
-        //     this.socket.close(); // 关闭当前连接，触发 onclose 事件，进而重新连接
-        //     this.on_socket_error(error)
-        // };
+        this.socket.onclose = (event:CloseEvent) => {
+            console.log('Connection closed', event);
+            this.on_disconnected(event)
+            if (!event.wasClean) {
+                console.log('Connection closed due to network or server issues.');
+                setTimeout(() => this.connect(token), this.reconnectInterval); // Attempt to reconnect after a delay
+                this.reconnectInterval = Math.min(this.reconnectInterval * 2, 5000); // Max 5 seconds
+            }
+        };
+
+        this.socket.onerror = (error:Event) => {
+            console.log('WebSocket error', error);
+            this.socket!.close(); // 关闭当前连接，触发 onclose 事件，进而重新连接
+            this.on_socket_error(error)
+        };
     }
 // 使用 WebSocket 发送消息
-    public sendMessage(message:any) {
+    public send_message(message:any) {
         if (this.socket && this.socket.readyState === WebSocket.OPEN) {
             this.socket.send(JSON.stringify({type: 'message', message}));
         } else {
@@ -106,27 +106,27 @@ interface Listener {
 }
 
 export class WebSocketSenderBackgroundWithCallback extends AbstractWebSocketSender {
-    private send_response: (response?: any) => void;
+    private readonly send_response: (response?: any) => void;
     private listeners: Listener[] = [];
 
-    constructor(send_response: (response?: any) => void, url?: string) {
+    public constructor(send_response: (response?: any) => void, url?: string) {
         super(url);
         this.send_response = send_response;
     }
 
     // 注册带有可序列化的匹配函数的监听器
-    public registerFunctionListener(matchingFunction: (data: any) => any, callbackId: string): void {
+    public register_function_listener(matchingFunction: (data: any) => any, callbackId: string): void {
         this.listeners.push({ matchingFunction, callbackId });
     }
 
     // 通过 key 注册监听器
-    public registerKeyListener(key: string, callbackId: string): void {
-        const matchingFunction = this.createKeyMatcher(key);
+    public register_key_listener(key: string, callbackId: string): void {
+        const matchingFunction = this.create_key_matcher(key);
         this.listeners.push({ matchingFunction, callbackId });
     }
 
     // 定义 createKeyMatcher 函数，生成一个匹配函数
-    private createKeyMatcher(key: string) {
+    private create_key_matcher(key: string) {
         return (data: Record<string, any> | null): any => {
             try {
                 if (data && typeof data === 'object' && key in data) {

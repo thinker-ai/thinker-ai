@@ -19,7 +19,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     }
 
     // 注册回调函数并传递给全局注册器 (直接使用可序列化的 matchingFunction)
-    registerCallbackWithFunction(matchingFunction: (data: any) => any, callback: (data: any) => void): void {
+    register_callback_with_function(matchingFunction: (data: any) => any, callback: (data: any) => void): void {
         this.callbackRegistry[callback.toString()] = callback;  // 在页面注册器中保存 callback
 
         // 传递回调 ID 和匹配函数给全局注册器
@@ -31,7 +31,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     }
 
     // 注册回调函数并通过 key 来创建 matchingFunction
-    registerCallbackWithKey(key: string, callback: (data: any) => void): void {
+    register_callback_with_key(key: string, callback: (data: any) => void): void {
         this.callbackRegistry[callback.toString()] = callback;  // 在页面注册器中保存 callback
 
         // 传递回调 ID 和 key 给全局注册器
@@ -43,7 +43,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     }
 
     // 处理来自全局注册器的消息
-    private handleCallback(callbackId: string, data: any): void {
+    private handle_callback(callbackId: string, data: any): void {
         const callback = this.callbackRegistry[callbackId];  // 根据 callbackId 获取回调函数
         if (callback) {
             callback(data);  // 调用实际的回调函数
@@ -57,7 +57,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
         delete this.callbackRegistry[callbackId];
     }
 
-    sendMessage(message: string): void {
+    send_message(message: string): void {
                 // 获取 token
         // 发送请求信息给 SharedWorker
         this.web_socket_worker.port.postMessage({
@@ -74,7 +74,6 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
         });
         this.web_socket_worker.port.onmessage = (event: MessageEvent) => {
             const { action, content } = event.data;
-
             switch (action) {
                 case "connected":
                     this.on_connected(content);
@@ -93,7 +92,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
                     break;
 
                 case "callback":
-                    this.handleCallback(content.callbackId, content.data);
+                    this.handle_callback(content.callbackId, content.data);
                     break;
 
                 case "web_socket_worker_started":
