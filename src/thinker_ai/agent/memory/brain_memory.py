@@ -10,7 +10,6 @@ from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.common.logs import logger
 from thinker_ai.configs.config import config
 from thinker_ai.configs.const import DEFAULT_MAX_TOKENS, DEFAULT_TOKEN_SIZE
-from thinker_ai.utils.redis import Redis
 
 
 class BrainMemory(BaseModel):
@@ -22,6 +21,9 @@ class BrainMemory(BaseModel):
     last_talk: Optional[str] = None
     cacheable: bool = True
     llm: Optional[BaseLLM] = Field(default=None, exclude=True)
+    cache_key: Optional[str] = None  # New attribute to store cache key
+
+    cache = {}  # In-memory cache
 
     class Config:
         arbitrary_types_allowed = True
@@ -45,44 +47,45 @@ class BrainMemory(BaseModel):
         return "\n".join(texts)
 
     @staticmethod
-    async def loads(redis_key: str) -> "BrainMemory":
-        redis = Redis(config.redis)
-        if not redis_key:
-            return BrainMemory()
-        v = await redis.get(key=redis_key)
-        logger.debug(f"REDIS GET {redis_key} {v}")
+    async def loads(cache_key: str) -> "BrainMemory":
+        if not cache_key:
+            return BrainMemory(cache_key=cache_key)
+        v = BrainMemory.cache.get(cache_key)
+        logger.debug(f"Cache GET {cache_key} {v}")
         if v:
             bm = BrainMemory.parse_raw(v)
             bm.is_dirty = False
+            bm.cache_key = cache_key
             return bm
-        return BrainMemory()
+        return BrainMemory(cache_key=cache_key)
 
-    async def dumps(self, redis_key: str, timeout_sec: int = 30 * 60):
+    async def dumps(self, cache_key: Optional[str] = None, timeout_sec: int = 30 * 60):
         if not self.is_dirty:
             return
-        redis = Redis(config.redis)
-        if not redis_key:
+        if cache_key is None:
+            cache_key = self.cache_key
+        if not cache_key:
             return False
         v = self.model_dump_json()
         if self.cacheable:
-            await redis.set(key=redis_key, data=v, timeout_sec=timeout_sec)
-            logger.debug(f"REDIS SET {redis_key} {v}")
+            BrainMemory.cache[cache_key] = v
+            logger.debug(f"Cache SET {cache_key} {v}")
         self.is_dirty = False
 
     @staticmethod
-    def to_redis_key(prefix: str, user_id: str, chat_id: str):
+    def to_cache_key(prefix: str, user_id: str, chat_id: str):
         return f"{prefix}:{user_id}:{chat_id}"
 
-    async def set_history_summary(self, history_summary, redis_key):
+    async def set_history_summary(self, history_summary):
         if self.historical_summary == history_summary:
             if self.is_dirty:
-                await self.dumps(redis_key=redis_key)
+                await self.dumps()
                 self.is_dirty = False
             return
 
         self.historical_summary = history_summary
         self.history = []
-        await self.dumps(redis_key=redis_key)
+        await self.dumps()
         self.is_dirty = False
 
     def add_history(self, msg: Message):
@@ -130,7 +133,7 @@ class BrainMemory(BaseModel):
             return text
         summary = await self._summarize(text=text, max_words=max_words, keep_language=keep_language, limit=limit)
         if summary:
-            await self.set_history_summary(history_summary=summary, redis_key=config.redis_key)
+            await self.set_history_summary(history_summary=summary)
             return summary
         raise ValueError(f"text too long:{text_length}")
 
@@ -154,7 +157,7 @@ class BrainMemory(BaseModel):
         msgs.reverse()
         self.history = msgs
         self.is_dirty = True
-        await self.dumps(redis_key=config.redis.key)
+        await self.dumps()
         self.is_dirty = False
 
         return BrainMemory.to_thinker_ai_history_format(self.history)
@@ -316,15 +319,24 @@ class BrainMemory(BaseModel):
         idx = 0
         data_len = window_size - padding_size
         while idx < total_len:
-            if window_size + idx > total_len:  # 不足一个滑窗
+            if window_size + idx > total_len:
                 windows.append(text[idx:])
                 break
-            # 每个窗口少算padding_size自然就可实现滑窗功能, 比如: [1, 2, 3, 4, 5, 6, 7, ....]
-            # window_size=3, padding_size=1：
-            # [1, 2, 3], [3, 4, 5], [5, 6, 7], ....
-            #   idx=2,  |  idx=5   |  idx=8  | ...
             w = text[idx : idx + window_size]
             windows.append(w)
             idx += data_len
 
         return windows
+
+    @classmethod
+    def save_cache_to_disk(cls, filename):
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(cls.cache, f)
+
+    @classmethod
+    def load_cache_from_disk(cls, filename):
+        try:
+            with open(filename, 'r', encoding='utf-8') as f:
+                cls.cache = json.load(f)
+        except FileNotFoundError:
+            cls.cache = {}
