@@ -5,7 +5,6 @@ from typing import Dict, List, Optional,ClassVar
 from pydantic import BaseModel, Field
 
 from thinker_ai.agent.provider.llm_schema import Message
-from thinker_ai.agent.provider.schema import SimpleMessage
 from thinker_ai.agent.provider import OpenAILLM
 from thinker_ai.agent.provider.base_llm import BaseLLM
 from thinker_ai.common.logs import logger
@@ -158,7 +157,7 @@ class BrainMemory(BaseModel):
 
     @staticmethod
     def to_thinker_ai_history_format(history) -> str:
-        mmsg = [SimpleMessage(role=m.role, content=m.content).model_dump() for m in history]
+        mmsg = [m.model_dump() for m in history]
         return json.dumps(mmsg, ensure_ascii=False)
 
     async def get_title(self, llm, max_words=5, **kwargs) -> str:
