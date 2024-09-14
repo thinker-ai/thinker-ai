@@ -37,7 +37,10 @@ class SolutionRepository:
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)
         with open(file_path, 'w', encoding='utf-8') as file:
-            json.dump(self.solutions_dict, file, indent=2, ensure_ascii=False)
+            try:
+                json.dump(self.solutions_dict, file, indent=2, ensure_ascii=False)
+            except JSONDecodeError as e:
+                print(f"Error while writing to file: {e}")
 
     def save(self):
         if self.base_dir and self.file_name:

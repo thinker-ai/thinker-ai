@@ -13,7 +13,7 @@ workspace:
 
 llm:
   base_url: "https://api.openai.com/v1"
-  model: "o1-preview"
+  model: "gpt-4o-2024-08-06"
   temperature: "0"
   timeout: "20.0"
   rpm: "1"

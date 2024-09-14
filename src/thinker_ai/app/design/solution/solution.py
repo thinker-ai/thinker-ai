@@ -1,5 +1,5 @@
 import uuid
-from typing import Set, Union, Any
+from typing import Set, Union, Any, List
 
 from pydantic import BaseModel
 
@@ -19,9 +19,9 @@ class Solution(Resource, BaseModel):
     name: str = None
     description: str = None
     done:bool = False
-    resources: Set[Resource] = []
-    mindsets: Set[Mindset] = []
-    criterion: Set[Criterion] = []
+    resources: List[Resource] = []
+    mindsets: List[Mindset] = []
+    criterion: List[Criterion] = []
 
     class Config:
         arbitrary_types_allowed = True
@@ -72,9 +72,9 @@ class Solution(Resource, BaseModel):
         name = data.get('name')
         description = data.get('description')
         done = data.get('done', False)
-        resources = set(data.get('resources', []))
-        mindsets = set(data.get('mindsets', []))
-        criterion = set(data.get('criterion', []))
+        resources = data.get('resources', [])
+        mindsets = data.get('mindsets', [])
+        criterion = data.get('criterion', [])
 
         return cls(
             id=id,

@@ -44,7 +44,7 @@ function get_authorization_from_plugin_storage(): Promise<{ user_id: string; acc
                 window.removeEventListener('message', messageHandler);
                 reject('Plugin did not respond in time');
             }
-        }, 5000); // 超时时间，单位为毫秒
+        }, 10000); // 超时时间，单位为毫秒
 
         function messageHandler(event: MessageEvent) {
             console.log('getAuthorizationFromPluginStorage() on event:', event.data.action);
