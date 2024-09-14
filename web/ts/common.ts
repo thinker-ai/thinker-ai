@@ -34,14 +34,93 @@ export function registerCallbackWithFunction(matchingFunction: (data: any) => an
     web_socket_worker_client.register_callback_with_function(matchingFunction,callback)
 }
 
+function get_authorization_from_plugin_storage(): Promise<{ user_id: string; access_token: string }> {
+    return new Promise((resolve, reject) => {
+        let isHandled = false;
 
+        const timeoutId = setTimeout(() => {
+            if (!isHandled) {
+                isHandled = true;
+                window.removeEventListener('message', messageHandler);
+                reject('Plugin did not respond in time');
+            }
+        }, 5000); // 超时时间，单位为毫秒
 
-export function run_after_plugin_checked(onInstalled?:() => void, onNotInstalled?:() => void) {
+        function messageHandler(event: MessageEvent) {
+            console.log('getAuthorizationFromPluginStorage() on event:', event.data.action);
+            if (event.data && event.data.action === 'authorization_result_from_plugin') {
+                const response = event.data.response;
+                if (response && response.user_id && response.access_token) {
+                    console.log('Extension is installed:', response);
+                    if (!isHandled) {
+                        isHandled = true;
+                        clearTimeout(timeoutId);
+                        resolve(response);
+                    }
+                } else {
+                    console.log('Extension is installed but has not logged in');
+                    if (!isHandled) {
+                        isHandled = true;
+                        clearTimeout(timeoutId);
+                        reject('Extension is installed but has not logged in');
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('message', messageHandler);
+        // 发送消息给 content script，请求获取 authorizationResult 信息
+        window.postMessage({ action: 'get_authorization_from_plugin' }, '*');
+    });
+}
+
+function get_authorization_from_local_storage(): Promise<{ user_id: string; access_token: string }> {
+    return new Promise((resolve, reject) => {
+        const user_id = localStorage.getItem("user_id");
+        const access_token = localStorage.getItem("access_token");
+        if (user_id && access_token) {
+            resolve({ user_id, access_token });
+        } else {
+            console.log('Authorization not found in local storage');
+            reject('Authorization not found in local storage');
+        }
+    });
+}
+
+export function get_authorization(): Promise<{ user_id: string; access_token: string }> {
+    return new Promise((resolve, reject) => {
+        do_if_plugin_installed(
+            () => {
+                get_authorization_from_plugin_storage()
+                    .then(resolve)
+                    .catch((pluginError) => {
+                        console.log('Failed to get authorization from plugin:', pluginError);
+                        get_authorization_from_local_storage()
+                            .then(resolve)
+                            .catch((localStorageError) => {
+                                console.log('Failed to get authorization from local storage:', localStorageError);
+                                reject('Authorization not found');
+                            });
+                    });
+            },
+            () => {
+                get_authorization_from_local_storage()
+                    .then(resolve)
+                    .catch((localStorageError) => {
+                        console.log('Failed to get authorization from local storage:', localStorageError);
+                        reject('Authorization not found');
+                    });
+            }
+        );
+    });
+}
+
+export function do_if_plugin_installed(onInstalled?:() => void, onNotInstalled?:() => void) {
     let pluginChecked = false;
 
     // 事件处理器
     function messageHandler(event:MessageEvent) {
-        if (event.source === window && event.data.action === 'thinkerAI') {
+        if (event.source === window && event.data.action === 'thinker_ai_installed') {
             pluginChecked = true;  // 标记为已检查插件
             if (event.data.value === true && onInstalled) {
                 onInstalled();  // 插件已安装，执行回调
@@ -54,7 +133,7 @@ export function run_after_plugin_checked(onInstalled?:() => void, onNotInstalled
     window.addEventListener('message', messageHandler);
 
     // 发送消息以检查插件是否安装
-    window.postMessage({ action: 'isThinkerAIInstall' }, '*');
+    window.postMessage({ action: 'is_thinker_ai_installed' }, '*');
 
     // 延时检查，给插件响应时间
     setTimeout(() => {
@@ -63,7 +142,7 @@ export function run_after_plugin_checked(onInstalled?:() => void, onNotInstalled
         }
     }, 500); // 设置合理的延迟时间
 }
-run_after_plugin_checked(
+do_if_plugin_installed(
     undefined,
     () => web_socket_worker_client.connect()
 );

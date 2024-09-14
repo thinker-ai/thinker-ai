@@ -1,4 +1,4 @@
-import { registerCallbackWithKey, send_http } from "../../common";
+import {get_authorization, registerCallbackWithKey, send_http} from "../../common";
 import { initialize_floating_panel_if_extension_not_install } from "../floating-panel";
 import {RequestMessage} from "../../request_sender_background";
 
@@ -26,13 +26,31 @@ function submitProblem(): void {
         description:descriptionElement.value,
         is_root:true,
     }
-    const request_message:RequestMessage={
-            method:'post',
-            url:'/design/one/solution/generate_state_machine_def',
-            params:undefined,
-            body:data
-    }
-    send_http(request_message);
+    get_authorization().then(authorization=> {
+       if (authorization) {
+           const request_message: RequestMessage = {
+               method: 'post',
+               url: '/design/one/solution/generate_state_machine_def',
+               params: undefined,
+               body: data,
+               token: authorization.access_token,
+               on_response_ok:(response_data)=>{
+                    showProblem(response_data)
+                    showSolution(response_data)
+               },
+               on_response_error:(error) =>{
+                   console.error("response error:",error);
+               },
+           }
+           send_http(request_message);
+         }else{
+            console.error("authorization not found.");
+            return;
+        }
+    }).catch(reason => {
+        console.error(`request_message error for /design/one/solution/generate_state_machine_def `,reason);
+        return;
+    })
 }
 (window as any).submitProblem = submitProblem;
 function updateContent(content: string): void {
@@ -42,11 +60,29 @@ function updateContent(content: string): void {
 }
 (window as any).updateContent = updateContent;
 function showData(): void {
-    const request_message:RequestMessage={
-            method:'get',
-            url:'/design/one/solution/current',
-    }
-    send_http(request_message)
+     get_authorization().then(authorization=>{
+        if(authorization){
+            const request_message:RequestMessage={
+                method:'get',
+                url:'/design/one/solution/current',
+                token:authorization.access_token,
+                on_response_ok:(response_data)=>{
+                    showProblem(response_data)
+                    showSolution(response_data)
+                },
+                on_response_error:(error) =>{
+                     console.error("response error:",error);
+                },
+            }
+            send_http(request_message)
+         }else{
+            console.error("authorization not found.");
+            return;
+        }
+    }).catch(reason => {
+        console.error(`request_message error for /design/one/solution/current `,reason);
+        return;
+    })
 }
 (window as any).showData = showData;
 function showProblem(data: { name: string; description: string }): void {

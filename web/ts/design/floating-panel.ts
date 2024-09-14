@@ -1,4 +1,8 @@
-import { send_http, registerCallbackWithKey, run_after_plugin_checked,send_websocket } from "../common";
+import {
+    send_http,
+    do_if_plugin_installed,
+    get_authorization
+} from "../common";
 import {RequestMessage} from "../request_sender_background";
 declare var marked: {
     parse: (markdown: string) => string;
@@ -69,30 +73,40 @@ function highlightCode(message: string): string {
     return message;
 }
 
-function sendMessage(): void {
+function chat(): void {
     const inputField = document.getElementById('input') as HTMLTextAreaElement;
     let message = inputField.value;
     inputField.value = '';
     if (message.trim() === '') return;
     append_human_message(message);
-    const request_message:RequestMessage={
-            method:'post',
-            url:'/chat',
-            params:undefined,
-            body:{
-                  assistant_name:"assistant_1",
-                  topic:"default",
-                  content:message
-                },
-            token: localStorage.getItem("access_token") as string,
-            content_type:"application/json",
-            on_response_ok: (response_data) => append_ai_message(response_data),
-            on_response_error:(error) => {
-                    alert(error);
-                    console.error(error);
-                }
-        }
-    send_http(request_message);
+    get_authorization().then(authorization=> {
+           if (authorization) {
+                    const request_message:RequestMessage={
+                            method:'post',
+                            url:'/chat',
+                            params:undefined,
+                            body:{
+                                  assistant_name:"assistant_1",
+                                  topic:"default",
+                                  content:message
+                                },
+                            token: authorization.access_token,
+                            content_type:"application/json",
+                            on_response_ok: (response_data) => append_ai_message(response_data),
+                            on_response_error:(error) => {
+                                    alert(error);
+                                    console.error(error);
+                                }
+                        }
+                    send_http(request_message);
+             }else{
+                console.error("authorization not found.");
+                return;
+             }
+        }).catch(reason => {
+            console.error(`request_message error for /chat `,reason);
+        return;
+        })
 }
 
 let isDragging = false;
@@ -156,7 +170,7 @@ function initializeFloatingPanel(contentDiv: HTMLElement): void {
     // 使用 addEventListener 来添加事件处理
     document.getElementById('toggle-button')?.addEventListener('click', toggleFloatingPanel);
     document.getElementById('sidebar')?.addEventListener('click', toggleFloatingPanel);
-    document.getElementById('send')?.addEventListener('click', sendMessage);
+    document.getElementById('send')?.addEventListener('click', chat);
 
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
@@ -170,7 +184,7 @@ function initializeFloatingPanel(contentDiv: HTMLElement): void {
             // 阻止默认的 Enter 键行为，如提交表单或换行
             event.preventDefault();
             // 发送消息
-            sendMessage();
+            chat();
         }
     });
 
@@ -213,7 +227,7 @@ function initializeFloatingPanel(contentDiv: HTMLElement): void {
 }
 
 export function initialize_floating_panel_if_extension_not_install(contentDiv: HTMLElement): void {
-    run_after_plugin_checked(
+    do_if_plugin_installed(
         undefined, // 第一个参数可选，设为 undefined
         () => initializeFloatingPanel(contentDiv)
     );

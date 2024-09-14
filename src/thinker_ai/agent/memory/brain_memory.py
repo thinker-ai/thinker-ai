@@ -101,9 +101,8 @@ class BrainMemory(BaseModel):
         except:
             return default_value
 
-    def pop_last_talk(self):
+    def get_last_talk(self):
         v = self.last_talk
-        self.last_talk = None
         return v
 
     async def summarize(self, llm, max_words=200, keep_language: bool = False, limit: int = -1, **kwargs):
