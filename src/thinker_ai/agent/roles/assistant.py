@@ -114,12 +114,12 @@ class Assistant(Role):
         self.set_todo(SkillAction(skill=skill, args=action.args, llm=self.llm, name=skill.name, desc=skill.description))
         return True
 
-    async def refine_memory(self) -> Optional[str]:
+    async def refine_memory(self,max_words=800) -> Optional[str]:
         if self.memory.last_talk is None:  # No user feedback, unsure if past conversation is finished.
             return None
         if not self.memory.is_history_available:
             return self.memory.last_talk
-        history_summary = await self.memory.summarize(max_words=800, keep_language=True, llm=self.llm)
+        history_summary = await self.memory.summarize(max_words=max_words, keep_language=True, llm=self.llm)
         if self.memory.last_talk and await self.memory.is_related(text1=self.memory.last_talk, text2=history_summary, llm=self.llm):
             # Merge relevant content.
             merged = await self.memory.rewrite(sentence=self.memory.last_talk, context=history_summary, llm=self.llm)
