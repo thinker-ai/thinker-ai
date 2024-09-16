@@ -97,7 +97,7 @@ class EmbeddingHelper:
         :return: 嵌入向量
         """
         if (string, model) not in self.embedding_cache:
-            self.embedding_cache[(string, model)] = self.get_embedding_without_cache(string, model)
+            self.embedding_cache[(string, model)] = self._fetch_embedding(string, model)
             self._save_cache()
         return self.embedding_cache[(string, model)]
 
@@ -110,35 +110,16 @@ class EmbeddingHelper:
         :return: 嵌入向量
         """
         if (string, model) not in self.embedding_cache:
-            self.embedding_cache[(string, model)] = await self.aget_embedding_without_cache(string, model)
+            self.embedding_cache[(string, model)] = await self._fetch_embedding_async(string, model)
             self._save_cache()
         return self.embedding_cache[(string, model)]
-
-    def get_embedding_without_cache(self, string: str, model="text-embedding-3-small") -> List[float]:
-        """
-        从缓存中获取嵌入向量，如果缓存中没有则通过 API 获取并存入缓存。
-
-        :param string: 要获取嵌入的文本
-        :param model: 要使用的嵌入模型
-        :return: 嵌入向量
-        """
-        return self._fetch_embedding(string, model)
-
-    async def aget_embedding_without_cache(self, string: str, model="text-embedding-3-small") -> List[float]:
-        """
-        异步方式从缓存中获取嵌入向量，如果缓存中没有则通过 API 获取并存入缓存。
-
-        :param string: 要获取嵌入的文本
-        :param model: 要使用的嵌入模型
-        :return: 嵌入向量
-        """
-        return await self._fetch_embedding_async(string, model)
 
     def is_related(self, text1: str, text2: str, similarity_threshold: float) -> bool:
         """
         判断两个文本在记忆网络中的相关性，通过余弦相似度判断。
         :param text1: 第一个文本。
         :param text2: 第二个文本。
+        :param similarity_threshold:相关系数
         :return: 如果两个文本相关，返回 True，否则返回 False。
         """
         embedding1 = self.get_embedding_with_cache(text1)

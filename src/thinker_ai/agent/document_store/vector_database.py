@@ -2,7 +2,7 @@ import uuid
 from abc import ABC, abstractmethod
 from typing import List, Optional, Tuple
 
-from thinker_ai.agent.tools.embedding_helper import EmbeddingHelper, cosine_similarity
+from thinker_ai.agent.tools.embedding_helper import EmbeddingHelper
 
 
 class VectorDatabase(ABC):
@@ -25,11 +25,7 @@ class VectorDatabase(ABC):
         pass
 
     @abstractmethod
-    def update(self, vector_id: str, vector: List[float], metadata: Optional[dict] = None) -> None:
-        pass
-
-    @abstractmethod
-    def search_with_embedding(self, vector: List[float], top_k: int = 10) -> List[Tuple[str, float]]:
+    def update(self, vector_id: str, text: str, model: str = "text-embedding-3-small") -> None:
         pass
 
     @abstractmethod
@@ -54,19 +50,15 @@ class FAISSVectorDatabase(VectorDatabase):
         self.rebuild_threshold = rebuild_threshold  # 设定的阈值比例
         self.embedding_helper = EmbeddingHelper()
 
-    def search_with_embedding(self, vector: List[float], top_k: int = 10) -> List[Tuple[str, float]]:
+    def _search_with_embedding(self, vector: List[float], top_k: int = 10) -> List[Tuple[str, float]]:
         if self.index.ntotal == 0:  # 检查索引中是否有向量
             return []
 
         query_vector = np.array(vector).astype('float32').reshape(1, -1)  # 确保向量的形状正确
         n = query_vector.shape[0]  # 查询向量的数量（通常是1）
 
-        # 准备距离和标签的输出数组
-        distances = np.zeros((n, top_k), dtype='float32')  # (n, k)
-        labels = np.zeros((n, top_k), dtype='int64')  # (n, k) - 保存最近邻索引
-
         # 调用 FAISS 的 search 方法
-        self.index.search(n, query_vector, top_k, distances, labels)
+        distances, labels = self.index.search(query_vector, top_k) #特殊的np类型，IDE会误报错
 
         results = []
         for idx, dist in zip(labels[0], distances[0]):
@@ -78,7 +70,7 @@ class FAISSVectorDatabase(VectorDatabase):
         return results
 
     def insert(self, text: str, model: str = "text-embedding-3-small") -> None:
-        embedding = self.embedding_helper.get_embedding_without_cache(text, model=model)
+        embedding = self.embedding_helper.get_embedding_with_cache(text, model=model)
         vector_id = str(uuid.uuid4())  # 生成唯一ID
         self._insert_vector(vector_id, embedding, metadata={"text": text})
 
@@ -86,9 +78,7 @@ class FAISSVectorDatabase(VectorDatabase):
     def _insert_vector(self, vector_id: str, vector: List[float], metadata: Optional[dict] = None) -> None:
         vector_np = np.array(vector).astype('float32').reshape(1, -1)  # 保证是 (1, d) 形式的 numpy 数组
         n = vector_np.shape[0]  # 向量的数量，这里是 1
-
-        # 调用 add 方法时传递 n 和向量 x
-        self.index.add(n, vector_np)  # 正确传递向量数量和向量本身
+        self.index.add(vector_np)  # IDE 会提示错误，忽略
 
         # 保存向量信息
         self.vectors[vector_id] = vector_np  # 保存向量到 vectors 字典
@@ -104,7 +94,7 @@ class FAISSVectorDatabase(VectorDatabase):
         # 计算 n: 向量的数量
         n = vectors_np.shape[0]  # n 是行数，表示有多少个向量
 
-        self.index.add(n, vectors_np)  # 一次性插入所有向量
+        self.index.add(vectors_np)  # IDE 会提示错误，忽略
 
         for text, embedding in zip(texts, embeddings):
             vector_id = str(uuid.uuid4())  # 使用 UUID 生成唯一 ID
@@ -117,9 +107,9 @@ class FAISSVectorDatabase(VectorDatabase):
         根据查询文本生成嵌入，并在数据库中搜索相关文本。
         返回格式为 [(文本ID, 相关文本)]。
         """
-        query_embedding = self.embedding_helper.get_embedding_without_cache(query)
-        results = self.search_with_embedding(query_embedding, top_k=top_k)
-        return [(vector_id, self.metadata.get(vector_id, {}).get("text", "")) for vector_id, _ in results]
+        query_embedding = self.embedding_helper.get_embedding_with_cache(query)
+        results = self._search_with_embedding(query_embedding, top_k=top_k)
+        return [(self.metadata.get(vector_id, {}).get("text", ""),vector_id) for vector_id, _ in results]
 
     def delete(self, vector_id: str) -> None:
         """
@@ -132,13 +122,14 @@ class FAISSVectorDatabase(VectorDatabase):
             if self.invalid_count >= 10:  # 例如每10次无效删除后检查一次
                 self.rebuild_index()
 
-    def update(self, vector_id: str, vector: List[float], metadata: Optional[dict] = None) -> None:
+    def update(self, vector_id: str, text: str, model: str = "text-embedding-3-small") -> None:
         """
         更新已有的向量和元数据。FAISS 没有直接的更新方法，因此需要先删除再插入。
         """
         if vector_id in self.metadata:
             self.delete(vector_id)  # 逻辑上删除旧的向量
-            self._insert_vector(vector_id, vector, metadata)
+            embedding = self.embedding_helper.get_embedding_with_cache(text, model=model)
+            self._insert_vector(vector_id, embedding, metadata={"text": text})
         else:
             raise KeyError(f"Vector ID '{vector_id}' 不存在，无法更新。")
 
@@ -212,7 +203,7 @@ class InMemoryVectorDatabase(VectorDatabase):
         插入单个文本的嵌入
         """
         vector_id = str(uuid.uuid4())  # 使用 UUID 生成唯一 ID
-        embedding = self.embedding_helper.get_embedding_without_cache(text, model=model)  # 获取文本的嵌入
+        embedding = self.embedding_helper.get_embedding_with_cache(text, model=model)  # 获取文本的嵌入
         self._insert_vector(vector_id, embedding, metadata={"text": text})
 
     def insert_batch(self, texts: List[str], model: str = "text-embedding-3-small"):
@@ -229,27 +220,8 @@ class InMemoryVectorDatabase(VectorDatabase):
         """
         根据查询文本生成嵌入并搜索最相似的 top_k 个向量
         """
-        embedding = self.embedding_helper.get_embedding_without_cache(query)  # 将查询文本转化为嵌入
-        return self.search_with_embedding(embedding, top_k=top_k)
-
-    def search_with_embedding(self, vector: List[float], top_k: int = 10) -> List[Tuple[str, float]]:
-        if not self.vectors:
-            return []
-        query_vector = np.array(vector).reshape(1, -1)  # 转换为 numpy 数组
-
-        # 提取所有向量和其对应的 ID
-        vector_ids, vectors = zip(*self.vectors.items()) if self.vectors else ([], [])
-        if not vector_ids:
-            return []
-
-        vector_matrix = np.vstack(vectors)  # 将所有向量堆叠成矩阵
-
-        # 计算余弦相似度
-        similarities = cosine_similarity(query_vector, vector_matrix)
-        top_indices = np.argsort(similarities)[-top_k:][::-1]  # 获取 top_k 的索引
-
-        # 返回结果: (向量 ID, 相似度)
-        return [(vector_ids[i], similarities) for i in top_indices]
+        all_text = [value.get("text") for value in self.metadata.values()]
+        return self.embedding_helper.get_most_similar_strings(all_text, query, top_k)
 
     def delete(self, vector_id: str) -> None:
         """
@@ -260,12 +232,14 @@ class InMemoryVectorDatabase(VectorDatabase):
             if vector_id in self.metadata:
                 del self.metadata[vector_id]
 
-    def update(self, vector_id: str, vector: List[float], metadata: Optional[dict] = None) -> None:
+    def update(self, vector_id: str, text: str, model: str = "text-embedding-3-small") -> None:
         """
         更新已有的向量及其元数据
         """
         if vector_id in self.vectors:
-            self._insert_vector(vector_id, vector, metadata)
+            self.delete(vector_id)
+            embedding = self.embedding_helper.get_embedding_with_cache(text, model=model)
+            self._insert_vector(vector_id, embedding, metadata={"text": text})
         else:
             raise KeyError(f"Vector ID '{vector_id}' 不存在，无法更新。")
 
