@@ -1,28 +1,13 @@
 import unittest
 
+from thinker_ai.agent.memory.humanoid_memory.graph_DNC import GraphDNC
 from thinker_ai.agent.memory.humanoid_memory.long_term_memory import LongTermMemory
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
-
-
-class InMemoryPersistence(MemoryPersistence):
-    """
-    内存中的持久化实现，用于测试，避免实际的文件或数据库操作。
-    """
-
-    def __init__(self):
-        self.data = None
-
-    def save(self, data):
-        self.data = data
-
-    def load(self):
-        return self.data
 
 
 class TestLongTermMemory(unittest.TestCase):
     def setUp(self):
-        self.persistence = InMemoryPersistence()
-        self.ltm = LongTermMemory(persistence=self.persistence)
+        self.dnc = GraphDNC()
+        self.ltm = LongTermMemory(dnc=self.dnc)
 
     def test_store_and_retrieve_knowledge(self):
         key = "AI"
@@ -55,7 +40,7 @@ class TestLongTermMemory(unittest.TestCase):
         self.ltm.store_message("AI", "Artificial Intelligence")
         self.ltm.save()
         # 创建新的 LongTermMemory 实例，使用相同的持久化
-        ltm_new = LongTermMemory(persistence=self.persistence)
+        ltm_new = LongTermMemory(dnc=self.dnc)
         ltm_new.load()
         self.assertEqual(len(ltm_new.knowledge_base), 1)
         self.assertEqual(ltm_new.retrieve_knowledge("AI"), "Artificial Intelligence")

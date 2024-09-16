@@ -45,7 +45,7 @@ from typing import List, Tuple, Optional
 class FAISSVectorDatabase(VectorDatabase):
     # 在 __init__ 中增加一个 vectors 字典来存储向量数据
     # 增加一个 vector_id_list 来维护向量的顺序
-    def __init__(self, dimension: int, rebuild_threshold: float = 0.3):
+    def __init__(self, dimension: int = 1536, rebuild_threshold: float = 0.3):
         self.index = faiss.IndexFlatL2(dimension)
         self.metadata = {}  # 用于存储文本与向量 ID 的映射
         self.vectors = {}  # 用于存储向量数据
@@ -279,7 +279,7 @@ class InMemoryVectorDatabase(VectorDatabase):
 
 class VectorDatabaseFactory:
     @staticmethod
-    def get_database(db_type: str, dimension: int = 128) -> VectorDatabase:
+    def get_database(db_type: str, dimension: int = 1536) -> VectorDatabase:
         if db_type == 'memory':
             return InMemoryVectorDatabase()
         elif db_type == 'faiss':

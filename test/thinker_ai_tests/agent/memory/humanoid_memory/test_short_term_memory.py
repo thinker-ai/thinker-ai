@@ -1,27 +1,15 @@
 import unittest
 
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
+from thinker_ai.agent.document_store.vector_database import FAISSVectorDatabase
+from thinker_ai.agent.memory.humanoid_memory.deep_learning_memory_network import DeepLearningMemoryNetwork
 from thinker_ai.agent.memory.humanoid_memory.short_term_memory import ShortTermMemory
 from thinker_ai.agent.provider.llm_schema import Message
 
 
-class InMemoryPersistence(MemoryPersistence):
-    """
-    内存中的持久化实现，用于测试，避免实际的文件或数据库操作。
-    """
-    def __init__(self):
-        self.data = None
-
-    def save(self, data):
-        self.data = data
-
-    def load(self):
-        return self.data
-
 class TestShortTermMemory(unittest.TestCase):
     def setUp(self):
-        self.persistence = InMemoryPersistence()
-        self.stm = ShortTermMemory(persistence=self.persistence)
+        self.memory_network = DeepLearningMemoryNetwork(vector_db=FAISSVectorDatabase())
+        self.stm = ShortTermMemory(memory_network=self.memory_network)
 
     def test_add_message(self):
         msg = Message(content="Hello", role="user")
@@ -83,11 +71,12 @@ class TestShortTermMemory(unittest.TestCase):
         self.stm.add_message(msg2)
         self.stm.save()
         # 创建新的 ShortTermMemory 实例，使用相同的持久化
-        stm_new = ShortTermMemory(persistence=self.persistence)
+        stm_new = ShortTermMemory(memory_network=self.memory_network)
         stm_new.load()
         self.assertEqual(len(stm_new.messages), 2)
         self.assertEqual(stm_new.messages[0], msg1)
         self.assertEqual(stm_new.messages[1], msg2)
+
 
 if __name__ == '__main__':
     unittest.main()

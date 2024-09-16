@@ -1,33 +1,20 @@
 import unittest
 
+from thinker_ai.agent.document_store.vector_database import FAISSVectorDatabase
+from thinker_ai.agent.memory.humanoid_memory.deep_learning_memory_network import DeepLearningMemoryNetwork
+from thinker_ai.agent.memory.humanoid_memory.graph_DNC import GraphDNC
 from thinker_ai.agent.memory.humanoid_memory.humanoid_brain_memory import HumanoidBrainMemory
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
 from thinker_ai.agent.provider.llm_schema import Message
-
-
-class InMemoryPersistence(MemoryPersistence):
-    """
-    内存中的持久化实现，用于测试，避免实际的文件或数据库操作。
-    """
-
-    def __init__(self):
-        self.data = None
-
-    def save(self, data):
-        self.data = data
-
-    def load(self):
-        return self.data
 
 
 class TestHumanoidBrainMemory(unittest.TestCase):
     def setUp(self):
-        self.stm_persistence = InMemoryPersistence()
-        self.ltm_persistence = InMemoryPersistence()
+        self.dnc = GraphDNC()
+        self.memory_network = DeepLearningMemoryNetwork(vector_db=FAISSVectorDatabase())
         self.brain_memory = HumanoidBrainMemory(
             owner_id="user_123",
-            stm_persistence=self.stm_persistence,
-            ltm_persistence=self.ltm_persistence
+            dnc=self.dnc,
+            memory_network=self.memory_network
         )
 
     def test_add_talk_and_get_history(self):
@@ -125,8 +112,8 @@ class TestHumanoidBrainMemory(unittest.TestCase):
         # 创建新的 HumanoidBrainMemory 实例，使用相同的持久化
         new_brain_memory = HumanoidBrainMemory(
             owner_id="user_123",
-            stm_persistence=self.stm_persistence,
-            ltm_persistence=self.ltm_persistence
+            dnc=self.dnc,
+            memory_network=self.memory_network
         )
         new_brain_memory.load()
 
