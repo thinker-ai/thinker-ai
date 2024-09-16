@@ -1,11 +1,8 @@
+from abc import ABC
 from typing import List
 
 
-class DifferentiableNeuralComputer:
-    def __init__(self):
-        # 初始化 DNC 的参数和模型
-        pass
-
+class DifferentiableNeuralComputer(ABC):
     def store(self, inputs: List[str]):
         """
         将新的信息存储到 DNC 中。

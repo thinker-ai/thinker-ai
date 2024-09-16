@@ -7,20 +7,21 @@ from typing import List, Any, Dict, Union, Literal, cast
 
 from httpx import HTTPStatusError
 from openai import BadRequestError
-from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool
+from openai.types.beta import Thread, CodeInterpreterTool, FileSearchTool, FunctionTool
 from openai.types.beta.assistant import Assistant
 from openai.types.beta.threads import Message, Text, Run
 
 from thinker_ai.agent.assistant_api import AssistantApi
 from thinker_ai.agent.openai_assistant_api import openai
 
-from thinker_ai.agent.tools.embeddings import get_most_similar_strings
+from thinker_ai.agent.tools.embedding_helper import EmbeddingHelper
 from thinker_ai.agent.topic_repository.openai_topic_repository import OpenAiTopicInfoRepository
 from thinker_ai.agent.topic_repository.topic_builder import OpenAiTopic
 from thinker_ai.agent.topic_repository.topic_repository import TopicInfo
 from thinker_ai.context_mixin import ContextMixin
 from thinker_ai.common.common import show_json
 
+embedding_helper = EmbeddingHelper()
 
 class OpenAiAssistantApi(AssistantApi, ContextMixin):
     assistant: Assistant
@@ -61,7 +62,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
         return self.assistant.id
 
     @property
-    def tools(self) -> List[Dict]:
+    def tools(self) -> list[CodeInterpreterTool | FileSearchTool | FunctionTool]:
         return self.assistant.tools
 
     @property
@@ -410,7 +411,7 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                                  k: int = 1,
                                  embedding_model="text-embedding-3-small",
                                  ) -> list[tuple[str, float]]:
-        return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
+        return embedding_helper.get_most_similar_strings(source_strings, compare_string, k, embedding_model)
 
     def get_most_similar_from_file(self,
                                    file_id: str,
@@ -420,6 +421,6 @@ class OpenAiAssistantApi(AssistantApi, ContextMixin):
                                    ) -> list[tuple[str, float]]:
         try:
             source_strings = openai.client.files.retrieve(file_id)
-            return get_most_similar_strings(source_strings, compare_string, k, embedding_model)
+            return embedding_helper.get_most_similar_strings(source_strings, compare_string, k, embedding_model)
         except (HTTPStatusError, BadRequestError) as e:
             print(str(e))

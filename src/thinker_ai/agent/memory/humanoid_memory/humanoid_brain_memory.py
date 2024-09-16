@@ -1,7 +1,8 @@
 from typing import List
 
+from thinker_ai.agent.memory.humanoid_memory.differentiable_neural_computer import DifferentiableNeuralComputer
 from thinker_ai.agent.memory.humanoid_memory.long_term_memory import LongTermMemory
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
+from thinker_ai.agent.memory.humanoid_memory.memory_network import MemoryNetwork
 from thinker_ai.agent.memory.humanoid_memory.short_term_memory import ShortTermMemory
 from thinker_ai.agent.provider.llm_schema import Message
 from typing import List, Optional
@@ -13,10 +14,10 @@ class HumanoidBrainMemory:
     类人脑记忆体，管理短期记忆（STM）和长期记忆（LTM）。
     """
 
-    def __init__(self, owner_id: str, stm_persistence: MemoryPersistence, ltm_persistence: MemoryPersistence):
+    def __init__(self, owner_id: str,memory_network:MemoryNetwork,dnc:DifferentiableNeuralComputer):
         self.id = owner_id  # 所有者ID
-        self.stm = ShortTermMemory(persistence=stm_persistence)
-        self.ltm = LongTermMemory(persistence=ltm_persistence)
+        self.stm = ShortTermMemory(memory_network=memory_network)
+        self.ltm = LongTermMemory(dnc=dnc)
         self.is_dirty = False
 
     # ...（其他方法保持不变）

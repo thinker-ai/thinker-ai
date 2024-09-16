@@ -1,7 +1,6 @@
 from typing import Dict, Optional, List
 
 from thinker_ai.agent.memory.humanoid_memory.differentiable_neural_computer import DifferentiableNeuralComputer
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
 
 
 class LongTermMemory:
@@ -9,10 +8,9 @@ class LongTermMemory:
     长期记忆模块，用于存储和检索长期知识和信息。
     """
 
-    def __init__(self, persistence: MemoryPersistence):
+    def __init__(self, dnc:DifferentiableNeuralComputer):
         self.knowledge_base: Dict[str, str] = {}
-        self.persistence = persistence  # 持久化实现
-        self.dnc = DifferentiableNeuralComputer()  # 初始化 DNC
+        self.dnc = dnc  # 初始化 DNC
 
     def save(self):
         """

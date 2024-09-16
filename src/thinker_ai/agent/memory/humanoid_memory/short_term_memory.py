@@ -1,7 +1,6 @@
-from typing import List, Any, Optional, Dict
+from typing import List
 
 from thinker_ai.agent.memory.humanoid_memory.memory_network import MemoryNetwork
-from thinker_ai.agent.memory.humanoid_memory.persistence import MemoryPersistence
 from thinker_ai.agent.provider.llm_schema import Message
 
 
@@ -10,23 +9,22 @@ class ShortTermMemory:
     短期记忆模块，用于存储和管理近期的对话信息。
     """
 
-    def __init__(self, persistence: MemoryPersistence):
+    def __init__(self, memory_network: MemoryNetwork):
         self.messages: List[Message] = []
-        self.persistence = persistence  # 持久化实现
-        self.memory_network = MemoryNetwork()  # 初始化记忆网络
+        self.memory_network = memory_network  # 初始化记忆网络
 
     def save(self):
         """
         保存短期记忆。
         """
         data = [msg.to_dict() for msg in self.messages]
-        self.persistence.save(data)
+        self.memory_network.save(data)
 
     def load(self):
         """
         加载短期记忆。
         """
-        data = self.persistence.load()
+        data = self.memory_network.load()
         if data:
             self.messages = [Message(**msg) for msg in data]
             # 将消息内容加载到记忆网络
