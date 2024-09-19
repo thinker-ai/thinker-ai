@@ -2,7 +2,7 @@
 import tensorflow as tf
 import numpy as np
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import CosineWeights
+from thinker_ai.agent.memory.humanoid_memory.dnc.addressing_2 import CosineWeights
 
 
 class CosineWeightsTest(tf.test.TestCase):

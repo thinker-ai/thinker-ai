@@ -7,6 +7,7 @@ from thinker_ai.agent.memory.humanoid_memory.dnc import access
 DNCState = collections.namedtuple('DNCState', (
     'access_output', 'access_state', 'controller_state'))
 
+
 class DNC(tf.keras.layers.Layer):
     """区分性神经计算机（DNC）的核心模块，适用于 TensorFlow 2.x。
 

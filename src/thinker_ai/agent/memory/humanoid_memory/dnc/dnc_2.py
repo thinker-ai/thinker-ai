@@ -1,12 +1,12 @@
 # simple_model_with_cosine.py
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import  MemoryAccess
+from thinker_ai.agent.memory.humanoid_memory.dnc.access_2 import MemoryAccess
 
 
-class SimpleModel(tf.keras.layers.Layer):
+class DNC(tf.keras.layers.Layer):
     def __init__(self, units=10, num_heads=2, word_size=6, memory_size=20, num_writes=3, num_reads=2):
-        super(SimpleModel, self).__init__()
+        super(DNC, self).__init__()
         self.units = units
         self.num_heads = num_heads
         self.word_size = word_size

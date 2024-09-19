@@ -2,8 +2,8 @@
 import tensorflow as tf
 import numpy as np
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import TemporalLinkageState
-from thinker_ai.agent.memory.humanoid_memory.dnc.simple_model_with_cosine import SimpleModel
+from thinker_ai.agent.memory.humanoid_memory.dnc.addressing_2 import TemporalLinkageState
+from thinker_ai.agent.memory.humanoid_memory.dnc.dnc_2 import DNC
 
 
 class SimpleModelMemoryAccessTest(tf.test.TestCase):
@@ -61,7 +61,7 @@ class SimpleModelMemoryAccessTest(tf.test.TestCase):
                 input_size = 5
 
                 # 创建模型实例
-                model = SimpleModel(
+                model = DNC(
                     units=units,
                     num_heads=num_heads,
                     word_size=word_size,
@@ -136,7 +136,7 @@ class SimpleModelMemoryAccessTest(tf.test.TestCase):
         for config in configurations:
             with self.subTest(config=config):
                 # 创建模型实例
-                model = SimpleModel(
+                model = DNC(
                     units=units,
                     num_heads=num_heads,
                     word_size=word_size,
@@ -210,7 +210,7 @@ class SimpleModelMemoryAccessTest(tf.test.TestCase):
         input_size = 5
 
         # 创建模型实例
-        model = SimpleModel(
+        model = DNC(
             units=units,
             num_heads=num_heads,
             word_size=word_size,
