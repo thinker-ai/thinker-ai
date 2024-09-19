@@ -1,4 +1,4 @@
-from thinker_ai.agent.memory.humanoid_memory.dnc.addressing_2 import CosineWeights, TemporalLinkage, Freeness
+from thinker_ai.agent.memory.humanoid_memory.dnc_2.addressing import CosineWeights, TemporalLinkage, Freeness
 import tensorflow as tf
 
 

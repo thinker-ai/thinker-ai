@@ -2,8 +2,8 @@
 import tensorflow as tf
 import numpy as np
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.addressing_2 import TemporalLinkageState
-from thinker_ai.agent.memory.humanoid_memory.dnc.dnc_2 import DNC
+from thinker_ai.agent.memory.humanoid_memory.dnc_2.addressing import TemporalLinkageState
+from thinker_ai.agent.memory.humanoid_memory.dnc_2.dnc import DNC
 
 
 class SimpleModelMemoryAccessTest(tf.test.TestCase):

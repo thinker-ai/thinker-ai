@@ -73,6 +73,7 @@ class MemoryAccessTest(tf.test.TestCase):
         self.assertIn('read_content_keys', processed_inputs)
         self.assertIn('read_content_strengths', processed_inputs)
         # 其他相关断言
+
     def testWriteWeights(self):
         memory = 10 * (np.random.rand(BATCH_SIZE, MEMORY_SIZE, WORD_SIZE) - 0.5)
         usage = np.random.rand(BATCH_SIZE, MEMORY_SIZE)
@@ -93,7 +94,8 @@ class MemoryAccessTest(tf.test.TestCase):
             'write_content_strengths': tf.constant(write_content_strengths, dtype=tf.float32)
         }
 
-        weights = self.module._write_weights(inputs, tf.constant(memory, dtype=tf.float32), tf.constant(usage, dtype=tf.float32))
+        weights = self.module._write_weights(inputs, tf.constant(memory, dtype=tf.float32),
+                                             tf.constant(usage, dtype=tf.float32))
 
         # 在 Eager Execution 下，直接获取数值
         weights = weights.numpy()
@@ -124,13 +126,30 @@ class MemoryAccessTest(tf.test.TestCase):
             'read_mode': tf.constant(read_mode, dtype=tf.float32),
         }
 
-        read_weights = self.module._read_weights(inputs, tf.constant(memory, dtype=tf.float32), tf.constant(prev_read_weights, dtype=tf.float32), tf.constant(link, dtype=tf.float32))
+        read_weights = self.module._read_weights(inputs, tf.constant(memory, dtype=tf.float32),
+                                                 tf.constant(prev_read_weights, dtype=tf.float32),
+                                                 tf.constant(link, dtype=tf.float32))
 
         # 在 Eager Execution 下，直接获取数值
         read_weights = read_weights.numpy()
 
         self.assertAllClose(read_weights[0, 0, :], util.one_hot(MEMORY_SIZE, 3), atol=1e-3)
 
+    def testGradients_old(self):
+        inputs = tf.constant(np.random.randn(BATCH_SIZE, INPUT_SIZE), tf.float32)
+        output, _ = self.module(inputs, self.initial_state)
+        loss = tf.reduce_sum(output)
+
+        tensors_to_check = [
+            inputs, self.initial_state.memory, self.initial_state.read_weights,
+            self.initial_state.linkage.precedence_weights,
+            self.initial_state.linkage.link
+        ]
+        shapes = [x.get_shape().as_list() for x in tensors_to_check]
+        with self.test_session() as sess:
+            sess.run(tf.global_variables_initializer())
+            err = tf.test.compute_gradient_error(tensors_to_check, shapes, loss, [1])
+            self.assertLess(err, 0.1)
     def testGradients(self):
         # 将 inputs 定义为 tf.Variable 以确保梯度追踪
         inputs = tf.Variable(np.random.randn(BATCH_SIZE, INPUT_SIZE), dtype=tf.float32)
@@ -192,5 +211,7 @@ class MemoryAccessTest(tf.test.TestCase):
                 grad_norm = tf.norm(grad)
                 self.assertLess(grad_norm, 1e3)
                 self.assertGreater(grad_norm, 1e-12)
+
+
 if __name__ == '__main__':
     tf.test.main()

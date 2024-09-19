@@ -1,7 +1,7 @@
 # simple_model_with_cosine.py
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.access_2 import MemoryAccess
+from thinker_ai.agent.memory.humanoid_memory.dnc_2.access import MemoryAccess
 
 
 class DNC(tf.keras.layers.Layer):
