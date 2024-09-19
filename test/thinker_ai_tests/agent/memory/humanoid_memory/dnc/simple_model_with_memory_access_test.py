@@ -2,8 +2,8 @@
 import tensorflow as tf
 import numpy as np
 
-from thinker_ai_tests.agent.memory.humanoid_memory.dnc.simple_model_with_cosine import SimpleModel
-from thinker_ai_tests.agent.memory.humanoid_memory.dnc.model_components import TemporalLinkageState  # 确保路径正确
+from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import TemporalLinkageState
+from thinker_ai.agent.memory.humanoid_memory.dnc.simple_model_with_cosine import SimpleModel
 
 
 class SimpleModelMemoryAccessTest(tf.test.TestCase):

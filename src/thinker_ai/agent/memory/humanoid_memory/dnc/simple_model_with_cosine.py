@@ -1,10 +1,7 @@
 # simple_model_with_cosine.py
 import tensorflow as tf
 
-from thinker_ai_tests.agent.memory.humanoid_memory.dnc.model_components import (
-    TemporalLinkageState,
-    MemoryAccess
-)  # 确保路径正确
+from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import  MemoryAccess
 
 
 class SimpleModel(tf.keras.layers.Layer):

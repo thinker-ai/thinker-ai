@@ -1,7 +1,9 @@
 # test_cosine_weights.py
 import tensorflow as tf
 import numpy as np
-from thinker_ai_tests.agent.memory.humanoid_memory.dnc.model_components import CosineWeights
+
+from thinker_ai.agent.memory.humanoid_memory.dnc.model_components import CosineWeights
+
 
 class CosineWeightsTest(tf.test.TestCase):
     def test_cosine_weights_output_shape(self):
