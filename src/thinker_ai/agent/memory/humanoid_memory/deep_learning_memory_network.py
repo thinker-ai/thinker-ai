@@ -28,7 +28,7 @@ class DeepLearningMemoryNetwork(MemoryNetwork):
         """
         results = self.vector_db.search(question, top_k=1)
         if results:
-            return results[0][1]  # 返回最相关的文本
+            return results[0][0]  # 返回最相关的文本
         return "No relevant information found."
 
     def is_related(self, text1: str, text2: str, similarity_threshold: float) -> bool:
@@ -46,18 +46,3 @@ class DeepLearningMemoryNetwork(MemoryNetwork):
         清除记忆网络中的所有信息，清空 `VectorDatabase`。
         """
         self.vector_db.clear()
-
-    def save(self, data):
-        """
-        保存记忆网络中的数据到持久化存储（未实现的示例）。
-        :param data: 要保存的数据。
-        """
-        # 可以根据需要实现将数据库持久化的逻辑
-        print("Saving memory data...")
-
-    def load(self):
-        """
-        加载记忆网络中的数据（未实现的示例）。
-        """
-        # 根据需要实现从持久化存储中加载数据
-        print("Loading memory data...")

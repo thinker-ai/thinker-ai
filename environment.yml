@@ -4,14 +4,15 @@ channels:
   - conda-forge
 dependencies:
   - python=3.11
-  - fastapi
   - SpeechRecognition
   - pydub
   - pydantic
-  - starlette<0.28.0,>=0.27.0
   - transformers
-  - datasets>=2.18.0
   - google-generativeai
+  - starlette<0.28.0,>=0.27.0
+  - datasets>=2.18.0
+  - faiss-cpu
+  - sqlite
   - pip
   - pip:
     - aim
@@ -19,7 +20,6 @@ dependencies:
     - edge-tts
     - promptlayer
     - edge_tts
-    - langchain
     - langchain-community
     - google-cloud-speech
     - openai
@@ -83,7 +83,6 @@ dependencies:
     - accelerate
     - bcrypt
     - passlib
-    - fastapi-jwt-auth
     - nest-asyncio
     - lightgbm
     - chardet
@@ -95,29 +94,17 @@ dependencies:
     - nbconvert
     - paddleocr
     - chromadb
-    - llama-index
-    - llama-index-vector-stores-postgres
-    - llama-index-vector-stores-elasticsearch
-    - llama-index-vector-stores-chroma
-    - llama-index-retrievers-bm25
-    - llama-index-llms-openai
     - lancedb
     - qdrant_client
     - zhipuai
     - dashscope
     - aioredis
     - aioboto3
-    - qianfan
     - rank_bm25
-    - semantic-kernel==0.4.3.dev0
     - evaluate
     - jieba
     - anytree
     - imap_tools
-    - llama-index-embeddings-azure-openai
-    - llama-index-embeddings-gemini
-    - llama-index-embeddings-ollama
-    - llama-index-vector-stores-faiss
     - meilisearch
     - spark_ai_python
     - webdriver_manager
@@ -128,13 +115,28 @@ dependencies:
     - pytest-mock
     - ipykernel
     - gitpython
-    - pydantic-core < 2.16.0
     - clip
     - rf-groundingdino
-    - connexion
     - modelscope
     - pyshine
     - pyarrow
     - ipywidgets
     - jupyterlab_widgets
-    - faiss
+    - qianfan
+    - llama-index
+    - llama-index-vector-stores-postgres
+    - llama-index-vector-stores-elasticsearch
+    - llama-index-vector-stores-chroma
+    - llama-index-retrievers-bm25
+    - llama-index-llms-openai
+    - llama-index-embeddings-azure-openai
+    - llama-index-embeddings-gemini
+    - llama-index-embeddings-ollama
+    - llama-index-vector-stores-faiss
+    - connexion
+    - fastapi
+    - fastapi-jwt-auth
+    - pydantic-core
+    - semantic-kernel
+    - redis
+    - graphs
