@@ -78,7 +78,7 @@ class FAISSVectorDatabase(VectorDatabase):
     def _insert_vector(self, vector_id: str, vector: List[float], metadata: Optional[dict] = None) -> None:
         vector_np = np.array(vector).astype('float32').reshape(1, -1)  # 保证是 (1, d) 形式的 numpy 数组
         n = vector_np.shape[0]  # 向量的数量，这里是 1
-        self.index.add(vector_np)  # IDE 会提示错误，忽略
+        self.index.add(vector_np)  # 特殊的np类型导致IDE误报错误，忽略
 
         # 保存向量信息
         self.vectors[vector_id] = vector_np  # 保存向量到 vectors 字典

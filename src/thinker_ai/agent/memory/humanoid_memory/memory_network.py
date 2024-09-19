@@ -27,9 +27,3 @@ class MemoryNetwork(ABC):
         清除记忆网络中的所有信息。
         """
         pass
-    @abstractmethod
-    def save(self, data):
-        pass
-    @abstractmethod
-    def load(self):
-        pass
