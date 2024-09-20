@@ -1,0 +1,253 @@
+#thinker_ai/agent/memory/humanoid_memory/dnc/access.py
+import collections
+import tensorflow as tf
+from thinker_ai.agent.memory.humanoid_memory.dnc_new import addressing
+from thinker_ai.agent.memory.humanoid_memory.dnc_new import util
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
+AccessState = collections.namedtuple('AccessState', (
+    'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))
+
+
+class MemoryAccess(tf.keras.layers.Layer):
+
+    def __init__(self, memory_size=128, word_size=20, num_reads=1, num_writes=1, name='memory_access'):
+        super(MemoryAccess, self).__init__(name=name)
+        # self.dense_read_keys = tf.keras.layers.Dense(units=..., activation=...)
+        # self.dense_read_strengths = tf.keras.layers.Dense(units=..., activation=...)
+        self._memory_size = memory_size
+        self._word_size = word_size
+        self._num_reads = num_reads
+        self._num_writes = num_writes
+
+        # 定义用于计算内容权重的 CosineWeights 模块
+        self._write_content_weights_mod = addressing.CosineWeights(num_writes, word_size, name='write_content_weights')
+        self._read_content_weights_mod = addressing.CosineWeights(num_reads, word_size, name='read_content_weights')
+
+        # TemporalLinkage 和 Freeness 模块
+        self._linkage = addressing.TemporalLinkage(memory_size, num_writes)
+        self._freeness = addressing.Freeness(memory_size)
+
+        # 定义用于生成各个参数的 Dense 层
+        self.write_vector_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=None,
+                                                        name='write_vectors')
+        self.erase_vector_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=tf.sigmoid,
+                                                        name='erase_vectors')
+        self.free_gate_dense = tf.keras.layers.Dense(self._num_reads, activation=tf.sigmoid, name='free_gate')
+        self.allocation_gate_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.sigmoid,
+                                                           name='allocation_gate')
+        self.write_gate_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.sigmoid, name='write_gate')
+        self.read_mode_dense = tf.keras.layers.Dense(self._num_reads * (1 + 2 * self._num_writes), activation=None,
+                                                     name='read_mode')
+
+        # **添加用于生成写入和读取强度的 Dense 层**
+        self.write_strengths_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.nn.softplus,
+                                                           name='write_strengths')
+        self.read_strengths_dense = tf.keras.layers.Dense(self._num_reads, activation=tf.nn.softplus,
+                                                          name='read_strengths')
+
+        # **添加用于生成写入和读取键的 Dense 层**
+        self.write_keys_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=None,
+                                                      name='write_keys')
+        self.read_keys_dense = tf.keras.layers.Dense(self._num_reads * self._word_size, activation=None,
+                                                     name='read_keys')
+
+    def call(self, inputs, training=False):
+        prev_state = inputs['prev_state']
+        processed_inputs = self._read_inputs(inputs)
+
+        # 重要信息简化输出
+        print(f"Prev state memory shape: {prev_state.memory.shape}")
+        print(f"Processed inputs shapes: {[v.shape for v in processed_inputs.values()]}")
+
+        # 打印关键参数的简要信息
+        for key in ['write_vectors', 'erase_vectors', 'free_gate', 'allocation_gate', 'write_gate']:
+            print(f"{key}: {processed_inputs[key][:2]}")  # 仅显示前两个值
+
+        # 显示内存更新过程中的关键状态
+        print("Memory before updates:", prev_state.memory.numpy()[0, :2])  # 仅显示前两个位置
+        usage = self._freeness({
+            'write_weights': prev_state.write_weights,
+            'free_gate': processed_inputs['free_gate'],
+            'read_weights': prev_state.read_weights,
+            'prev_usage': prev_state.usage
+        })
+        print("Updated usage:", usage.numpy()[0, :2])  # 仅显示前两个值
+
+        write_weights = self._write_weights(processed_inputs, prev_state.memory, usage)
+        memory = self._erase_and_write(
+            prev_state.memory,
+            address=write_weights,
+            reset_weights=processed_inputs['erase_vectors'],
+            values=processed_inputs['write_vectors']
+        )
+        print("Memory after updates:", memory.numpy()[0, :2])  # 仅显示前两个位置
+
+        linkage_state = self._linkage({
+            'write_weights': write_weights,
+            'prev_linkage': prev_state.linkage
+        })
+        print("Linkage state summary:", linkage_state.link.shape)
+
+        read_weights = self._read_weights(
+            processed_inputs,
+            memory=memory,
+            prev_read_weights=prev_state.read_weights,
+            link=linkage_state.link
+        )
+        read_words = tf.matmul(read_weights, memory)
+        print("Read words summary:", read_words.numpy()[0, :2])  # 仅显示前两个值
+
+        return read_words, AccessState(
+            memory=memory,
+            read_weights=read_weights,
+            write_weights=write_weights,
+            linkage=linkage_state,
+            usage=usage
+        )
+
+    def _read_inputs(self, inputs):
+        # 从 inputs 字典中提取控制器的输出
+        controller_output = inputs['inputs']
+        batch_size = tf.shape(controller_output)[0]
+
+        # 生成写入向量和擦除向量
+        write_vectors = tf.reshape(self.write_vector_dense(controller_output),
+                                   [batch_size, self._num_writes, self._word_size])
+        erase_vectors = tf.reshape(self.erase_vector_dense(controller_output),
+                                   [batch_size, self._num_writes, self._word_size])
+
+        # 生成自由门、分配门和写入门
+        free_gate = self.free_gate_dense(controller_output)
+        allocation_gate = self.allocation_gate_dense(controller_output)
+        write_gate = self.write_gate_dense(controller_output)
+
+        # 计算读取模式的 Softmax
+        num_read_modes = 1 + 2 * self._num_writes
+        read_mode = tf.nn.softmax(
+            tf.reshape(self.read_mode_dense(controller_output), [batch_size, self._num_reads, num_read_modes]))
+
+        # 生成写入键和写入强度
+        write_keys = tf.reshape(self.write_keys_dense(controller_output),
+                                [batch_size, self._num_writes, self._word_size])
+        write_strengths = self.write_strengths_dense(controller_output)
+
+        # 生成读取键和读取强度
+        read_keys = tf.reshape(self.read_keys_dense(controller_output), [batch_size, self._num_reads, self._word_size])
+        read_strengths = self.read_strengths_dense(controller_output)
+
+        return {
+            'read_content_keys': read_keys,
+            'read_content_strengths': read_strengths,
+            'write_content_keys': write_keys,
+            'write_content_strengths': write_strengths,
+            'write_vectors': write_vectors,
+            'erase_vectors': erase_vectors,
+            'free_gate': free_gate,
+            'allocation_gate': allocation_gate,
+            'write_gate': write_gate,
+            'read_mode': read_mode,
+        }
+
+    def _erase_and_write(self, memory, address, reset_weights, values):
+        with tf.name_scope('erase_memory'):
+            # 擦除操作：
+            # 1. 首先将写入权重 `address` 和擦除权重 `reset_weights` 进行维度扩展，以便进行广播操作。
+            expand_address = tf.expand_dims(address, 3)  # [batch_size, num_writes, memory_size, 1]
+            reset_weights = tf.expand_dims(reset_weights, 2)  # [batch_size, num_writes, 1, word_size]
+
+            # 2. 计算加权的擦除权重，通过乘法将写入权重 `address` 和擦除权重 `reset_weights` 相乘，
+            #    得到每个存储器位置的擦除比例。
+            weighted_resets = expand_address * reset_weights  # [batch_size, num_writes, memory_size, word_size]
+
+            # 3. 通过累积乘积计算擦除门 `reset_gate`，表示要擦除的内容。擦除门控制存储器的部分内容会被保留。
+            #    `reduce_prod` 是一种自定义操作，用于高效地计算张量沿指定轴的乘积。
+            reset_gate = util.reduce_prod(1 - weighted_resets, axis=1)  # [batch_size, memory_size, word_size]
+
+            # 4. 更新存储器，按元素乘法将擦除门应用到存储器上，抹去部分内容。
+            memory = memory * reset_gate  # [batch_size, memory_size, word_size]
+
+        with tf.name_scope('additive_write'):
+            # 写入操作：
+            # 1. 使用 `tf.matmul`（矩阵乘法）将写入权重 `address` 与要写入的值 `values` 结合，
+            #    生成写入矩阵 `add_matrix`。
+            #    矩阵乘法中，`adjoint_a=True` 表示第一个输入张量要进行转置操作。
+            add_matrix = tf.matmul(address, values, adjoint_a=True)  # [batch_size, memory_size, word_size]
+
+            # 2. 将计算得到的写入矩阵加到当前存储器上，完成写入操作。
+            memory = memory + add_matrix  # [batch_size, memory_size, word_size]
+
+        # 返回更新后的存储器状态
+        return memory
+
+    def _write_weights(self, inputs, memory, usage):
+        with tf.name_scope('write_weights'):
+            write_content_weights = self._write_content_weights_mod({
+                'memory': memory,
+                'keys': inputs['write_content_keys'],
+                'strengths': inputs['write_content_strengths']
+            })
+
+            write_allocation_weights = self._freeness.write_allocation_weights(
+                usage=usage,
+                write_gates=inputs['allocation_gate'] * inputs['write_gate'],
+                num_writes=self._num_writes)
+
+            allocation_gate = tf.expand_dims(inputs['allocation_gate'], -1)
+            write_gate = tf.expand_dims(inputs['write_gate'], -1)
+
+            return write_gate * (
+                    allocation_gate * write_allocation_weights +
+                    (1 - allocation_gate) * write_content_weights)
+
+    def _read_weights(self, inputs, memory, prev_read_weights, link):
+        with tf.name_scope('read_weights'):
+            # 计算内容权重
+            content_weights = self._read_content_weights_mod({
+                'memory': memory,
+                'keys': inputs['read_content_keys'],
+                'strengths': inputs['read_content_strengths']
+            })  # 形状: [batch_size, num_reads, memory_size]
+
+            # 计算前向和后向权重
+            forward_weights = self._linkage.directional_read_weights(
+                link, prev_read_weights, forward=True)  # 形状: [batch_size, num_reads, num_writes, memory_size]
+            backward_weights = self._linkage.directional_read_weights(
+                link, prev_read_weights, forward=False)  # 同上
+
+            # 获取读取模式
+            backward_mode = inputs['read_mode'][:, :, :self._num_writes]  # 形状: [batch_size, num_reads, num_writes]
+            forward_mode = inputs['read_mode'][:, :, self._num_writes:2 * self._num_writes]  # 同上
+            content_mode = inputs['read_mode'][:, :, 2 * self._num_writes]  # 形状: [batch_size, num_reads]
+
+            # 检查张量形状
+            tf.debugging.assert_shapes([
+                (content_weights, ['batch_size', 'num_reads', 'memory_size']),
+                (forward_weights, ['batch_size', 'num_reads', 'num_writes', 'memory_size']),
+                (backward_weights, ['batch_size', 'num_reads', 'num_writes', 'memory_size']),
+                (backward_mode, ['batch_size', 'num_reads', 'num_writes']),
+                (forward_mode, ['batch_size', 'num_reads', 'num_writes']),
+                (content_mode, ['batch_size', 'num_reads'])
+            ])
+
+            # 计算读取权重
+            read_weights = (
+                    tf.expand_dims(content_mode, -1) * content_weights +
+                    tf.reduce_sum(tf.expand_dims(forward_mode, -1) * forward_weights, axis=2) +
+                    tf.reduce_sum(tf.expand_dims(backward_mode, -1) * backward_weights, axis=2)
+            )
+
+            return read_weights  # 形状: [batch_size, num_reads, memory_size]
+
+    @property
+    def state_size(self):
+        return AccessState(
+            memory=tf.TensorShape([self._memory_size, self._word_size]),
+            read_weights=tf.TensorShape([self._num_reads, self._memory_size]),
+            write_weights=tf.TensorShape([self._num_writes, self._memory_size]),
+            linkage=self._linkage.state_size,
+            usage=self._freeness.state_size)
+
+    @property
+    def output_size(self):
+        return tf.TensorShape([self._num_reads, self._word_size])
