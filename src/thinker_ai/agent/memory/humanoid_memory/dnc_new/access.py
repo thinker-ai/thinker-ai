@@ -74,6 +74,20 @@ class MemoryAccess(tf.keras.layers.Layer):
         })
         print("Updated usage:", usage.numpy()[0, :2])  # 仅显示前两个值
 
+        # 打印门控信息
+        free_gate = processed_inputs['free_gate']
+        allocation_gate = processed_inputs['allocation_gate']
+        write_gate = processed_inputs['write_gate']
+
+        print("Free Gate:", free_gate.numpy())
+        print("Allocation Gate:", allocation_gate.numpy())
+        print("Write Gate:", write_gate.numpy())
+
+        # 打印计算写入权重之前的状态
+        print("Before calculating write weights:")
+        print("Allocation Gate:", allocation_gate.numpy())
+        print("Write Gate:", write_gate.numpy())
+
         write_weights = self._write_weights(processed_inputs, prev_state.memory, usage)
         memory = self._erase_and_write(
             prev_state.memory,
@@ -181,26 +195,50 @@ class MemoryAccess(tf.keras.layers.Layer):
         return memory
 
     def _write_weights(self, inputs, memory, usage):
+        print("Write Content Keys:", inputs['write_content_keys'])
+        print("Write Content Strengths:", inputs['write_content_strengths'])
+        print("Allocation Gate:", inputs['allocation_gate'])
+        print("Write Gate:", inputs['write_gate'])
         with tf.name_scope('write_weights'):
+            # 计算内容写权重
             write_content_weights = self._write_content_weights_mod({
                 'memory': memory,
                 'keys': inputs['write_content_keys'],
                 'strengths': inputs['write_content_strengths']
             })
 
+            # 打印写入内容权重
+            print("Write Content Weights:", write_content_weights)
+
+            # 计算分配权重
             write_allocation_weights = self._freeness.write_allocation_weights(
                 usage=usage,
                 write_gates=inputs['allocation_gate'] * inputs['write_gate'],
                 num_writes=self._num_writes)
 
+            # 打印分配权重
+            print("Write Allocation Weights:", write_allocation_weights)
+
             allocation_gate = tf.expand_dims(inputs['allocation_gate'], -1)
             write_gate = tf.expand_dims(inputs['write_gate'], -1)
-
-            return write_gate * (
+            print("Allocation Gate:", allocation_gate.numpy())
+            print("Write Gate:", write_gate.numpy())
+            # 计算最终写权重
+            final_write_weights = write_gate * (
                     allocation_gate * write_allocation_weights +
                     (1 - allocation_gate) * write_content_weights)
 
+            # 打印最终写权重
+            print("Final Write Weights:", final_write_weights)
+
+            return final_write_weights
+
     def _read_weights(self, inputs, memory, prev_read_weights, link):
+        print("Read Content Keys:", inputs['read_content_keys'])
+        print("Read Content Strengths:", inputs['read_content_strengths'])
+        print("Read Content Keys:", inputs['read_content_keys'])
+        print("Read Content Strengths:", inputs['read_content_strengths'])
+
         with tf.name_scope('read_weights'):
             # 计算内容权重
             content_weights = self._read_content_weights_mod({
@@ -209,16 +247,23 @@ class MemoryAccess(tf.keras.layers.Layer):
                 'strengths': inputs['read_content_strengths']
             })  # 形状: [batch_size, num_reads, memory_size]
 
+            # 打印内容权重
+            print("Content Weights:", content_weights)
+
             # 计算前向和后向权重
             forward_weights = self._linkage.directional_read_weights(
-                link, prev_read_weights, forward=True)  # 形状: [batch_size, num_reads, num_writes, memory_size]
+                link, prev_read_weights, forward=True)
             backward_weights = self._linkage.directional_read_weights(
-                link, prev_read_weights, forward=False)  # 同上
+                link, prev_read_weights, forward=False)
+
+            # 打印前向和后向权重
+            print("Forward Weights:", forward_weights)
+            print("Backward Weights:", backward_weights)
 
             # 获取读取模式
-            backward_mode = inputs['read_mode'][:, :, :self._num_writes]  # 形状: [batch_size, num_reads, num_writes]
-            forward_mode = inputs['read_mode'][:, :, self._num_writes:2 * self._num_writes]  # 同上
-            content_mode = inputs['read_mode'][:, :, 2 * self._num_writes]  # 形状: [batch_size, num_reads]
+            backward_mode = inputs['read_mode'][:, :, :self._num_writes]
+            forward_mode = inputs['read_mode'][:, :, self._num_writes:2 * self._num_writes]
+            content_mode = inputs['read_mode'][:, :, 2 * self._num_writes]
 
             # 检查张量形状
             tf.debugging.assert_shapes([
@@ -237,7 +282,10 @@ class MemoryAccess(tf.keras.layers.Layer):
                     tf.reduce_sum(tf.expand_dims(backward_mode, -1) * backward_weights, axis=2)
             )
 
-            return read_weights  # 形状: [batch_size, num_reads, memory_size]
+            # 打印读取权重
+            print("Read Weights:", read_weights)
+
+            return read_weights
 
     @property
     def state_size(self):
