@@ -47,16 +47,16 @@ class CosineWeights(tf.keras.layers.Layer):
 
         # 计算 keys 与 memory 之间的点积
         dot = tf.matmul(keys, memory, adjoint_b=True)  # [batch_size, num_heads, memory_size]
-        print("Dot product shape:", dot.shape)
-        print("Dot product sample:", dot.numpy()[0, :2, :2])  # 仅显示前两个值
+        # print("Dot product shape:", dot.shape)
+        # print("Dot product sample:", dot.numpy()[0, :2, :2])  # 仅显示前两个值
 
         # 计算 memory 和 keys 的 L2 范数
         memory_norms = _vector_norms(memory)  # [batch_size, memory_size, 1]
         key_norms = _vector_norms(keys)  # [batch_size, num_heads, 1]
-        print("Memory norms shape:", memory_norms.shape)
-        print("Memory norms sample:", memory_norms.numpy()[:2])  # 仅显示前两个值
-        print("Key norms shape:", key_norms.shape)
-        print("Key norms sample:", key_norms.numpy()[:2])  # 仅显示前两个值
+        # print("Memory norms shape:", memory_norms.shape)
+        # print("Memory norms sample:", memory_norms.numpy()[:2])  # 仅显示前两个值
+        # print("Key norms shape:", key_norms.shape)
+        # print("Key norms sample:", key_norms.numpy()[:2])  # 仅显示前两个值
 
         # 调整 memory_norms 和 key_norms 的形状，使其可以广播
         memory_norms = tf.transpose(memory_norms, [0, 2, 1])  # [batch_size, 1, memory_size]
@@ -71,8 +71,8 @@ class CosineWeights(tf.keras.layers.Layer):
 
         # 使用 strengths 调整相似度，并通过 softmax 得到权重
         weights = weighted_softmax(normed_dot, strengths, self._strength_op)
-        print("Calculated weights shape:", weights.shape)
-        print("Calculated weights sample:", weights.numpy()[0, :2, :2])  # 仅显示前两个值
+        # print("Calculated weights shape:", weights.shape)
+        # print("Calculated weights sample:", weights.numpy()[0, :2, :2])  # 仅显示前两个值
 
         return weights
 
@@ -172,22 +172,22 @@ class Freeness(tf.keras.layers.Layer):
         prev_usage = inputs['prev_usage']
 
         # 打印前一状态使用率
-        print("Previous usage shape:", prev_usage.shape)
-        print("Previous usage values:", prev_usage.numpy())  # 仅显示前几个值
+        # print("Previous usage shape:", prev_usage.shape)
+        # print("Previous usage values:", prev_usage.numpy())  # 仅显示前几个值
 
         # 更新内存使用率
         new_usage = self._usage_after_write(prev_usage, write_weights)
-        print("Usage after write shape:", new_usage.shape)
-        print("Usage after write values:", new_usage.numpy())  # 仅显示前几个值
+        # print("Usage after write shape:", new_usage.shape)
+        # print("Usage after write values:", new_usage.numpy())  # 仅显示前几个值
 
         new_usage = self._usage_after_read(new_usage, free_gate, read_weights)
-        print("Usage after read shape:", new_usage.shape)
-        print("Usage after read values:", new_usage.numpy())  # 仅显示前几个值
+        # print("Usage after read shape:", new_usage.shape)
+        # print("Usage after read values:", new_usage.numpy())  # 仅显示前几个值
 
         # 确保使用率在 0 到 1 之间
         clipped_usage = tf.clip_by_value(new_usage, 0, 1)
-        print("Clipped usage shape:", clipped_usage.shape)
-        print("Clipped usage values:", clipped_usage.numpy())  # 仅显示前几个值
+        # print("Clipped usage shape:", clipped_usage.shape)
+        # print("Clipped usage values:", clipped_usage.numpy())  # 仅显示前几个值
 
         return clipped_usage
 
