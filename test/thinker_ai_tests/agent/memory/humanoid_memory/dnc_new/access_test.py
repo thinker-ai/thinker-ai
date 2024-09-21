@@ -592,26 +592,31 @@ class MemoryAccessTest(tf.test.TestCase):
         for sublayer in expected_sublayers:
             self.assertIn(sublayer, actual_sublayers, f"Sublayer '{sublayer}' is not registered.")
 
-    # def testSublayersGradients(self):
-    #     """
-    #     测试所有子层内部的梯度流动情况，确保没有梯度阻断。
-    #     """
-    #     inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
-    #     targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
-    #
-    #     with tf.GradientTape() as tape:
-    #         output, _ = self.module({'inputs': inputs, 'prev_state': self.initial_state})
-    #         loss = tf.reduce_sum(output)
-    #
-    #     gradients = tape.gradient(loss, self.module.trainable_variables)
-    #
-    #     for grad, var in zip(gradients, self.module.trainable_variables):
-    #         var_name = var.name
-    #         self.assertIsNotNone(grad, f"Gradient for variable '{var_name}' is None.")
-    #         grad_norm = tf.norm(grad).numpy()
-    #         self.assertGreater(grad_norm, 1e-12, f"Gradient norm for '{var_name}' is too small.")
-    #         self.assertLess(grad_norm, 1e3, f"Gradient norm for '{var_name}' is too large.")
-    #
+    def testSublayersGradients(self):
+        """
+        测试所有子层内部的梯度流动情况，确保没有梯度阻断。
+        """
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
+        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+
+        prev_state = self.initial_state
+
+        for t in range(TIME_STEPS):
+            input_t = inputs[t]  # 形状为 (BATCH_SIZE, INPUT_SIZE)
+            target_t = targets[t]
+
+            with tf.GradientTape() as tape:
+                output, next_state = self.module({'inputs': input_t, 'prev_state': prev_state})
+                loss = tf.reduce_mean((output - target_t) ** 2)
+
+            gradients = tape.gradient(loss, self.module.trainable_variables)
+            # 检查梯度是否为 None
+            for grad, var in zip(gradients, self.module.trainable_variables):
+                self.assertIsNotNone(grad, f"Gradient for variable {var.name} is None.")
+
+            # 更新 prev_state
+            prev_state = next_state
+
     # def testModelSavingAndLoading(self):
     #     """
     #     测试 MemoryAccess 模型的保存和加载功能，确保权重和配置被正确保留。
