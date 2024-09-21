@@ -1,9 +1,12 @@
+
 #thinker_ai/agent/memory/humanoid_memory/dnc/access.py
 import collections
+
 import tensorflow as tf
 from thinker_ai.agent.memory.humanoid_memory.dnc_new import addressing
 from thinker_ai.agent.memory.humanoid_memory.dnc_new import util
 import os
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 AccessState = collections.namedtuple('AccessState', (
     'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))
@@ -13,96 +16,120 @@ class MemoryAccess(tf.keras.layers.Layer):
 
     def __init__(self, memory_size=128, word_size=20, num_reads=1, num_writes=1, name='memory_access'):
         super(MemoryAccess, self).__init__(name=name)
-        # self.dense_read_keys = tf.keras.layers.Dense(units=..., activation=...)
-        # self.dense_read_strengths = tf.keras.layers.Dense(units=..., activation=...)
         self._memory_size = memory_size
         self._word_size = word_size
         self._num_reads = num_reads
         self._num_writes = num_writes
 
-        # 定义用于计算内容权重的 CosineWeights 模块
+        # 定义子层并赋值给 self，确保唯一名称
+        self.write_vector_dense = tf.keras.layers.Dense(
+            self._num_writes * self._word_size,
+            activation=None,
+            name='write_vector_dense',
+            use_bias=True
+        )
+        self.erase_vector_dense = tf.keras.layers.Dense(
+            self._num_writes * self._word_size,
+            activation='sigmoid',
+            name='erase_vector_dense',
+            use_bias=True
+        )
+        self.free_gate_dense = tf.keras.layers.Dense(
+            self._num_reads,
+            activation='sigmoid',
+            name='free_gate_dense',
+            use_bias=True
+        )
+        self.allocation_gate_dense = tf.keras.layers.Dense(
+            self._num_writes,
+            activation='sigmoid',
+            name='allocation_gate_dense',
+            use_bias=True
+        )
+        self.write_gate_dense = tf.keras.layers.Dense(
+            self._num_writes,
+            activation='sigmoid',
+            name='write_gate_dense',
+            use_bias=True
+        )
+        self.read_mode_dense = tf.keras.layers.Dense(
+            self._num_reads * (1 + 2 * self._num_writes),
+            activation=None,
+            name='read_mode_dense',
+            use_bias=True
+        )
+        self.write_strengths_dense = tf.keras.layers.Dense(
+            self._num_writes,
+            activation='softplus',
+            name='write_strengths_dense',
+            use_bias=True
+        )
+        self.read_strengths_dense = tf.keras.layers.Dense(
+            self._num_reads,
+            activation='softplus',
+            name='read_strengths_dense',
+            use_bias=True
+        )
+        self.write_keys_dense = tf.keras.layers.Dense(
+            self._num_writes * self._word_size,
+            activation=None,
+            name='write_keys_dense',
+            use_bias=True
+        )
+        self.read_keys_dense = tf.keras.layers.Dense(
+            self._num_reads * self._word_size,
+            activation=None,
+            name='read_keys_dense',
+            use_bias=True
+        )
+
+        # 初始化子模块
         self._write_content_weights_mod = addressing.CosineWeights(num_writes, word_size, name='write_content_weights')
         self._read_content_weights_mod = addressing.CosineWeights(num_reads, word_size, name='read_content_weights')
+        self._linkage = addressing.TemporalLinkage(memory_size, num_writes, name='temporal_linkage')
+        self._freeness = addressing.Freeness(memory_size, name='freeness')
 
-        # TemporalLinkage 和 Freeness 模块
-        self._linkage = addressing.TemporalLinkage(memory_size, num_writes)
-        self._freeness = addressing.Freeness(memory_size)
-
-        # 定义用于生成各个参数的 Dense 层
-        self.write_vector_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=None,
-                                                        name='write_vectors')
-        self.erase_vector_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=tf.sigmoid,
-                                                        name='erase_vectors')
-        self.free_gate_dense = tf.keras.layers.Dense(self._num_reads, activation=tf.sigmoid, name='free_gate')
-        self.allocation_gate_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.sigmoid,
-                                                           name='allocation_gate')
-        self.write_gate_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.sigmoid, name='write_gate')
-        self.read_mode_dense = tf.keras.layers.Dense(self._num_reads * (1 + 2 * self._num_writes), activation=None,
-                                                     name='read_mode')
-
-        # **添加用于生成写入和读取强度的 Dense 层**
-        self.write_strengths_dense = tf.keras.layers.Dense(self._num_writes, activation=tf.nn.softplus,
-                                                           name='write_strengths')
-        self.read_strengths_dense = tf.keras.layers.Dense(self._num_reads, activation=tf.nn.softplus,
-                                                          name='read_strengths')
-
-        # **添加用于生成写入和读取键的 Dense 层**
-        self.write_keys_dense = tf.keras.layers.Dense(self._num_writes * self._word_size, activation=None,
-                                                      name='write_keys')
-        self.read_keys_dense = tf.keras.layers.Dense(self._num_reads * self._word_size, activation=None,
-                                                     name='read_keys')
+    def _print_inputs(self, processed_inputs):
+        for key, value in processed_inputs.items():
+            tf.print(key + ":", value)
+        return processed_inputs
 
     def call(self, inputs, training=False):
         prev_state = inputs['prev_state']
         processed_inputs = self._read_inputs(inputs)
 
-        # 重要信息简化输出
-        print(f"Prev state memory shape: {prev_state.memory.shape}")
-        print(f"Processed inputs shapes: {[v.shape for v in processed_inputs.values()]}")
+        # 仅保留关键信息的打印
+        tf.print("MemoryAccess Layer: Processing inputs.")
 
-        # 打印关键参数的简要信息
-        for key in ['write_vectors', 'erase_vectors', 'free_gate', 'allocation_gate', 'write_gate']:
-            print(f"{key}: {processed_inputs[key][:2]}")  # 仅显示前两个值
+        # 将 processed_inputs 传递给 _print_inputs
+        self._print_inputs(processed_inputs)
 
-        # 显示内存更新过程中的关键状态
-        print("Memory before updates:", prev_state.memory.numpy()[0, :2])  # 仅显示前两个位置
+        # 计算使用率
         usage = self._freeness({
             'write_weights': prev_state.write_weights,
             'free_gate': processed_inputs['free_gate'],
             'read_weights': prev_state.read_weights,
             'prev_usage': prev_state.usage
         })
-        print("Updated usage:", usage.numpy()[0, :2])  # 仅显示前两个值
 
-        # 打印门控信息
-        free_gate = processed_inputs['free_gate']
-        allocation_gate = processed_inputs['allocation_gate']
-        write_gate = processed_inputs['write_gate']
-
-        print("Free Gate:", free_gate.numpy())
-        print("Allocation Gate:", allocation_gate.numpy())
-        print("Write Gate:", write_gate.numpy())
-
-        # 打印计算写入权重之前的状态
-        print("Before calculating write weights:")
-        print("Allocation Gate:", allocation_gate.numpy())
-        print("Write Gate:", write_gate.numpy())
-
+        # 计算写权重
         write_weights = self._write_weights(processed_inputs, prev_state.memory, usage)
+
+        # 更新内存
         memory = self._erase_and_write(
             prev_state.memory,
             address=write_weights,
             reset_weights=processed_inputs['erase_vectors'],
             values=processed_inputs['write_vectors']
         )
-        print("Memory after updates:", memory.numpy()[0, :2])  # 仅显示前两个位置
 
+        # 更新时序链路
         linkage_state = self._linkage({
             'write_weights': write_weights,
             'prev_linkage': prev_state.linkage
         })
-        print("Linkage state summary:", linkage_state.link.shape)
 
+        # 计算读取权重
         read_weights = self._read_weights(
             processed_inputs,
             memory=memory,
@@ -110,7 +137,12 @@ class MemoryAccess(tf.keras.layers.Layer):
             link=linkage_state.link
         )
         read_words = tf.matmul(read_weights, memory)
-        print("Read words summary:", read_words.numpy()[0, :2])  # 仅显示前两个值
+
+        # 打印输出值的部分样本
+        tf.print("MemoryAccess Layer: Output values (sample):", read_words[:2, :])
+
+        # 检查 read_words 是否有 NaN 或 Inf
+        tf.debugging.check_numerics(read_words, "read_words contains NaN or Inf")
 
         return read_words, AccessState(
             memory=memory,
@@ -139,7 +171,8 @@ class MemoryAccess(tf.keras.layers.Layer):
         # 计算读取模式的 Softmax
         num_read_modes = 1 + 2 * self._num_writes
         read_mode = tf.nn.softmax(
-            tf.reshape(self.read_mode_dense(controller_output), [batch_size, self._num_reads, num_read_modes]))
+            tf.reshape(self.read_mode_dense(controller_output), [batch_size, self._num_reads, num_read_modes])
+        )
 
         # 生成写入键和写入强度
         write_keys = tf.reshape(self.write_keys_dense(controller_output),
@@ -147,7 +180,8 @@ class MemoryAccess(tf.keras.layers.Layer):
         write_strengths = self.write_strengths_dense(controller_output)
 
         # 生成读取键和读取强度
-        read_keys = tf.reshape(self.read_keys_dense(controller_output), [batch_size, self._num_reads, self._word_size])
+        read_keys = tf.reshape(self.read_keys_dense(controller_output),
+                               [batch_size, self._num_reads, self._word_size])
         read_strengths = self.read_strengths_dense(controller_output)
 
         return {
@@ -162,6 +196,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             'write_gate': write_gate,
             'read_mode': read_mode,
         }
+
 
     def _erase_and_write(self, memory, address, reset_weights, values):
         with tf.name_scope('erase_memory'):
@@ -195,10 +230,10 @@ class MemoryAccess(tf.keras.layers.Layer):
         return memory
 
     def _write_weights(self, inputs, memory, usage):
-        print("Write Content Keys:", inputs['write_content_keys'])
-        print("Write Content Strengths:", inputs['write_content_strengths'])
-        print("Allocation Gate:", inputs['allocation_gate'])
-        print("Write Gate:", inputs['write_gate'])
+        # print("Write Content Keys:", inputs['write_content_keys'])
+        # print("Write Content Strengths:", inputs['write_content_strengths'])
+        # print("Allocation Gate:", inputs['allocation_gate'])
+        # print("Write Gate:", inputs['write_gate'])
         with tf.name_scope('write_weights'):
             # 计算内容写权重
             write_content_weights = self._write_content_weights_mod({
@@ -208,7 +243,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             })
 
             # 打印写入内容权重
-            print("Write Content Weights:", write_content_weights)
+            # print("Write Content Weights:", write_content_weights)
 
             # 计算分配权重
             write_allocation_weights = self._freeness.write_allocation_weights(
@@ -221,23 +256,23 @@ class MemoryAccess(tf.keras.layers.Layer):
 
             allocation_gate = tf.expand_dims(inputs['allocation_gate'], -1)
             write_gate = tf.expand_dims(inputs['write_gate'], -1)
-            print("Allocation Gate:", allocation_gate.numpy())
-            print("Write Gate:", write_gate.numpy())
+            # print("Allocation Gate:", allocation_gate.numpy())
+            # print("Write Gate:", write_gate.numpy())
             # 计算最终写权重
             final_write_weights = write_gate * (
                     allocation_gate * write_allocation_weights +
                     (1 - allocation_gate) * write_content_weights)
 
             # 打印最终写权重
-            print("Final Write Weights:", final_write_weights)
+            # print("Final Write Weights:", final_write_weights)
 
             return final_write_weights
 
     def _read_weights(self, inputs, memory, prev_read_weights, link):
-        print("Read Content Keys:", inputs['read_content_keys'])
-        print("Read Content Strengths:", inputs['read_content_strengths'])
-        print("Read Content Keys:", inputs['read_content_keys'])
-        print("Read Content Strengths:", inputs['read_content_strengths'])
+        # print("Read Content Keys:", inputs['read_content_keys'])
+        # print("Read Content Strengths:", inputs['read_content_strengths'])
+        # print("Read Content Keys:", inputs['read_content_keys'])
+        # print("Read Content Strengths:", inputs['read_content_strengths'])
 
         with tf.name_scope('read_weights'):
             # 计算内容权重
@@ -248,7 +283,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             })  # 形状: [batch_size, num_reads, memory_size]
 
             # 打印内容权重
-            print("Content Weights:", content_weights)
+            # print("Content Weights:", content_weights)
 
             # 计算前向和后向权重
             forward_weights = self._linkage.directional_read_weights(
@@ -257,8 +292,8 @@ class MemoryAccess(tf.keras.layers.Layer):
                 link, prev_read_weights, forward=False)
 
             # 打印前向和后向权重
-            print("Forward Weights:", forward_weights)
-            print("Backward Weights:", backward_weights)
+            # print("Forward Weights:", forward_weights)
+            # print("Backward Weights:", backward_weights)
 
             # 获取读取模式
             backward_mode = inputs['read_mode'][:, :, :self._num_writes]
@@ -283,7 +318,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             )
 
             # 打印读取权重
-            print("Read Weights:", read_weights)
+            # print("Read Weights:", read_weights)
 
             return read_weights
 

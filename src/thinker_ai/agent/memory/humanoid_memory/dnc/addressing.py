@@ -360,8 +360,6 @@ class Freeness(tf.keras.layers.Layer):
         Returns:
           更新后的内存使用率。
         """
-        # 停止写权重的梯度计算，避免反向传播影响
-        write_weights = tf.stop_gradient(write_weights)
         # 计算写操作对内存位置的影响，权重乘积表示写入的强度
         write_weights = 1 - tf.reduce_prod(1 - write_weights, axis=1)
         return prev_usage + (1 - prev_usage) * write_weights

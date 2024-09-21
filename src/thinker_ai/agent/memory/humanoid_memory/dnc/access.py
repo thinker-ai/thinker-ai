@@ -88,10 +88,10 @@ class MemoryAccess(tf.keras.layers.Layer):
         """
         # 从输入中提取前一时间步的状态
         prev_state = inputs['prev_state']
-        print("Prev state:", prev_state)
         # 解析输入并进行预处理
         processed_inputs = self._read_inputs(inputs)
-        print("Processed inputs:", processed_inputs)
+        # 仅保留关键信息的打印
+        print("MemoryAccess Layer: Processing inputs.")
         # 解析输入并进行预处理
         inputs = self._read_inputs(inputs)
 
@@ -111,7 +111,6 @@ class MemoryAccess(tf.keras.layers.Layer):
             reset_weights=inputs['erase_vectors'],
             values=inputs['write_vectors']
         )
-        print("Memory after erase and write:", memory)
         # 根据新的写入权重更新时间顺序链路状态
         linkage_state = self._linkage({
             'write_weights': write_weights,
@@ -125,9 +124,9 @@ class MemoryAccess(tf.keras.layers.Layer):
             prev_read_weights=prev_state.read_weights,
             link=linkage_state.link
         )
-        print("Read weights:", read_weights)
         read_words = tf.matmul(read_weights, memory)
-        print("Read words:", read_words)
+        # 添加输出值的打印
+        print("MemoryAccess Layer: Output values (sample):", read_words.numpy()[0, :2, :])
         # 返回读取结果及更新后的状态
         return read_words, AccessState(
             memory=memory,

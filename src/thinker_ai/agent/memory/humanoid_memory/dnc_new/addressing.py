@@ -193,8 +193,6 @@ class Freeness(tf.keras.layers.Layer):
 
     def _usage_after_write(self, prev_usage, write_weights):
         # 计算写操作对内存位置的影响，权重乘积表示写入的强度
-        # **修改部分：移除 tf.stop_gradient 以允许梯度传播**
-        write_weights = tf.stop_gradient(write_weights)
         write_weights = 1 - tf.reduce_prod(1 - write_weights, axis=1)
         return prev_usage + (1 - prev_usage) * write_weights
 
@@ -245,3 +243,4 @@ class Freeness(tf.keras.layers.Layer):
     @property
     def state_size(self):
         return tf.TensorShape([self._memory_size])
+
