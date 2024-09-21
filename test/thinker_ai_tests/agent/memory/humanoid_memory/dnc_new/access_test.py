@@ -1,10 +1,5 @@
 #thinker_ai_tests/agent/memory/humanoid_memory/dnc/access_test.py
 import os
-from collections import namedtuple
-
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.access import MemoryAccess, AccessState
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import TemporalLinkageState
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 import numpy as np
 import tensorflow as tf
@@ -37,7 +32,6 @@ class MemoryAccessTest(tf.test.TestCase):
             ),
             usage=tf.zeros([BATCH_SIZE, MEMORY_SIZE], dtype=tf.float32)
         )
-
     def testBuildAndTrain(self):
         inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
 

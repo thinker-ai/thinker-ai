@@ -21,73 +21,101 @@ class MemoryAccess(tf.keras.layers.Layer):
         self._num_reads = num_reads
         self._num_writes = num_writes
 
-        # 定义子层并赋值给 self，确保唯一名称
+        # 定义用于计算内容权重的 CosineWeights 模块
+        self._write_content_weights_mod = addressing.CosineWeights(num_writes, word_size, name='write_content_weights')
+        self._read_content_weights_mod = addressing.CosineWeights(num_reads, word_size, name='read_content_weights')
+
+        # TemporalLinkage 和 Freeness 模块
+        self._linkage = addressing.TemporalLinkage(memory_size, num_writes)
+        self._freeness = addressing.Freeness(memory_size)
+
+        # 定义初始化器
+        bias_init = tf.keras.initializers.RandomNormal(mean=0.0, stddev=1.0)
+        kernel_init = tf.keras.initializers.RandomNormal(mean=0.0, stddev=1.0)
+
+        # 定义用于生成各个参数的 Dense 层，确保唯一名称和使用偏置
         self.write_vector_dense = tf.keras.layers.Dense(
             self._num_writes * self._word_size,
             activation=None,
-            name='write_vector_dense',
+            name='write_vectors',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.erase_vector_dense = tf.keras.layers.Dense(
             self._num_writes * self._word_size,
             activation='sigmoid',
-            name='erase_vector_dense',
+            name='erase_vectors',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.free_gate_dense = tf.keras.layers.Dense(
             self._num_reads,
             activation='sigmoid',
-            name='free_gate_dense',
+            name='free_gate',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.allocation_gate_dense = tf.keras.layers.Dense(
             self._num_writes,
             activation='sigmoid',
-            name='allocation_gate_dense',
+            name='allocation_gate',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.write_gate_dense = tf.keras.layers.Dense(
             self._num_writes,
             activation='sigmoid',
-            name='write_gate_dense',
+            name='write_gate',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.read_mode_dense = tf.keras.layers.Dense(
             self._num_reads * (1 + 2 * self._num_writes),
             activation=None,
-            name='read_mode_dense',
+            name='read_mode',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
+
         self.write_strengths_dense = tf.keras.layers.Dense(
             self._num_writes,
             activation='softplus',
-            name='write_strengths_dense',
+            name='write_strengths',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.read_strengths_dense = tf.keras.layers.Dense(
             self._num_reads,
             activation='softplus',
-            name='read_strengths_dense',
+            name='read_strengths',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
+
         self.write_keys_dense = tf.keras.layers.Dense(
             self._num_writes * self._word_size,
             activation=None,
-            name='write_keys_dense',
+            name='write_keys',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
         self.read_keys_dense = tf.keras.layers.Dense(
             self._num_reads * self._word_size,
             activation=None,
-            name='read_keys_dense',
+            name='read_keys',
+            kernel_initializer=kernel_init,
+            bias_initializer=bias_init,
             use_bias=True
         )
-
-        # 初始化子模块
-        self._write_content_weights_mod = addressing.CosineWeights(num_writes, word_size, name='write_content_weights')
-        self._read_content_weights_mod = addressing.CosineWeights(num_reads, word_size, name='read_content_weights')
-        self._linkage = addressing.TemporalLinkage(memory_size, num_writes, name='temporal_linkage')
-        self._freeness = addressing.Freeness(memory_size, name='freeness')
 
     def _print_inputs(self, processed_inputs):
         for key, value in processed_inputs.items():
@@ -196,7 +224,6 @@ class MemoryAccess(tf.keras.layers.Layer):
             'write_gate': write_gate,
             'read_mode': read_mode,
         }
-
 
     def _erase_and_write(self, memory, address, reset_weights, values):
         with tf.name_scope('erase_memory'):
