@@ -534,18 +534,63 @@ class MemoryAccessTest(tf.test.TestCase):
                                     self.assertLess(grad_norm, 1e3, f"Gradient norm for {var_name} is too large.")
                                     self.assertGreater(grad_norm, 1e-12, f"Gradient norm for {var_name} is too small.")
 
-    # def testSublayersRegistration(self):
-    #     """
-    #     测试所有子层是否被正确注册到 MemoryAccess 模块中。
-    #     """
-    #     expected_sublayers = ['cosine_weights', 'temporal_linkage', 'freeness', 'write_vectors_dense',
-    #                           'erase_vectors_dense', 'free_gate_dense', 'allocation_gate_dense',
-    #                           'write_gate_dense', 'read_mode_dense']
-    #
-    #     actual_sublayers = [layer.name for layer in self.module.layers]
-    #
-    #     for sublayer in expected_sublayers:
-    #         self.assertIn(sublayer, actual_sublayers, f"Sublayer '{sublayer}' is not registered.")
+    def testSublayersRegistration(self):
+        """
+        Test whether all sublayers are properly registered in the MemoryAccess module.
+        """
+        expected_sublayers = [
+            'write_content_weights', 'read_content_weights', 'temporal_linkage', 'freeness',
+            'write_vectors', 'erase_vectors', 'free_gate', 'allocation_gate',
+            'write_gate', 'read_mode', 'write_strengths', 'read_strengths', 'write_keys', 'read_keys'
+        ]
+
+        # Instantiate the MemoryAccess module
+        module = access.MemoryAccess(
+            memory_size=MEMORY_SIZE,
+            word_size=WORD_SIZE,
+            num_reads=NUM_READS,
+            num_writes=NUM_WRITES
+        )
+
+        # Initialize prev_state
+        initial_state = access.AccessState(
+            memory=tf.zeros([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE], dtype=tf.float32),
+            read_weights=tf.zeros([BATCH_SIZE, NUM_READS, MEMORY_SIZE], dtype=tf.float32),
+            write_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32),
+            linkage=addressing.TemporalLinkageState(
+                link=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE], dtype=tf.float32),
+                precedence_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
+            ),
+            usage=tf.zeros([BATCH_SIZE, MEMORY_SIZE], dtype=tf.float32)
+        )
+
+        # Create a single time-step random input
+        dummy_input = tf.random.normal([BATCH_SIZE, INPUT_SIZE], dtype=tf.float32)
+
+        input_dict = {
+            'inputs': dummy_input,
+            'prev_state': initial_state
+        }
+
+        # Call the module once to build it
+        try:
+            output, _ = module(input_dict, training=False)
+        except Exception as e:
+            self.fail(f"MemoryAccess module failed to build with input_dict: {e}")
+
+        # Manually collect sublayers from the module's attributes using vars()
+        actual_sublayers = []
+        for attr_name, attr_value in vars(module).items():
+            if isinstance(attr_value, tf.keras.layers.Layer):
+                actual_sublayers.append(attr_value.name)
+
+        # Print the actual sublayers for debugging
+        print("Expected sublayers:", expected_sublayers)
+        print("Actual sublayers:", actual_sublayers)
+
+        # Check that all expected sublayers are in actual_sublayers
+        for sublayer in expected_sublayers:
+            self.assertIn(sublayer, actual_sublayers, f"Sublayer '{sublayer}' is not registered.")
 
     # def testSublayersGradients(self):
     #     """
