@@ -802,6 +802,7 @@ class FreenessTest(tf.test.TestCase):
     def setUp(self):
         super(FreenessTest, self).setUp()
         self.memory_size = 3  # 定义 memory_size，不带下划线
+        self.num_writes = 2  # 定义 num_writes
 
     # @parameterized.expand([
     #     ("all_full", (1,), [[1.0, 1.0, 1.0]], [[1.0]], [[[1.0, 1.0, 1.0]]], [[0.0, 0.0, 0.0]]),
@@ -820,7 +821,6 @@ class FreenessTest(tf.test.TestCase):
     #     updated_usage = freeness_layer(inputs, training=False)
     #     expected = tf.constant(expected_usage, dtype=tf.float32)
     #     self.assertAllClose(updated_usage.numpy(), expected.numpy(), atol=1e-6)
-
     def test_basic_write_and_read(self):
         """
         基本测试：验证写操作和读操作对使用率的影响。
@@ -830,7 +830,7 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 2
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size, num_writes=num_writes)
 
         # 创建初始使用率
         initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [2, 3]
@@ -872,13 +872,13 @@ class FreenessTest(tf.test.TestCase):
         # 写操作1：写入第0槽 -> usage = [1, 0, 0]
         # 写操作2：写入第1槽 -> usage = [1, 1, 0]
         # 读操作1：释放 0.5 from slot0 and 0.5 from slot1 -> usage = [0.5, 0.5, 0.0]
-        # 读操作2：free_gate=0, no action -> usage remains [0.5, 0.5, 0.0]
+        # 读操作2：释放 0.0 from slot0 and 0.0 from slot1 -> usage remains [0.5, 0.5, 0.0]
         #
         # 对于第二批次：
         # 写操作1：写入第2槽 -> usage = [0, 0, 1]
         # 写操作2：写入第0槽 -> usage = [1, 0, 1]
-        # 读操作1：free_gate=0, no action -> usage remains [1, 0, 1]
-        # 读操作2：释放 1.0 from slot0 and 0.0 from slot1 -> usage = [0.0, 0.0, 1.0]
+        # 读操作1：释放 1.0 from slot0 and 1.0 from slot1 -> usage = [0.0, 0.0, 1.0]
+        # 读操作2：释放 0.0 from slot0 and 0.0 from slot1 -> usage remains [0.0, 0.0, 1.0]
         expected_usage = tf.constant([
             [0.5, 0.5, 0.0],
             [0.0, 0.0, 1.0]
@@ -895,24 +895,24 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 1
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size, num_writes=num_writes)
 
         # 创建初始使用率
-        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
+        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
 
         # 定义写权重（全零）
         write_weights = tf.constant([
             [[0.0, 0.0, 0.0]]
-        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+        ], dtype=tf.float32)  # [1, 1, 3]
 
         # 定义自由门和读权重（任意）
         free_gate = tf.constant([
             [1.0]
-        ], dtype=tf.float32)  # [batch_size, num_reads]
+        ], dtype=tf.float32)  # [1, 1]
 
         read_weights = tf.constant([
             [[0.0, 0.0, 0.0]]
-        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
+        ], dtype=tf.float32)  # [1, 1, 3]
 
         # 构建输入字典
         inputs = {
@@ -928,7 +928,7 @@ class FreenessTest(tf.test.TestCase):
         # 预期使用率为全0
         expected_usage = tf.constant([
             [0.0, 0.0, 0.0]
-        ], dtype=tf.float32)  # [batch_size, memory_size]
+        ], dtype=tf.float32)  # [1, 3]
 
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
@@ -941,7 +941,7 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 1
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size, num_writes=num_writes)
 
         # 创建初始使用率
         initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
@@ -987,7 +987,7 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 1
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size,num_writes=num_writes)
 
         # 创建初始使用率为全1
         initial_usage = tf.ones([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
@@ -1033,7 +1033,7 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 2
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size,num_writes=num_writes)
 
         # 创建初始使用率
         initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
@@ -1149,7 +1149,7 @@ class FreenessTest(tf.test.TestCase):
         num_reads = 1
 
         # 初始化 Freeness 层
-        freeness_layer = Freeness(memory_size=self.memory_size)
+        freeness_layer = Freeness(memory_size=self.memory_size,num_writes=num_writes)
 
         # 创建初始使用率
         initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组

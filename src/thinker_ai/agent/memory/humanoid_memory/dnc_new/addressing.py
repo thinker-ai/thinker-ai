@@ -280,10 +280,19 @@ class TemporalLinkage(tf.keras.layers.Layer):
 
 
 class Freeness(tf.keras.layers.Layer):
-    def __init__(self, memory_size, epsilon=1e-6, name='freeness'):
+    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='freeness'):
         super(Freeness, self).__init__(name=name)
         self._memory_size = memory_size
-        self._epsilon = epsilon  # 可配置的 epsilon 值
+        self._num_writes = num_writes
+        self._epsilon = epsilon
+
+    def build(self, input_shape):
+        # 假设 input_shape 是 usage 的形状，即 [batch_size, memory_size]
+        if isinstance(input_shape, tuple):
+            self.batch_dims = len(input_shape) - 1
+        else:
+            self.batch_dims = 1  # 默认设置
+        super(Freeness, self).build(input_shape)
 
     def call(self, inputs, training=False):
         write_weights = inputs['write_weights']  # [batch_shape..., num_writes, memory_size]
@@ -304,6 +313,7 @@ class Freeness(tf.keras.layers.Layer):
         tf.print("Clipped usage:", clipped_usage)
 
         return clipped_usage  # [batch_shape..., memory_size]
+
 
     def _usage_after_write(self, usage, write_weights):
         """
@@ -376,34 +386,36 @@ class Freeness(tf.keras.layers.Layer):
 
         # 恢复原始顺序
         inverse_indices = tf.argsort(indices, axis=-1)  # [batch_shape..., memory_size]
-        allocation = tf.gather(sorted_allocation, inverse_indices,
-                               batch_dims=tf.rank(usage) - 1)  # [batch_shape..., memory_size]
 
+        tf.print("Adjusted usage shape:", tf.shape(adjusted_usage))
+        tf.print("Non-usage shape:", tf.shape(nonusage))
+        tf.print("Sorted non-usage shape:", tf.shape(sorted_nonusage))
+        tf.print("Indices shape:", tf.shape(indices))
+        tf.print("Sorted usage shape:", tf.shape(sorted_usage))
+        tf.print("Cumulative product sorted usage shape:", tf.shape(cumprod_sorted_usage))
+        tf.print("Sorted allocation shape:", tf.shape(sorted_allocation))
+        tf.print("Inverse indices shape:", tf.shape(inverse_indices))
+
+        # 使用在 build 方法中确定的 batch_dims
+        allocation = tf.gather(sorted_allocation, inverse_indices, batch_dims=self.batch_dims)
+        tf.print("Allocation shape after gather:", tf.shape(allocation))
         return allocation
 
     def write_allocation_weights(self, usage, write_gates):
         """
         计算写操作的分配权重。
-        [保持不变]
         """
-        # 获取动态形状
-        batch_shape = tf.shape(usage)[:-1]
-        num_writes = tf.shape(write_gates)[-1]
-
-        # 扩展 usage 的维度
-        usage_expanded = tf.expand_dims(usage, axis=-2)  # [batch_shape..., 1, memory_size]
-        write_gates_expanded = tf.expand_dims(write_gates, axis=-1)  # [batch_shape..., num_writes, 1]
+        write_gates_expanded = tf.expand_dims(write_gates, axis=-1)  # [batch_size, num_writes, 1]
 
         # 计算 allocation
-        allocation = self._allocation(usage)  # [batch_shape..., memory_size]
-        allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_shape..., 1, memory_size]
+        allocation = self._allocation(usage)  # [batch_size, memory_size]
+        allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_size, 1, memory_size]
 
         # 计算 allocation_weights
-        allocation_weights = allocation_expanded * tf.ones_like(
-            write_gates_expanded)  # [batch_shape..., num_writes, memory_size]
+        allocation_weights = allocation_expanded * tf.ones_like(write_gates_expanded)  # [batch_size, num_writes, memory_size]
 
         # 根据 write_gates 调整 allocation_weights
-        write_allocation_weights = write_gates_expanded * allocation_weights  # [batch_shape..., num_writes, memory_size]
+        write_allocation_weights = write_gates_expanded * allocation_weights  # [batch_size, num_writes, memory_size]
 
         tf.print("Write allocation weights:", write_allocation_weights)
 
