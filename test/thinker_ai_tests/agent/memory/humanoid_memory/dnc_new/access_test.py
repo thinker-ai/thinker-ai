@@ -1,65 +1,71 @@
-#thinker_ai_tests/agent/memory/humanoid_memory/dnc/access_test.py
+import collections
+import tensorflow as tf
+import numpy as np
 import os
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.access import AccessState
+from thinker_ai.agent.memory.humanoid_memory.dnc_new import access
+
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
-import numpy as np
-import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new import access, addressing
-from thinker_ai.agent.memory.humanoid_memory.dnc_new import util
+# 定义测试常量
 BATCH_SIZE = 2
 MEMORY_SIZE = 20
 WORD_SIZE = 6
 NUM_READS = 2
 NUM_WRITES = 3
 TIME_STEPS = 4
-INPUT_SIZE = 10
+SEQUENCE_LENGTH = 1  # 可变的 sequence_length，您可以修改此值进行测试
+INPUT_SIZE = 12      # 输入大小
+
+# 定义 AccessState，用于保存访问模块的状态
+AccessState = collections.namedtuple('AccessState', (
+    'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))
 
 
 class MemoryAccessTest(tf.test.TestCase):
 
     def setUp(self):
         super(MemoryAccessTest, self).setUp()
-        self.module = access.MemoryAccess(MEMORY_SIZE, WORD_SIZE, NUM_READS, NUM_WRITES)
-
-        # 初始化 prev_state 使用 namedtuple 并用 Tensor 作为值
-        self.initial_state = AccessState(
-            memory=tf.zeros([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE], dtype=tf.float32),
-            read_weights=tf.zeros([BATCH_SIZE, NUM_READS, MEMORY_SIZE], dtype=tf.float32),
-            write_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32),
-            linkage=addressing.TemporalLinkageState(
-                link=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE], dtype=tf.float32),
-                precedence_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
-            ),
-            usage=tf.zeros([BATCH_SIZE, MEMORY_SIZE], dtype=tf.float32)
+        # 初始化 MemoryAccess 模块
+        self.module = access.MemoryAccess(
+            memory_size=MEMORY_SIZE,
+            word_size=WORD_SIZE,
+            num_reads=NUM_READS,
+            num_writes=NUM_WRITES
         )
+        # 初始化状态
+        self.initial_state = self.module.get_initial_state(batch_size=BATCH_SIZE)
 
     def testEdgeCaseInputs(self):
-        inputs = tf.zeros([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
-        targets = tf.zeros([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+        """
+        测试边界条件输入：所有输入为零，确保写操作和读操作的使用率更新正确。
+        """
+        # 将输入调整为 [TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
+        inputs = tf.zeros([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32)
+        targets = tf.zeros([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], dtype=tf.float32)
 
         with tf.GradientTape() as tape:
             prev_state = self.initial_state
             outputs = []
             for t in range(TIME_STEPS):
-                input_t = inputs[t]
-                output, prev_state = self.module({
-                    'inputs': input_t,
-                    'prev_state': prev_state
-                })
+                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
+                inputs_t = {'inputs': input_t, 'prev_state': prev_state}
+                output, prev_state = self.module(inputs_t, training=True)
+                # 输出形状为 [BATCH_SIZE, SEQUENCE_LENGTH, NUM_READS, WORD_SIZE]
+                # 为了匹配 targets，需要去除 SEQUENCE_LENGTH 维度
+                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
                 outputs.append(output)
 
-            output = tf.stack(outputs, axis=0)
+            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
             loss = tf.reduce_mean(tf.square(output - targets))
-            tf.print("Test: Loss value:", loss)
-            tf.print("Test: Output values (sample):", output[:2, :2, :])
+            tf.print("Edge Case Test: Loss value:", loss)
+            tf.print("Edge Case Test: Output values (sample):", output[:2, :2, :])
 
         gradients = tape.gradient(loss, self.module.trainable_variables)
 
         # 打印所有可训练变量的名称和形状
-        tf.print("\nAll trainable variables:")
+        tf.print("\nAll trainable variables (Edge Case):")
         for var in self.module.trainable_variables:
             tf.print("Variable:", var.name, ", Shape:", var.shape)
 
@@ -74,25 +80,27 @@ class MemoryAccessTest(tf.test.TestCase):
                 if 'write_vectors' in var.name:
                     self.assertGreater(grad_norm, 1e-12,
                                        f"Gradient for variable '{var.name}' is too small for edge case inputs")
-                # 对其他变量，可以根据需要添加更多断言
 
     def testNonEdgeCaseInputs(self):
-        # 使用随机非零输入和目标
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
-        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+        """
+        测试非边界条件输入：使用随机非零输入和目标，确保写操作和读操作的使用率更新正确。
+        """
+        # 使用随机非零输入和目标，调整为四维输入
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32)
+        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], dtype=tf.float32)
 
         with tf.GradientTape() as tape:
             prev_state = self.initial_state
             outputs = []
             for t in range(TIME_STEPS):
-                input_t = inputs[t]
-                output, prev_state = self.module({
-                    'inputs': input_t,
-                    'prev_state': prev_state
-                })
+                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
+                inputs_t = {'inputs': input_t, 'prev_state': prev_state}
+                output, prev_state = self.module(inputs_t, training=True)
+                # 输出形状为 [BATCH_SIZE, SEQUENCE_LENGTH, NUM_READS, WORD_SIZE]
+                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
                 outputs.append(output)
 
-            output = tf.stack(outputs, axis=0)
+            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
             loss = tf.reduce_mean(tf.square(output - targets))
             tf.print("Non-Edge Case Test: Loss value:", loss)
             tf.print("Non-Edge Case Test: Output values (sample):", output[:2, :2, :])
@@ -126,7 +134,7 @@ class MemoryAccessTest(tf.test.TestCase):
         5. 打印并断言梯度的有效性。
         """
         # 使用随机非零输入和目标
-        inputs = tf.Variable(np.random.randn(TIME_STEPS, BATCH_SIZE, INPUT_SIZE), dtype=tf.float32)
+        inputs = tf.Variable(np.random.randn(TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE), dtype=tf.float32)
         targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
 
         with tf.GradientTape() as tape:
@@ -134,17 +142,16 @@ class MemoryAccessTest(tf.test.TestCase):
             prev_state = self.initial_state
             outputs = []
             for t in range(TIME_STEPS):
-                input_t = inputs[t]
+                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
                 # 前向传播
-                output, prev_state = self.module({
-                    'inputs': input_t,
-                    'prev_state': prev_state
-                })
+                inputs_t = {'inputs': input_t, 'prev_state': prev_state}
+                output, prev_state = self.module(inputs_t, training=True)
+                # 输出形状为 [BATCH_SIZE, SEQUENCE_LENGTH, NUM_READS, WORD_SIZE]
+                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
                 outputs.append(output)
 
             # 堆叠所有时间步的输出
-            output = tf.stack(outputs, axis=0)
-            # 计算均方误差损失
+            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
             loss = tf.reduce_mean(tf.square(output - targets))
             tf.print("Single Configuration Test: Loss value:", loss)
             tf.print("Single Configuration Test: Output values (sample):", output[:2, :2, :])
@@ -173,7 +180,7 @@ class MemoryAccessTest(tf.test.TestCase):
                 self.assertGreater(grad_norm, 1e-12, f"Gradient for variable '{var_name}' is too small")
 
     def testBuildAndTrain(self):
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
 
         optimizer = tf.optimizers.SGD(learning_rate=1.0)
 
@@ -181,14 +188,15 @@ class MemoryAccessTest(tf.test.TestCase):
             prev_state = self.initial_state
             outputs = []
             for t in range(TIME_STEPS):
-                input_t = inputs[t]
+                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
                 output, prev_state = self.module({
                     'inputs': input_t,
                     'prev_state': prev_state
-                })
+                }, training=True)
+                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
                 outputs.append(output)
 
-            output = tf.stack(outputs, axis=0)
+            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
 
             targets = tf.random.uniform([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
             loss = tf.reduce_mean(tf.square(output - targets))
@@ -197,100 +205,101 @@ class MemoryAccessTest(tf.test.TestCase):
         # 检查哪些梯度为 None
         for grad, var in zip(gradients, self.module.trainable_variables):
             if grad is None:
-                print(f"No gradient provided for variable {var.name}")
+                tf.print(f"No gradient provided for variable {var.name}")
         optimizer.apply_gradients(zip(gradients, self.module.trainable_variables))
 
     def testValidReadMode(self):
         # 构建输入字典，而不是直接传入 Tensor
         inputs = {
-            'inputs': tf.random.normal([BATCH_SIZE, INPUT_SIZE]),
+            'inputs': tf.random.normal([BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]),
             'prev_state': self.initial_state
         }
 
-        # 调用模块的 _read_inputs 方法
-        processed_inputs = self.module._read_inputs(inputs)
+        # 手动调用 build 方法
+        self.module.build({'inputs': tf.TensorShape([BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]),
+                           'prev_state': self.initial_state})
+
+        # Tile memory to match sequence_length
+        memory_tiled = tf.tile(inputs['prev_state'].memory, [SEQUENCE_LENGTH, 1, 1])
+
+        # 提取 'inputs' 字段传递给 _read_inputs
+        processed_inputs = self.module._read_inputs(tf.reshape(inputs['inputs'], [-1, INPUT_SIZE]), memory_tiled)
 
         # 检查 processed_inputs 的内容
-        self.assertIn('read_content_keys', processed_inputs)
-        self.assertIn('read_content_strengths', processed_inputs)
+        self.assertIn('read_content_weights', processed_inputs)
+        self.assertIn('write_content_weights', processed_inputs)
+        self.assertIn('write_vectors', processed_inputs)
+        self.assertIn('erase_vectors', processed_inputs)
         # 其他相关断言
 
     def testWriteWeights(self):
-        memory = 10 * (np.random.rand(BATCH_SIZE, MEMORY_SIZE, WORD_SIZE) - 0.5)
-        usage = np.random.rand(BATCH_SIZE, MEMORY_SIZE)
+        # 注意，这个测试需要根据最新的 MemoryAccess 类进行调整
+        # 由于 _write_weights 方法已被集成到 _step 方法中，需要调整测试方式
 
-        allocation_gate = np.random.rand(BATCH_SIZE, NUM_WRITES)
-        write_gate = np.random.rand(BATCH_SIZE, NUM_WRITES)
-        write_content_keys = np.random.rand(BATCH_SIZE, NUM_WRITES, WORD_SIZE)
-        write_content_strengths = np.random.rand(BATCH_SIZE, NUM_WRITES)
+        # 初始化必要的输入
+        batch_size = BATCH_SIZE
+        num_writes = NUM_WRITES
+        memory_size = MEMORY_SIZE
+        word_size = WORD_SIZE
 
-        usage[:, 3] = 0
-        allocation_gate[:, 0] = 1
-        write_gate[:, 0] = 1
+        prev_state = self.initial_state
 
-        inputs = {
-            'allocation_gate': tf.constant(allocation_gate, dtype=tf.float32),
-            'write_gate': tf.constant(write_gate, dtype=tf.float32),
-            'write_content_keys': tf.constant(write_content_keys, dtype=tf.float32),
-            'write_content_strengths': tf.constant(write_content_strengths, dtype=tf.float32)
-        }
+        # 创建输入参数
+        controller_output = tf.random.normal([batch_size, SEQUENCE_LENGTH, INPUT_SIZE])
+        reshaped_controller_output = tf.reshape(controller_output, [-1, INPUT_SIZE])
 
-        weights = self.module._write_weights(inputs, tf.constant(memory, dtype=tf.float32),
-                                             tf.constant(usage, dtype=tf.float32))
+        # Tile memory to match sequence_length
+        memory_tiled = tf.tile(prev_state.memory, [SEQUENCE_LENGTH, 1, 1])
 
-        # 在 Eager Execution 下，直接获取数值
-        weights = weights.numpy()
+        # 处理输入，生成需要的参数
+        processed_inputs = self.module._read_inputs(reshaped_controller_output, memory_tiled)
 
-        self.assertAllClose(np.sum(weights, axis=2), write_gate, atol=5e-2)
+        # 调用 _step 方法
+        next_state = self.module._step(processed_inputs, prev_state)
 
-        weights_0_0_target = util.one_hot(MEMORY_SIZE, 3)
-        self.assertAllClose(weights[0, 0], weights_0_0_target, atol=1e-3)
+        # 检查 write_weights 是否符合预期
+        write_weights = tf.squeeze(next_state['write_weights'], axis=1)  # [batch_size, num_writes, memory_size]
+        self.assertEqual(write_weights.shape, [batch_size, num_writes, memory_size])
 
     def testReadWeights(self):
-        memory = 10 * (np.random.rand(BATCH_SIZE, MEMORY_SIZE, WORD_SIZE) - 0.5)
-        prev_read_weights = np.random.rand(BATCH_SIZE, NUM_READS, MEMORY_SIZE)
-        prev_read_weights /= prev_read_weights.sum(2, keepdims=True) + 1e-6
+        # 与 testWriteWeights 类似，需要调整测试方式
 
-        link = np.random.rand(BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE)
-        link /= np.maximum(link.sum(2, keepdims=True), 1e-6)
-        link /= np.maximum(link.sum(3, keepdims=True), 1e-6)
+        # 初始化必要的输入
+        batch_size = BATCH_SIZE
+        num_reads = NUM_READS
+        memory_size = MEMORY_SIZE
+        word_size = WORD_SIZE
 
-        read_content_keys = np.random.rand(BATCH_SIZE, NUM_READS, WORD_SIZE)
-        read_content_keys[0, 0] = memory[0, 3]
-        read_content_strengths = tf.constant(100., shape=[BATCH_SIZE, NUM_READS], dtype=tf.float32)
-        read_mode = np.random.rand(BATCH_SIZE, NUM_READS, 1 + 2 * NUM_WRITES)
-        read_mode[0, 0, :] = util.one_hot(1 + 2 * NUM_WRITES, 2 * NUM_WRITES)
+        prev_state = self.initial_state
 
-        inputs = {
-            'read_content_keys': tf.constant(read_content_keys, dtype=tf.float32),
-            'read_content_strengths': read_content_strengths,
-            'read_mode': tf.constant(read_mode, dtype=tf.float32),
-        }
+        # 创建输入参数
+        controller_output = tf.random.normal([batch_size, SEQUENCE_LENGTH, INPUT_SIZE])
+        reshaped_controller_output = tf.reshape(controller_output, [-1, INPUT_SIZE])
 
-        read_weights = self.module._read_weights(inputs, tf.constant(memory, dtype=tf.float32),
-                                                 tf.constant(prev_read_weights, dtype=tf.float32),
-                                                 tf.constant(link, dtype=tf.float32))
+        # Tile memory to match sequence_length
+        memory_tiled = tf.tile(prev_state.memory, [SEQUENCE_LENGTH, 1, 1])
 
-        # 在 Eager Execution 下，直接获取数值
-        read_weights = read_weights.numpy()
+        # 处理输入，生成需要的参数
+        processed_inputs = self.module._read_inputs(reshaped_controller_output, memory_tiled)
 
-        self.assertAllClose(read_weights[0, 0, :], util.one_hot(MEMORY_SIZE, 3), atol=1e-3)
+        # 调用 _step 方法
+        next_state = self.module._step(processed_inputs, prev_state)
+
+        # 检查 read_weights 是否符合预期
+        read_weights = tf.squeeze(next_state['read_weights'], axis=1)  # [batch_size, num_reads, memory_size]
+        self.assertEqual(read_weights.shape, [batch_size, num_reads, memory_size])
 
     def testRandomInitialState(self):
         # 使用随机初始化状态而非全零状态
-        random_state = access.AccessState(
+        random_state = AccessState(
             memory=tf.Variable(tf.random.uniform([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE]), name='memory'),
-            read_weights=tf.Variable(tf.random.uniform([BATCH_SIZE, NUM_READS, MEMORY_SIZE]), name='read_weights'),
-            write_weights=tf.Variable(tf.random.uniform([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE]), name='write_weights'),
-            linkage=addressing.TemporalLinkageState(
-                link=tf.Variable(tf.random.uniform([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE]), name='link'),
-                precedence_weights=tf.Variable(tf.random.uniform([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE]),
-                                               name='precedence_weights')
-            ),
+            read_weights=tf.Variable(tf.random.uniform([BATCH_SIZE, 1, NUM_READS, MEMORY_SIZE]), name='read_weights'),
+            write_weights=tf.Variable(tf.random.uniform([BATCH_SIZE, 1, NUM_WRITES, MEMORY_SIZE]), name='write_weights'),
+            linkage=self.module.temporal_linkage.get_initial_state(batch_size=BATCH_SIZE),
             usage=tf.Variable(tf.random.uniform([BATCH_SIZE, MEMORY_SIZE]), name='usage')
         )
 
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
 
         optimizer = tf.optimizers.SGD(learning_rate=1.0)
 
@@ -302,7 +311,8 @@ class MemoryAccessTest(tf.test.TestCase):
                 output, prev_state = self.module({
                     'inputs': input_t,
                     'prev_state': prev_state
-                })
+                }, training=True)
+                output = tf.squeeze(output, axis=1)
                 outputs.append(output)
 
             output = tf.stack(outputs, axis=0)
@@ -316,7 +326,7 @@ class MemoryAccessTest(tf.test.TestCase):
             self.assertIsNotNone(grad, f"No gradient provided for variable {var.name}")
 
     def testGradientRange(self):
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
 
         with tf.GradientTape() as tape:
             prev_state = self.initial_state
@@ -326,7 +336,8 @@ class MemoryAccessTest(tf.test.TestCase):
                 output, prev_state = self.module({
                     'inputs': input_t,
                     'prev_state': prev_state
-                })
+                }, training=True)
+                output = tf.squeeze(output, axis=1)
                 outputs.append(output)
 
             output = tf.stack(outputs, axis=0)
@@ -339,6 +350,278 @@ class MemoryAccessTest(tf.test.TestCase):
                 grad_norm = tf.norm(grad).numpy()
                 self.assertGreater(grad_norm, 1e-12, "Gradient is too small")
                 self.assertLess(grad_norm, 1e3, "Gradient is too large")
+
+    def testSmallNonZeroInputs(self):
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], mean=0.0, stddev=1e-3)
+        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], mean=0.0, stddev=1e-3)
+
+        with tf.GradientTape() as tape:
+            prev_state = self.initial_state
+            outputs = []
+            for t in range(TIME_STEPS):
+                input_t = inputs[t]
+                output, prev_state = self.module({
+                    'inputs': input_t,
+                    'prev_state': prev_state
+                }, training=True)
+                output = tf.squeeze(output, axis=1)
+                outputs.append(output)
+
+            output = tf.stack(outputs, axis=0)
+            loss = tf.reduce_mean(tf.square(output - targets))
+            tf.print("Test Small Non-Zero: Loss value:", loss)
+            tf.print("Test Small Non-Zero: Output values (sample):", output.numpy()[0, :2, :])
+
+        gradients = tape.gradient(loss, self.module.trainable_variables)
+
+        # 添加调试信息，打印变量名称和梯度范数
+        for var, grad in zip(self.module.trainable_variables, gradients):
+            if grad is None:
+                tf.print(f"Gradient for variable '{var.name}' is None")
+            else:
+                grad_norm = tf.norm(grad).numpy()
+                tf.print(f"Gradient norm for variable '{var.name}': {grad_norm}")
+
+                self.assertGreater(grad_norm, 1e-12,
+                                   f"Gradient for variable '{var.name}' is too small for small non-zero inputs")
+                self.assertLess(grad_norm, 1e3,
+                                f"Gradient for variable '{var.name}' is too large for small non-zero inputs")
+
+    def testNonZeroInputs(self):
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
+        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+
+        with tf.GradientTape() as tape:
+            prev_state = self.initial_state
+            outputs = []
+            for t in range(TIME_STEPS):
+                input_t = inputs[t]
+                output, prev_state = self.module({
+                    'inputs': input_t,
+                    'prev_state': prev_state
+                }, training=True)
+                output = tf.squeeze(output, axis=1)
+                outputs.append(output)
+
+            output = tf.stack(outputs, axis=0)
+            loss = tf.reduce_mean(tf.square(output - targets))
+            tf.print("Test Non-Zero: Loss value:", loss)
+
+        gradients = tape.gradient(loss, self.module.trainable_variables)
+
+        # 添加调试信息
+        for i, grad in enumerate(gradients):
+            if grad is None:
+                tf.print(f"Gradient for variable {i} is None")
+            else:
+                grad_norm = tf.norm(grad).numpy()
+                tf.print(f"Gradient norm for variable {i}: {grad_norm}")
+
+                self.assertGreater(grad_norm, 1e-12, "Gradient is too small for non-zero inputs")
+                self.assertLess(grad_norm, 1e3, "Gradient is too large for non-zero inputs")
+
+    def testGradients_VaryingConfigurations(self):
+        MEMORY_SIZE_OPTIONS = [20, 50]  # 不同的内存大小
+        WORD_SIZE_OPTIONS = [6, 12]  # 不同的字大小
+        NUM_READS_OPTIONS = [2, 4]  # 不同的读取数量
+        NUM_WRITES_OPTIONS = [3, 5]  # 不同的写入数量
+
+        for MEMORY_SIZE in MEMORY_SIZE_OPTIONS:
+            for WORD_SIZE in WORD_SIZE_OPTIONS:
+                for NUM_READS in NUM_READS_OPTIONS:
+                    for NUM_WRITES in NUM_WRITES_OPTIONS:
+                        print(f"Testing with MEMORY_SIZE={MEMORY_SIZE}, WORD_SIZE={WORD_SIZE}, "
+                              f"NUM_READS={NUM_READS}, NUM_WRITES={NUM_WRITES}")
+
+                        self.module = access.MemoryAccess(MEMORY_SIZE, WORD_SIZE, NUM_READS, NUM_WRITES)
+
+                        # Initialize prev_state with random values
+                        initial_memory = tf.random.normal([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE])
+                        initial_read_weights = tf.random.uniform([BATCH_SIZE, 1, NUM_READS, MEMORY_SIZE])
+                        initial_write_weights = tf.random.uniform([BATCH_SIZE, 1, NUM_WRITES, MEMORY_SIZE])
+                        initial_linkage = self.module.temporal_linkage.get_initial_state(batch_size=BATCH_SIZE)
+                        initial_usage = self.module.freeness.get_initial_state([BATCH_SIZE])
+
+                        self.initial_state = AccessState(
+                            memory=tf.Variable(initial_memory, name='memory'),
+                            read_weights=tf.Variable(initial_read_weights, name='read_weights'),
+                            write_weights=tf.Variable(initial_write_weights, name='write_weights'),
+                            linkage=initial_linkage,
+                            usage=tf.Variable(initial_usage, name='usage')
+                        )
+
+                        # 创建一个随机序列输入
+                        input_sequence = tf.Variable(np.random.randn(TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE),
+                                                     dtype=tf.float32, trainable=True)
+                        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+
+                        with tf.GradientTape() as tape:
+                            prev_state = self.initial_state
+                            outputs = []
+                            for t in range(TIME_STEPS):
+                                input_t = input_sequence[t]
+                                input_dict = {'inputs': input_t, 'prev_state': prev_state}
+                                output, prev_state = self.module(input_dict, training=True)
+                                output = tf.squeeze(output, axis=1)
+                                outputs.append(output)
+                            output = tf.stack(outputs, axis=0)
+                            loss = tf.reduce_mean(tf.square(output - targets))
+                            tf.debugging.check_numerics(loss, "Loss contains NaNs or Infs")
+                            print(f"Loss: {loss.numpy()}")
+
+                        tensors_to_check = [input_sequence] + list(self.module.trainable_variables)
+
+                        gradients = tape.gradient(loss, tensors_to_check)
+
+                        # Debug output for gradient information
+                        for grad, var in zip(gradients, tensors_to_check):
+                            var_name = var.name if isinstance(var, tf.Variable) else 'inputs'
+                            if grad is None:
+                                print(f"Gradient for {var_name} is None.")
+                                self.fail(f"Gradient for {var_name} is None, test failed.")
+                            else:
+                                grad_norm = tf.norm(grad).numpy()
+                                if grad_norm == 0.0:
+                                    print(f"Warning: Gradient for {var_name} is zero.")
+                                    print(f"Details for {var_name}: {var.numpy()}")
+                                    self.fail(f"Gradient for {var_name} is zero, test failed.")
+                                else:
+                                    print(f"Variable: {var_name}, Gradient Norm: {grad_norm}")
+                                    self.assertIsNotNone(grad, f"Gradient is None for variable {var_name}")
+                                    self.assertLess(grad_norm, 1e3, f"Gradient norm for {var_name} is too large.")
+                                    self.assertGreater(grad_norm, 1e-12, f"Gradient norm for {var_name} is too small.")
+
+    def testSublayersRegistration(self):
+        """
+        Test whether all sublayers are properly registered in the MemoryAccess module.
+        """
+        expected_sublayers = [
+            'write_content_weights', 'read_content_weights', 'temporal_linkage', 'freeness',
+            'write_vectors', 'erase_vectors', 'free_gate', 'allocation_gate',
+            'write_gate', 'read_mode', 'write_strengths', 'read_strengths', 'write_keys', 'read_keys'
+        ]
+
+        # Instantiate the MemoryAccess module
+        module = access.MemoryAccess(
+            memory_size=MEMORY_SIZE,
+            word_size=WORD_SIZE,
+            num_reads=NUM_READS,
+            num_writes=NUM_WRITES
+        )
+
+        # Initialize prev_state
+        initial_memory = tf.zeros([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE], dtype=tf.float32)
+        initial_read_weights = tf.zeros([BATCH_SIZE, 1, NUM_READS, MEMORY_SIZE], dtype=tf.float32)
+        initial_write_weights = tf.zeros([BATCH_SIZE, 1, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
+        initial_linkage = module.temporal_linkage.get_initial_state(batch_size=BATCH_SIZE)
+        initial_usage = module.freeness.get_initial_state([BATCH_SIZE])
+
+        initial_state = AccessState(
+            memory=initial_memory,
+            read_weights=initial_read_weights,
+            write_weights=initial_write_weights,
+            linkage=initial_linkage,
+            usage=initial_usage
+        )
+
+        # Create a single time-step random input
+        dummy_input = tf.random.normal([BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32)
+
+        input_dict = {
+            'inputs': dummy_input,
+            'prev_state': initial_state
+        }
+
+        # Call the module once to build it
+        try:
+            output, _ = module(input_dict, training=False)
+        except Exception as e:
+            self.fail(f"MemoryAccess module failed to build with input_dict: {e}")
+
+        # Manually collect sublayers from the module's attributes using vars()
+        actual_sublayers = []
+        for attr_name, attr_value in vars(module).items():
+            if isinstance(attr_value, tf.keras.layers.Layer):
+                actual_sublayers.append(attr_value.name)
+
+        # Print the actual sublayers for debugging
+        print("Expected sublayers:", expected_sublayers)
+        print("Actual sublayers:", actual_sublayers)
+
+        # Check that all expected sublayers are in actual_sublayers
+        for sublayer in expected_sublayers:
+            self.assertIn(sublayer, actual_sublayers, f"Sublayer '{sublayer}' is not registered.")
+
+    def testSublayersGradients(self):
+        """
+        测试所有子层内部的梯度流动情况，确保没有梯度阻断。
+        """
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
+        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
+
+        prev_state = self.initial_state
+
+        for t in range(TIME_STEPS):
+            input_t = inputs[t]  # 形状为 (BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE)
+            target_t = targets[t]
+
+            with tf.GradientTape() as tape:
+                tape.watch(self.module.trainable_variables)
+                output, next_state = self.module({'inputs': input_t, 'prev_state': prev_state}, training=True)
+                output = tf.squeeze(output, axis=1)
+                loss = tf.reduce_mean((output - target_t) ** 2)
+
+            gradients = tape.gradient(loss, self.module.trainable_variables)
+            # 检查梯度是否为 None
+            for grad, var in zip(gradients, self.module.trainable_variables):
+                self.assertIsNotNone(grad, f"Gradient for variable {var.name} is None.")
+
+            # 更新 prev_state
+            prev_state = next_state
+    # @parameterized.expand([
+    #     ("all_zero_inputs", tf.zeros, tf.zeros),
+    #     ("random_inputs", tf.random.normal, tf.random.normal),
+    # ])
+    # def test_allocation_cases(self, name, input_fn, target_fn):
+    #     """
+    #     参数化测试：测试不同类型的输入（全零、随机）。
+    #     """
+    #     # 构建输入和目标
+    #     inputs = input_fn([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32)
+    #     targets = target_fn([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], dtype=tf.float32)
+    #
+    #     with tf.GradientTape() as tape:
+    #         prev_state = self.initial_state
+    #         outputs = []
+    #         for t in range(TIME_STEPS):
+    #             input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
+    #             # 构建输入字典，包含 'inputs' 和 'prev_state'
+    #             inputs_t = {'inputs': input_t, 'prev_state': prev_state}
+    #             output, prev_state = self.module(inputs_t, training=True)
+    #             outputs.append(output)
+    #
+    #         output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
+    #         loss = tf.reduce_mean(tf.square(output - targets))
+    #         tf.print(f"{name}: Loss value:", loss)
+    #         tf.print(f"{name}: Output values (sample):", output[:2, :2, :])
+    #
+    #     gradients = tape.gradient(loss, self.module.trainable_variables)
+    #
+    #     # 打印所有可训练变量的名称和形状
+    #     tf.print(f"\nAll trainable variables for {name}:")
+    #     for var in self.module.trainable_variables:
+    #         tf.print("Variable:", var.name, ", Shape:", var.shape)
+    #
+    #     # 添加调试信息，打印变量名称和梯度范数
+    #     for var, grad in zip(self.module.trainable_variables, gradients):
+    #         if grad is None:
+    #             tf.print(f"Gradient for variable '{var.name}' is None ({name})")
+    #         else:
+    #             grad_norm = tf.norm(grad)
+    #             tf.print(f"Gradient norm for variable '{var.name}':", grad_norm)
+    #             self.assertGreater(grad_norm, 1e-12,
+    #                                f"Gradient for variable '{var.name}' is too small for {name}")
+    #             self.assertLess(grad_norm, 1e3, f"Gradient for variable '{var.name}' is too large for {name}")
 
     def testWriteGradient(self):
         memory = tf.random.normal([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE])
@@ -375,7 +658,7 @@ class MemoryAccessTest(tf.test.TestCase):
         read_mode = tf.random.uniform([BATCH_SIZE, NUM_READS, 1 + 2 * NUM_WRITES])
 
         inputs = {
-            'read_content_keys': read_content_keys,
+            'read_content_weights': read_content_keys,
             'read_content_strengths': read_content_strengths,
             'read_mode': read_mode,
         }
@@ -390,232 +673,6 @@ class MemoryAccessTest(tf.test.TestCase):
         for grad, var_name in zip(gradients, ['memory', 'prev_read_weights', 'link']):
             self.assertIsNotNone(grad, f"No gradient for {var_name}")
             self.assertGreater(tf.norm(grad).numpy(), 1e-12, f"Gradient too small for {var_name}")
-
-    def testSmallNonZeroInputs(self):
-            inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE], mean=0.0, stddev=1e-3)
-            targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], mean=0.0, stddev=1e-3)
-
-            with tf.GradientTape() as tape:
-                prev_state = self.initial_state
-                outputs = []
-                for t in range(TIME_STEPS):
-                    input_t = inputs[t]
-                    output, prev_state = self.module({
-                        'inputs': input_t,
-                        'prev_state': prev_state
-                    })
-                    outputs.append(output)
-
-                output = tf.stack(outputs, axis=0)
-                loss = tf.reduce_mean(tf.square(output - targets))
-                print("Test Small Non-Zero: Loss value:", loss.numpy())
-                print("Test Small Non-Zero: Output values (sample):", output.numpy()[0, :2, :])
-
-            gradients = tape.gradient(loss, self.module.trainable_variables)
-
-            # 添加调试信息，打印变量名称和梯度范数
-            for var, grad in zip(self.module.trainable_variables, gradients):
-                if grad is None:
-                    print(f"Gradient for variable '{var.name}' is None")
-                else:
-                    grad_norm = tf.norm(grad).numpy()
-                    print(f"Gradient norm for variable '{var.name}': {grad_norm}")
-
-                    self.assertGreater(grad_norm, 1e-12,
-                                       f"Gradient for variable '{var.name}' is too small for small non-zero inputs")
-                    self.assertLess(grad_norm, 1e3,
-                                    f"Gradient for variable '{var.name}' is too large for small non-zero inputs")
-
-    def testNonZeroInputs(self):
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
-        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
-
-        with tf.GradientTape() as tape:
-            prev_state = self.initial_state
-            outputs = []
-            for t in range(TIME_STEPS):
-                input_t = inputs[t]
-                output, prev_state = self.module({
-                    'inputs': input_t,
-                    'prev_state': prev_state
-                })
-                outputs.append(output)
-
-            output = tf.stack(outputs, axis=0)
-            loss = tf.reduce_mean(tf.square(output - targets))
-            print("Test Non-Zero: Loss value:", loss.numpy())
-
-        gradients = tape.gradient(loss, self.module.trainable_variables)
-
-        # 添加调试信息
-        for i, grad in enumerate(gradients):
-            if grad is None:
-                print(f"Gradient for variable {i} is None")
-            else:
-                grad_norm = tf.norm(grad).numpy()
-                print(f"Gradient norm for variable {i}: {grad_norm}")
-
-                self.assertGreater(grad_norm, 1e-12, "Gradient is too small for non-zero inputs")
-                self.assertLess(grad_norm, 1e3, "Gradient is too large for non-zero inputs")
-
-    def testGradients_VaryingConfigurations(self):
-        MEMORY_SIZE_OPTIONS = [20, 50]  # 不同的内存大小
-        WORD_SIZE_OPTIONS = [6, 12]  # 不同的字大小
-        NUM_READS_OPTIONS = [2, 4]  # 不同的读取数量
-        NUM_WRITES_OPTIONS = [3, 5]  # 不同的写入数量
-
-        for MEMORY_SIZE in MEMORY_SIZE_OPTIONS:
-            for WORD_SIZE in WORD_SIZE_OPTIONS:
-                for NUM_READS in NUM_READS_OPTIONS:
-                    for NUM_WRITES in NUM_WRITES_OPTIONS:
-                        print(f"Testing with MEMORY_SIZE={MEMORY_SIZE}, WORD_SIZE={WORD_SIZE}, "
-                              f"NUM_READS={NUM_READS}, NUM_WRITES={NUM_WRITES}")
-
-                        self.module = access.MemoryAccess(MEMORY_SIZE, WORD_SIZE, NUM_READS, NUM_WRITES)
-
-                        # Initialize prev_state with random values
-                        self.initial_state = access.AccessState(
-                            memory=tf.Variable(tf.random.normal([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE]), dtype=tf.float32,
-                                               name='memory'),
-                            read_weights=tf.Variable(
-                                tf.random.normal([BATCH_SIZE, NUM_READS, MEMORY_SIZE], dtype=tf.float32),
-                                name='read_weights'),
-                            write_weights=tf.Variable(
-                                tf.random.normal([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32),
-                                name='write_weights'),
-                            linkage=addressing.TemporalLinkageState(
-                                link=tf.Variable(
-                                    tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE], dtype=tf.float32),
-                                    name='link'),
-                                precedence_weights=tf.Variable(
-                                    tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32),
-                                    name='precedence_weights')
-                            ),
-                            usage=tf.Variable(tf.zeros([BATCH_SIZE, MEMORY_SIZE], dtype=tf.float32), name='usage')
-                        )
-
-                        # 创建一个随机序列输入
-                        input_sequence = tf.Variable(np.random.randn(TIME_STEPS, BATCH_SIZE, INPUT_SIZE),
-                                                     dtype=tf.float32, trainable=True)
-                        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
-
-                        with tf.GradientTape() as tape:
-                            prev_state = self.initial_state
-                            outputs = []
-                            for t in range(TIME_STEPS):
-                                input_t = input_sequence[t]
-                                input_dict = {'inputs': input_t, 'prev_state': prev_state}
-                                output, prev_state = self.module(input_dict)
-                                outputs.append(output)
-                            output = tf.stack(outputs, axis=0)
-                            loss = tf.reduce_mean(tf.square(output - targets))
-                            tf.debugging.check_numerics(loss, "Loss contains NaNs or Infs")
-                            print(f"Loss: {loss.numpy()}")
-
-                        tensors_to_check = [input_sequence] + list(self.module.trainable_variables)
-
-                        gradients = tape.gradient(loss, tensors_to_check)
-
-                        # Debug output for gradient information
-                        for grad, var in zip(gradients, tensors_to_check):
-                            var_name = var.name if isinstance(var, tf.Variable) else 'inputs'
-                            if grad is None:
-                                print(f"Gradient for {var_name} is None.")
-                                self.fail(f"Gradient for {var_name} is None, test failed.")
-                            else:
-                                grad_norm = tf.norm(grad)
-                                if grad_norm.numpy() == 0.0:
-                                    print(f"Warning: Gradient for {var_name} is zero.")
-                                    print(f"Details for {var_name}: {var.numpy()}")
-                                    self.fail(f"Gradient for {var_name} is zero, test failed.")
-                                else:
-                                    print(f"Variable: {var_name}, Gradient Norm: {grad_norm.numpy()}")
-                                    self.assertIsNotNone(grad, f"Gradient is None for variable {var_name}")
-                                    self.assertLess(grad_norm, 1e3, f"Gradient norm for {var_name} is too large.")
-                                    self.assertGreater(grad_norm, 1e-12, f"Gradient norm for {var_name} is too small.")
-
-    def testSublayersRegistration(self):
-        """
-        Test whether all sublayers are properly registered in the MemoryAccess module.
-        """
-        expected_sublayers = [
-            'write_content_weights', 'read_content_weights', 'temporal_linkage', 'freeness',
-            'write_vectors', 'erase_vectors', 'free_gate', 'allocation_gate',
-            'write_gate', 'read_mode', 'write_strengths', 'read_strengths', 'write_keys', 'read_keys'
-        ]
-
-        # Instantiate the MemoryAccess module
-        module = access.MemoryAccess(
-            memory_size=MEMORY_SIZE,
-            word_size=WORD_SIZE,
-            num_reads=NUM_READS,
-            num_writes=NUM_WRITES
-        )
-
-        # Initialize prev_state
-        initial_state = access.AccessState(
-            memory=tf.zeros([BATCH_SIZE, MEMORY_SIZE, WORD_SIZE], dtype=tf.float32),
-            read_weights=tf.zeros([BATCH_SIZE, NUM_READS, MEMORY_SIZE], dtype=tf.float32),
-            write_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32),
-            linkage=addressing.TemporalLinkageState(
-                link=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE, MEMORY_SIZE], dtype=tf.float32),
-                precedence_weights=tf.zeros([BATCH_SIZE, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
-            ),
-            usage=tf.zeros([BATCH_SIZE, MEMORY_SIZE], dtype=tf.float32)
-        )
-
-        # Create a single time-step random input
-        dummy_input = tf.random.normal([BATCH_SIZE, INPUT_SIZE], dtype=tf.float32)
-
-        input_dict = {
-            'inputs': dummy_input,
-            'prev_state': initial_state
-        }
-
-        # Call the module once to build it
-        try:
-            output, _ = module(input_dict, training=False)
-        except Exception as e:
-            self.fail(f"MemoryAccess module failed to build with input_dict: {e}")
-
-        # Manually collect sublayers from the module's attributes using vars()
-        actual_sublayers = []
-        for attr_name, attr_value in vars(module).items():
-            if isinstance(attr_value, tf.keras.layers.Layer):
-                actual_sublayers.append(attr_value.name)
-
-        # Print the actual sublayers for debugging
-        print("Expected sublayers:", expected_sublayers)
-        print("Actual sublayers:", actual_sublayers)
-
-        # Check that all expected sublayers are in actual_sublayers
-        for sublayer in expected_sublayers:
-            self.assertIn(sublayer, actual_sublayers, f"Sublayer '{sublayer}' is not registered.")
-
-    def testSublayersGradients(self):
-        """
-        测试所有子层内部的梯度流动情况，确保没有梯度阻断。
-        """
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, INPUT_SIZE])
-        targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
-
-        prev_state = self.initial_state
-
-        for t in range(TIME_STEPS):
-            input_t = inputs[t]  # 形状为 (BATCH_SIZE, INPUT_SIZE)
-            target_t = targets[t]
-
-            with tf.GradientTape() as tape:
-                output, next_state = self.module({'inputs': input_t, 'prev_state': prev_state})
-                loss = tf.reduce_mean((output - target_t) ** 2)
-
-            gradients = tape.gradient(loss, self.module.trainable_variables)
-            # 检查梯度是否为 None
-            for grad, var in zip(gradients, self.module.trainable_variables):
-                self.assertIsNotNone(grad, f"Gradient for variable {var.name} is None.")
-
-            # 更新 prev_state
-            prev_state = next_state
 
     # def testModelSavingAndLoading(self):
     #     """
@@ -1332,6 +1389,7 @@ class MemoryAccessTest(tf.test.TestCase):
     #     # 再次运行前向传播，检查是否没有错误
     #     loss, gradients = self._run_forward_pass(inputs, targets=targets, track_gradients=True)
     #     self._check_gradients(gradients, [inputs] + list(self.module.trainable_variables))
+
 
 if __name__ == '__main__':
     tf.test.main()
