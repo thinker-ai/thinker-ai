@@ -140,3 +140,4 @@ dependencies:
     - semantic-kernel
     - redis
     - graphs
+    - parameterized

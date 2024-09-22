@@ -1,4 +1,3 @@
-#thinker_ai/agent/memory/humanoid_memory/dnc_new/util.py
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function

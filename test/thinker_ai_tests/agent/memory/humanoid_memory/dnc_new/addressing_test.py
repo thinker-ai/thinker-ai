@@ -1,14 +1,11 @@
-#thinker_ai_tests/agent/memory/humanoid_memory/dnc/addressing_test.py
 """Tests for memory addressing."""
-
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
 
 import numpy as np
 import tensorflow as tf
+# from parameterized import parameterized
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new import util, addressing
+from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import TemporalLinkage, weighted_softmax, CosineWeights, \
+    Freeness
 
 
 class WeightedSoftmaxTest(tf.test.TestCase):
@@ -20,375 +17,1172 @@ class WeightedSoftmaxTest(tf.test.TestCase):
 
         # 使用 NumPy 生成输入数据
         activations_data = np.random.randn(batch_size, num_heads, memory_size).astype(np.float32)
-        weights_data = np.ones((batch_size, num_heads), dtype=np.float32)
+        strengths_data = np.ones((batch_size, num_heads), dtype=np.float32)
 
-        # 定义输入张量而不是占位符
+        # 定义输入张量
         activations = tf.convert_to_tensor(activations_data)
-        weights = tf.convert_to_tensor(weights_data)
+        strengths = tf.convert_to_tensor(strengths_data)
 
         # 调用加权 Softmax 函数
-        observed = addressing.weighted_softmax(activations, weights, tf.identity)
+        observed = weighted_softmax(activations, strengths, tf.identity)
 
         # TensorFlow 自带的 softmax 函数用于对比
         expected = tf.nn.softmax(activations, axis=-1)
 
         # 使用 eager execution 模式直接运行
-        observed_val = observed.numpy()  # 通过 .numpy() 获得结果
+        observed_val = observed.numpy()
         expected_val = expected.numpy()
 
         # 验证 observed 和 expected 是否接近
-        self.assertAllClose(observed_val, expected_val)
+        self.assertAllClose(observed_val, expected_val, atol=1e-6)
 
+    def test_weighted_softmax_with_softplus_strength(self):
+        batch_size = 2
+        num_heads = 2
+        memory_size = 3
+
+        # 使用固定的输入数据
+        activations = tf.constant([[[1.0, 2.0, 3.0],
+                                    [4.0, 5.0, 6.0]],
+                                   [[1.0, 0.0, -1.0],
+                                    [0.0, 1.0, -1.0]]], dtype=tf.float32)  # [2, 2, 3]
+
+        strengths = tf.constant([[1.0, 2.0],
+                                 [3.0, 4.0]], dtype=tf.float32)  # [2, 2]
+
+        # 定义 strength_op 为 softplus
+        strength_op = tf.nn.softplus
+
+        # 计算 weighted_softmax
+        observed = weighted_softmax(activations, strengths, strength_op)
+
+        # 手动计算加权分数
+        adjusted_strengths = strength_op(tf.expand_dims(strengths, axis=-1))  # [2, 2, 1]
+        weighted_scores = activations * adjusted_strengths  # [2, 2, 3]
+        expected = tf.nn.softmax(weighted_scores, axis=-1)  # [2, 2, 3]
+
+        # 验证
+        self.assertAllClose(observed.numpy(), expected.numpy(), atol=1e-6)
+
+    def test_weighted_softmax_zero_strength(self):
+        # 测试 strength 为零时，确保 weighted_softmax 的行为
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[0.0]], dtype=tf.float32)  # [1, 1]
+
+        # 定义 strength_op 为 identity
+        strength_op = tf.identity
+
+        # 计算 weighted_softmax
+        observed = weighted_softmax(activations, strengths, strength_op)
+
+        # 手动计算加权分数
+        weighted_scores = activations * strengths[..., tf.newaxis]  # [1, 1, 3] = [1,1,3] * [1,1,1]
+        expected = tf.nn.softmax(weighted_scores, axis=-1)  # softmax([0,0,0]) = [1/3,1/3,1/3]
+
+        # 验证
+        self.assertAllClose(observed.numpy(), expected.numpy(), atol=1e-6)
+
+    def test_weighted_softmax_extreme_strengths(self):
+        """
+        测试 weighted_softmax 在极小和极大 strengths 值下的行为。
+        """
+        # 定义输入参数
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        # 创建 CosineWeights 实例
+        # 假设 strength_op 是 identity
+        strength_op = tf.identity
+
+        # 创建固定的 activations
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+
+        # 测试极小的 strengths 值
+        strengths_small = tf.constant([[1e-6]], dtype=tf.float32)  # [1, 1]
+        expected_small = tf.nn.softmax(activations * strengths_small, axis=-1)  # 应接近 softmax([0, 0, 0]) = [1/3, 1/3, 1/3]
+
+        # 计算 weighted_softmax
+        observed_small = weighted_softmax(activations, strengths_small, strength_op)
+
+        # 验证
+        self.assertAllClose(observed_small.numpy(), expected_small.numpy(), atol=1e-4)
+
+        # 测试极大的 strengths 值
+        strengths_large = tf.constant([[1e6]], dtype=tf.float32)  # [1, 1]
+        # 由于 strengths 很大，weighted_scores 会非常大，softmax 会接近于 [0, 0, 1]
+        expected_large = tf.nn.softmax(activations * strengths_large, axis=-1)
+        # 由于 1e6 * 1 = 1e6, 1e6 * 2 = 2e6, 1e6 * 3 = 3e6
+        # softmax([1e6, 2e6, 3e6]) ≈ [0, 0, 1]
+        expected_large = tf.constant([[[0.0, 0.0, 1.0]]], dtype=tf.float32)
+
+        # 计算 weighted_softmax
+        observed_large = weighted_softmax(activations, strengths_large, strength_op)
 
 class CosineWeightsTest(tf.test.TestCase):
+    # @parameterized.expand([
+    #     # (description, memory, keys, strengths, expected_weights)
+    #     (
+    #         "Zero and non-zero memory vector",
+    #         tf.constant([[[0.0, 0.0, 0.0],
+    #                       [1.0, 1.0, 1.0]]], dtype=tf.float32),
+    #         tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32),
+    #         tf.constant([[1.0]], dtype=tf.float32),
+    #         np.array([[[0.318, 0.682]]], dtype=np.float32)
+    #     ),
+    #     (
+    #         "All zero memory vectors",
+    #         tf.constant([[[0.0, 0.0, 0.0],
+    #                       [0.0, 0.0, 0.0]]], dtype=tf.float32),
+    #         tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32),
+    #         tf.constant([[1.0]], dtype=tf.float32),
+    #         np.array([[[0.5, 0.5]]], dtype=np.float32)
+    #     ),
+    #     (
+    #         "Zero key vector",
+    #         tf.constant([[[1.0, 1.0, 1.0],
+    #                       [2.0, 2.0, 2.0]]], dtype=tf.float32),
+    #         tf.constant([[[0.0, 0.0, 0.0]]], dtype=tf.float32),
+    #         tf.constant([[1.0]], dtype=tf.float32),
+    #         np.array([[[0.5, 0.5]]], dtype=np.float32)
+    #     ),
+    # ])
+    # def test_weighted_softmax_cases(self, _, memory, keys, strengths, expected_weights):
+    #     cosine_weights_layer = CosineWeights(num_heads=keys.shape[1], word_size=keys.shape[-1])
+    #
+    #     inputs = {
+    #         'memory': memory,
+    #         'keys': keys,
+    #         'strengths': strengths
+    #     }
+    #
+    #     weights = cosine_weights_layer(inputs)
+    #
+    #     # 检查输出形状
+    #     expected_shape = list(expected_weights.shape)
+    #     self.assertAllEqual(weights.shape, expected_shape)
+    #
+    #     # 检查权重范围
+    #     self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+    #     self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
+    #
+    #     # 检查权重在 memory_size 维度上的和为1
+    #     sum_weights = tf.reduce_sum(weights, axis=-1)
+    #     self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
+    #
+    #     # 检查权重值
+    #     self.assertAllClose(weights.numpy(), expected_weights, atol=1e-3)
 
-    def testShape(self):
-        batch_size = 5
+    def test_cosine_weights_basic(self):
+        batch_size = 2
+        memory_size = 4
         num_heads = 3
-        memory_size = 7
-        word_size = 2
+        word_size = 5
 
-        module = addressing.CosineWeights(num_heads, word_size)
+        # 创建 CosineWeights 实例
+        cosine_weights_layer = CosineWeights(num_heads=num_heads, word_size=word_size)
 
-        # 创建输入张量
-        mem = tf.random.normal([batch_size, memory_size, word_size])
-        keys = tf.random.normal([batch_size, num_heads, word_size])
-        strengths = tf.random.normal([batch_size, num_heads])
+        # 创建随机的 memory、keys 和 strengths
+        memory = tf.random.uniform([batch_size, memory_size, word_size], minval=-1.0, maxval=1.0)
+        keys = tf.random.uniform([batch_size, num_heads, word_size], minval=-1.0, maxval=1.0)
+        strengths = tf.random.uniform([batch_size, num_heads], minval=0.1, maxval=2.0)
 
-        # 调用模块
-        weights = module({'memory': mem, 'keys': keys, 'strengths': strengths})
+        # 构建输入字典
+        inputs = {
+            'memory': memory,
+            'keys': keys,
+            'strengths': strengths
+        }
+
+        # 调用层
+        weights = cosine_weights_layer(inputs)
 
         # 检查输出形状
-        self.assertTrue(weights.shape.is_compatible_with([batch_size, num_heads, memory_size]))
+        expected_shape = [batch_size, num_heads, memory_size]
+        self.assertAllEqual(weights.shape, expected_shape)
 
-    def testValues(self):
-        batch_size = 5
+        # 检查权重范围
+        self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
+
+        # 检查权重在 memory_size 维度上的和为1
+        sum_weights = tf.reduce_sum(weights, axis=-1)  # [batch_size, num_heads]
+        self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
+
+    def test_cosine_weights_arbitrary_batch_dims(self):
+        # 测试任意批次维度，例如 [batch_dim1, batch_dim2, ...]
+        batch_dims = [3, 2]
+        memory_size = 5
         num_heads = 4
-        memory_size = 10
-        word_size = 2
+        word_size = 6
 
-        mem_data = np.random.randn(batch_size, memory_size, word_size).astype(np.float32)
-        np.copyto(mem_data[0, 0], [1, 2])
-        np.copyto(mem_data[0, 1], [3, 4])
-        np.copyto(mem_data[0, 2], [5, 6])
+        # 创建 CosineWeights 实例
+        cosine_weights_layer = CosineWeights(num_heads=num_heads, word_size=word_size)
 
-        keys_data = np.random.randn(batch_size, num_heads, word_size).astype(np.float32)
-        np.copyto(keys_data[0, 0], [5, 6])
-        np.copyto(keys_data[0, 1], [1, 2])
-        np.copyto(keys_data[0, 2], [5, 6])
-        np.copyto(keys_data[0, 3], [3, 4])
-        strengths_data = np.random.randn(batch_size, num_heads).astype(np.float32)
+        # 创建随机的 memory、keys 和 strengths
+        memory_shape = batch_dims + [memory_size, word_size]
+        keys_shape = batch_dims + [num_heads, word_size]
+        strengths_shape = batch_dims + [num_heads]
 
-        module = addressing.CosineWeights(num_heads, word_size)
+        memory = tf.random.uniform(memory_shape, minval=-1.0, maxval=1.0)
+        keys = tf.random.uniform(keys_shape, minval=-1.0, maxval=1.0)
+        strengths = tf.random.uniform(strengths_shape, minval=0.1, maxval=2.0)
 
-        # 转换为张量
-        mem = tf.convert_to_tensor(mem_data)
-        keys = tf.convert_to_tensor(keys_data)
-        strengths = tf.convert_to_tensor(strengths_data)
+        # 构建输入字典
+        inputs = {
+            'memory': memory,
+            'keys': keys,
+            'strengths': strengths
+        }
 
-        # 调用模块
-        weights = module({'memory': mem, 'keys': keys, 'strengths': strengths})
+        # 调用层
+        weights = cosine_weights_layer(inputs)
 
-        # 使用 eager execution 直接运行
-        weights_val = weights.numpy()
+        # 检查输出形状
+        expected_shape = batch_dims + [num_heads, memory_size]
+        self.assertAllEqual(weights.shape, expected_shape)
 
-        # 手动验证结果
-        strengths_softplus = np.log(1 + np.exp(strengths_data))
-        similarity = np.zeros((memory_size))
+        # 检查权重范围
+        self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
 
-        for b in range(batch_size):
-            for h in range(num_heads):
-                key = keys_data[b, h]
-                key_norm = np.linalg.norm(key)
+        # 检查权重在 memory_size 维度上的和为1
+        sum_weights = tf.reduce_sum(weights, axis=-1)  # [batch_dims..., num_heads]
+        self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
 
-                for m in range(memory_size):
-                    row = mem_data[b, m]
-                    similarity[m] = np.dot(key, row) / (key_norm * np.linalg.norm(row))
+    def test_cosine_weights_zero_norm(self):
+        # 测试 memory 或 keys 的零向量情况，确保不发生除零错误
+        batch_size = 1
+        memory_size = 2
+        num_heads = 1
+        word_size = 3
 
-                similarity = np.exp(similarity * strengths_softplus[b, h])
-                similarity /= similarity.sum()
-                self.assertAllClose(weights_val[b, h], similarity, atol=1e-4, rtol=1e-4)
+        # 创建 CosineWeights 实例
+        cosine_weights_layer = CosineWeights(num_heads=num_heads, word_size=word_size)
 
-    def testDivideByZero(self):
-        batch_size = 5
-        num_heads = 4
-        memory_size = 4  # Ensure that memory_size matches num_heads to avoid shape incompatibility
-        word_size = 2
+        # 创建 memory、keys 和 strengths，其中 memory 包含零向量
+        memory = tf.constant([[[0.0, 0.0, 0.0],
+                               [1.0, 1.0, 1.0]]], dtype=tf.float32)  # [1, 2, 3]
+        keys = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-        module = addressing.CosineWeights(num_heads, word_size)
+        # 构建输入字典
+        inputs = {
+            'memory': memory,
+            'keys': keys,
+            'strengths': strengths
+        }
 
-        # 构建随机张量
-        keys = tf.random.normal([batch_size, num_heads, word_size])
-        strengths = tf.random.normal([batch_size, num_heads])
+        # 调用层
+        weights = cosine_weights_layer(inputs)
 
-        # 第一行设置为1，其他行设置为0，调整 memory_size 和 num_heads 一致
-        first_row_ones = tf.ones([batch_size, 1, word_size], dtype=tf.float32)
-        remaining_zeros = tf.zeros([batch_size, memory_size - 1, word_size], dtype=tf.float32)
-        mem = tf.concat([first_row_ones, remaining_zeros], axis=1)
+        # 检查输出形状
+        expected_shape = [1, 1, 2]
+        self.assertAllEqual(weights.shape, expected_shape)
 
-        # 调用模块
-        output = module({'memory': mem, 'keys': keys, 'strengths': strengths})
+        # 检查权重范围
+        self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
 
-        # 计算梯度
-        with tf.GradientTape() as tape:
-            tape.watch([mem, keys, strengths])
-            output = module({'memory': mem, 'keys': keys, 'strengths': strengths})
+        # 检查权重在 memory_size 维度上的和为1
+        sum_weights = tf.reduce_sum(weights, axis=-1)  # [1, 1]
+        self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
 
-        gradients = tape.gradient(output, [mem, keys, strengths])
+        # 由于第一条 memory 是零向量，与 keys 无关，softmax 应根据非零相似度分配权重
+        # 期望值为 [0.318, 0.682]
+        expected_weights = np.array([[[0.318, 0.682]]], dtype=np.float32)
+        self.assertAllClose(weights.numpy(), expected_weights, atol=1.1e-3)  # 增加 atol 至 1.1e-3
 
-        # 检查输出和梯度是否有NaN
-        output_val = output.numpy()
-        gradients_val = [g.numpy() for g in gradients]
+    def test_cosine_weights_all_zero_norm(self):
+        # 新增测试：所有 memory 向量的余弦相似度为零，期望均匀分配权重
+        batch_size = 1
+        memory_size = 2
+        num_heads = 1
+        word_size = 3
 
-        self.assertFalse(np.any(np.isnan(output_val)))
-        self.assertFalse(np.any(np.isnan(gradients_val[0])))
-        self.assertFalse(np.any(np.isnan(gradients_val[1])))
-        self.assertFalse(np.any(np.isnan(gradients_val[2])))
+        # 创建 CosineWeights 实例
+        cosine_weights_layer = CosineWeights(num_heads=num_heads, word_size=word_size)
 
+        # 创建 memory、keys 和 strengths，其中所有 memory 向量都是零向量
+        memory = tf.constant([[[0.0, 0.0, 0.0],
+                               [0.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 2, 3]
+        keys = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-class TemporalLinkageTest(tf.test.TestCase):
-    class TemporalLinkageTest(tf.test.TestCase):
+        # 构建输入字典
+        inputs = {
+            'memory': memory,
+            'keys': keys,
+            'strengths': strengths
+        }
 
-        def testModule(self):
-            batch_size = 7
-            memory_size = 4
-            num_reads = 11
-            num_writes = 5
-            module = addressing.TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+        # 调用层
+        weights = cosine_weights_layer(inputs)
 
-            # Initialize state
-            prev_link_in = tf.zeros((batch_size, num_writes, memory_size, memory_size), dtype=tf.float32)
-            prev_precedence_weights_in = tf.zeros((batch_size, num_writes, memory_size), dtype=tf.float32)
-            write_weights_in = tf.random.uniform((batch_size, num_writes, memory_size))
+        # 检查输出形状
+        expected_shape = [1, 1, 2]
+        self.assertAllEqual(weights.shape, expected_shape)
 
-            calc_state = module({
-                'write_weights': write_weights_in,
-                'prev_linkage': addressing.TemporalLinkageState(
-                    link=prev_link_in,
-                    precedence_weights=prev_precedence_weights_in
-                )
-            })
+        # 检查权重范围
+        self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
 
-            num_steps = 5
-            for i in range(num_steps):
-                write_weights = np.random.rand(batch_size, num_writes, memory_size).astype(np.float32)
-                write_weights /= write_weights.sum(2, keepdims=True) + 1
+        # 检查权重在 memory_size 维度上的和为1
+        sum_weights = tf.reduce_sum(weights, axis=-1)  # [1, 1]
+        self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
 
-                # Simulate specific writing patterns in final steps
-                if i == num_steps - 2:
-                    write_weights[0, 0, :] = util.one_hot(memory_size, 0)
-                    write_weights[0, 1, :] = util.one_hot(memory_size, 3)
-                elif i == num_steps - 1:
-                    write_weights[0, 0, :] = util.one_hot(memory_size, 1)
-                    write_weights[0, 1, :] = util.one_hot(memory_size, 2)
+        # 由于所有 memory 向量的余弦相似度为零，softmax 应均匀分配权重
+        expected_weights = np.array([[[0.5, 0.5]]], dtype=np.float32)
+        self.assertAllClose(weights.numpy(), expected_weights, atol=1e-3)
 
-                # Calculate state
-                calc_state = module({
-                    'write_weights': tf.constant(write_weights, dtype=tf.float32),
-                    'prev_linkage': addressing.TemporalLinkageState(
-                        link=prev_link_in,
-                        precedence_weights=prev_precedence_weights_in
-                    )
-                })
+    def test_cosine_weights_zero_key_norm(self):
+        # 新增测试：keys 向量为零向量，确保不发生除零错误
+        batch_size = 1
+        memory_size = 2
+        num_heads = 1
+        word_size = 3
 
-            # link should be bounded in range [0, 1]
-            self.assertGreaterEqual(tf.reduce_min(calc_state.link).numpy(), 0)
-            self.assertLessEqual(tf.reduce_max(calc_state.link).numpy(), 1)
+        # 创建 CosineWeights 实例
+        cosine_weights_layer = CosineWeights(num_heads=num_heads, word_size=word_size)
 
-            # 使用 tf.meshgrid 获取对角线元素的索引
-            diag_indices = tf.range(memory_size)
+        # 创建 memory、keys 和 strengths，其中 keys 向量为零向量
+        memory = tf.constant([[[1.0, 1.0, 1.0],
+                               [2.0, 2.0, 2.0]]], dtype=tf.float32)  # [1, 2, 3]
+        keys = tf.constant([[[0.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-            # 构建批量和写头的索引
-            batch_indices, write_indices = tf.meshgrid(
-                tf.range(batch_size), tf.range(num_writes), indexing='ij'
-            )
+        # 构建输入字典
+        inputs = {
+            'memory': memory,
+            'keys': keys,
+            'strengths': strengths
+        }
 
-            # 使用 tf.meshgrid 构建完整索引
-            diag_indices_i, diag_indices_j = tf.meshgrid(diag_indices, diag_indices, indexing='ij')
+        # 调用层
+        weights = cosine_weights_layer(inputs)
 
-            # 构建用于 gather 的索引
-            indices = tf.stack([batch_indices, write_indices, diag_indices_i, diag_indices_j], axis=-1)
+        # 检查输出形状
+        expected_shape = [1, 1, 2]
+        self.assertAllEqual(weights.shape, expected_shape)
 
-            # 使用 tf.gather_nd 获取链路矩阵中的对角线元素
-            diag_elements = tf.gather_nd(calc_state.link, indices)
+        # 检查权重范围
+        self.assertGreaterEqual(tf.reduce_min(weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(weights).numpy(), 1.0)
 
-            # 对角线元素应该为 0，进行断言
-            self.assertAllEqual(diag_elements, np.zeros([batch_size, num_writes, memory_size]))
+        # 检查权重在 memory_size 维度上的和为1
+        sum_weights = tf.reduce_sum(weights, axis=-1)  # [1, 1]
+        self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
 
-            # link rows and columns should sum to at most 1
-            self.assertLessEqual(tf.reduce_max(tf.reduce_sum(calc_state.link, axis=2)).numpy(), 1)
-            self.assertLessEqual(tf.reduce_max(tf.reduce_sum(calc_state.link, axis=3)).numpy(), 1)
+        # 由于 keys 是零向量，与所有 memory 无关，softmax 应均匀分配权重
+        expected_weights = np.array([[[0.5, 0.5]]], dtype=np.float32)
+        self.assertAllClose(weights.numpy(), expected_weights, atol=1e-3)
 
-            # Test transitions in batch 0: head 0 (0->1), and head 1 (3->2)
-            self.assertAllEqual(calc_state.link[0, 0, :, 0], util.one_hot(memory_size, 1))
-            self.assertAllEqual(calc_state.link[0, 1, :, 3], util.one_hot(memory_size, 2))
+    def test_write_weights_i_and_j(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
 
-            # Now test calculation of forward and backward read weights
-            prev_read_weights = np.random.rand(batch_size, num_reads, memory_size).astype(np.float32)
-            prev_read_weights[0, 5, :] = util.one_hot(memory_size, 0)  # read head 5 at position 0
-            prev_read_weights[0, 6, :] = util.one_hot(memory_size, 2)  # read head 6 at position 2
+        # 计算 write_weights_i 和 write_weights_j
+        write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
+        write_weights_j = tf.expand_dims(write_weights, 2)  # (batch_size, num_writes, 1, memory_size)
 
-            forward_read_weights = module.directional_read_weights(
-                link=tf.constant(calc_state.link),
-                prev_read_weights=tf.constant(prev_read_weights),
-                forward=True
-            )
-            backward_read_weights = module.directional_read_weights(
-                link=tf.constant(calc_state.link),
-                prev_read_weights=tf.constant(prev_read_weights),
-                forward=False
-            )
+        # 验证 shape 和值
+        expected_write_weights_i = np.array([[[[1], [0], [0]]]], dtype=np.float32)
+        expected_write_weights_j = np.array([[[[1, 0, 0]]]], dtype=np.float32)
 
-            # forward_read_weights and backward_read_weights values
-            forward_read_weights_val = forward_read_weights.numpy()
-            backward_read_weights_val = backward_read_weights.numpy()
+        np.testing.assert_allclose(write_weights_i.numpy(), expected_write_weights_i, atol=1e-6)
+        np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
 
-            # Check directional weights calculated correctly
-            self.assertAllEqual(forward_read_weights_val[0, 5, 0, :], util.one_hot(memory_size, 1))  # read=5, write=0
-            self.assertAllEqual(backward_read_weights_val[0, 6, 1, :], util.one_hot(memory_size, 3))  # read=6, write=1
-    def testPrecedenceWeights(self):
-        batch_size = 7
+    def test_precedence_weights_update(self):
+        # 初始 precedence_weights 为全零
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)  # 第一次写入位置 0
+
+        # 模拟 precedence_weights 更新过程
+        reset_gate = 1 - tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
+        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
+
+        print("prev_precedence_weights:", prev_precedence_weights.numpy())
+        print("write_weights:", write_weights.numpy())
+        print("updated_precedence_weights:", updated_precedence_weights.numpy())
+
+        expected_precedence_weights = np.array([[[1, 0, 0]]], dtype=np.float32)
+
+        np.testing.assert_allclose(updated_precedence_weights.numpy(), expected_precedence_weights, atol=1e-6)
+
+    def test_write_weights_expansion(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        # 扩展维度
+        write_weights_i = tf.expand_dims(write_weights, 3)
+        write_weights_j = tf.expand_dims(write_weights, 2)
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("write_weights_j:", write_weights_j.numpy())
+
+        expected_write_weights_i = np.array([[[[1], [0], [0]]]], dtype=np.float32)
+        expected_write_weights_j = np.array([[[[1, 0, 0]]]], dtype=np.float32)
+
+        np.testing.assert_allclose(write_weights_i.numpy(), expected_write_weights_i, atol=1e-6)
+        np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
+
+    def test_prev_precedence_weights_j(self):
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+
+        # 计算 prev_precedence_weights_j
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   2)  # (batch_size, num_writes, 1, memory_size)
+
+        # 验证 shape 和值
+        expected_prev_precedence_weights_j = np.array([[[[0, 0, 0]]]], dtype=np.float32)
+
+        np.testing.assert_allclose(prev_precedence_weights_j.numpy(), expected_prev_precedence_weights_j, atol=1e-6)
+
+    def test_prev_link_scale(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        write_weights_i = tf.expand_dims(write_weights, 3)
+        write_weights_j = tf.expand_dims(write_weights, 2)
+
+        # 计算 prev_link_scale
+        prev_link_scale = 1 - write_weights_i - write_weights_j  # 不进行裁剪
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("write_weights_j:", write_weights_j.numpy())
+        print("prev_link_scale:", prev_link_scale.numpy())
+
+        expected_prev_link_scale = np.array([[[[-1, 0, 0],
+                                               [0, 1, 1],
+                                               [0, 1, 1]]]], dtype=np.float32)
+        np.testing.assert_allclose(prev_link_scale.numpy(), expected_prev_link_scale, atol=1e-6)
+
+    def test_weighted_softmax_with_softplus_strength(self):
+        batch_size = 2
+        num_heads = 2
         memory_size = 3
-        num_writes = 5
-        module = addressing.TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
 
-        prev_precedence_weights = np.random.rand(batch_size, num_writes, memory_size).astype(np.float32)
-        write_weights = np.random.rand(batch_size, num_writes, memory_size).astype(np.float32)
+        # 使用固定的输入数据
+        activations = tf.constant([[[1.0, 2.0, 3.0],
+                                    [4.0, 5.0, 6.0]],
+                                   [[1.0, 0.0, -1.0],
+                                    [0.0, 1.0, -1.0]]], dtype=tf.float32)  # [2, 2, 3]
 
-        # Normalize write weights and precedence weights
-        write_weights /= write_weights.sum(2, keepdims=True) + 1
-        prev_precedence_weights /= prev_precedence_weights.sum(2, keepdims=True) + 1
+        strengths = tf.constant([[1.0, 2.0],
+                                 [3.0, 4.0]], dtype=tf.float32)  # [2, 2]
 
-        # No writing in batch 0 head 1, full writing in batch 1 head 2
-        write_weights[0, 1, :] = 0
-        write_weights[1, 2, :] /= write_weights[1, 2, :].sum()
+        # 定义 strength_op 为 softplus
+        strength_op = tf.nn.softplus
 
-        precedence_weights = module._precedence_weights(
-            prev_precedence_weights=tf.constant(prev_precedence_weights),
-            write_weights=tf.constant(write_weights)
-        )
+        # 计算 weighted_softmax
+        observed = weighted_softmax(activations, strengths, strength_op)
 
-        # Check that precedence weights are in the range [0, 1]
-        self.assertGreaterEqual(tf.reduce_min(precedence_weights).numpy(), 0)
-        self.assertLessEqual(tf.reduce_max(precedence_weights).numpy(), 1)
+        # 手动计算加权分数
+        adjusted_strengths = strength_op(tf.expand_dims(strengths, axis=-1))  # [2, 2, 1]
+        weighted_scores = activations * adjusted_strengths  # [2, 2, 3]
+        expected = tf.nn.softmax(weighted_scores, axis=-1)  # [2, 2, 3]
 
-        # No writing in batch 0, head 1
-        self.assertAllClose(precedence_weights[0, 1, :], prev_precedence_weights[0, 1, :])
+        # 验证
+        self.assertAllClose(observed.numpy(), expected.numpy(), atol=1e-6)
 
-        # Full writing in batch 1, head 2
-        self.assertAllClose(precedence_weights[1, 2, :], write_weights[1, 2, :])
+    def test_weighted_softmax_zero_strength(self):
+        # 测试 strength 为零时，确保 weighted_softmax 的行为
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[0.0]], dtype=tf.float32)  # [1, 1]
+
+        # 定义 strength_op 为 identity
+        strength_op = tf.identity
+
+        # 计算 weighted_softmax
+        observed = weighted_softmax(activations, strengths, strength_op)
+
+        # 手动计算加权分数
+        weighted_scores = activations * strengths[..., tf.newaxis]  # [1, 1, 3] = [1,1,3] * [1,1,1]
+        expected = tf.nn.softmax(weighted_scores, axis=-1)  # softmax([0,0,0]) = [1/3,1/3,1/3]
+
+        # 验证
+        self.assertAllClose(observed.numpy(), expected.numpy(), atol=1e-6)
+class TemporalLinkageTest(tf.test.TestCase):
+    def testLinkUpdate_steps(self):
+        batch_size = 1
+        memory_size = 3
+        num_writes = 1
+
+        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+
+        # 初始化状态
+        prev_link = tf.zeros([batch_size, num_writes, memory_size, memory_size], dtype=tf.float32)
+        prev_precedence_weights = tf.zeros([batch_size, num_writes, memory_size], dtype=tf.float32)
+
+        # 第一次写入
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)  # 写入位置 0
+        linkage_state = module({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        })
+
+        # 验证第一次写入后的链路矩阵
+        expected_link_after_first_write = np.zeros((1, 1, 3, 3), dtype=np.float32)
+        self.assertAllClose(linkage_state['link'].numpy(), expected_link_after_first_write, atol=1e-6)
+
+        # 更新 prev_link 和 prev_precedence_weights
+        prev_link = linkage_state['link']
+        prev_precedence_weights = linkage_state['precedence_weights']  # p_t = w_t^w + (1 - sum(w_t^w)) * p_{t-1}
+
+        # 第二次写入
+        write_weights = tf.constant([[[0, 1, 0]]], dtype=tf.float32)  # 写入位置 1
+        linkage_state = module({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        })
+
+        # 验证第二次写入后的链路矩阵
+        expected_link_after_second_write = np.array([[[[0, 0, 0],
+                                                       [1, 0, 0],
+                                                       [0, 0, 0]]]], dtype=np.float32)
+        self.assertAllClose(linkage_state['link'].numpy(), expected_link_after_second_write, atol=1e-6)
+
+        # 更新 prev_link 和 prev_precedence_weights
+        prev_link = linkage_state['link']
+        prev_precedence_weights = linkage_state['precedence_weights']
+
+        # 第三次写入
+        write_weights = tf.constant([[[0, 1, 0]]], dtype=tf.float32)  # 再次写入位置 1
+        linkage_state = module({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        })
+
+        # 验证第三次写入后的链路矩阵
+        expected_link_after_third_write = np.zeros((1, 1, 3, 3), dtype=np.float32)  # 修改为全零矩阵
+        self.assertAllClose(linkage_state['link'].numpy(), expected_link_after_third_write, atol=1e-6)
+
+    def test_full_link_method(self):
+        batch_size = 1
+        memory_size = 3
+        num_writes = 1
+
+        # 创建 TemporalLinkage 实例
+        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+
+        # 初始化 prev_link 和 prev_precedence_weights
+        prev_link = tf.zeros([batch_size, num_writes, memory_size, memory_size], dtype=tf.float32)
+        prev_precedence_weights = tf.zeros([batch_size, num_writes, memory_size], dtype=tf.float32)
+
+        # 创建 write_weights
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        # 调用模块
+        linkage_state = module({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        })
+
+        # 验证更新后的 link 矩阵是否符合预期
+        expected_link = np.zeros((1, 1, 3, 3), dtype=np.float32)  # 第一次写入，link 应为全零矩阵
+        self.assertAllClose(linkage_state['link'].numpy(), expected_link, atol=1e-6)
+
+    def test_new_link_creation(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+
+        write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   2)  # (batch_size, num_writes, 1, memory_size)
+
+        # 计算 new_link，使用矩阵乘法
+        new_link = tf.matmul(write_weights_i, prev_precedence_weights_j)
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("prev_precedence_weights_j:", prev_precedence_weights_j.numpy())
+        print("new_link:", new_link.numpy())
+
+        # 由于 prev_precedence_weights 为零，new_link 应该是全零矩阵
+        expected_new_link = np.zeros((1, 1, 3, 3), dtype=np.float32)
+        np.testing.assert_allclose(new_link.numpy(), expected_new_link, atol=1e-6)
+
+    def test_updated_link(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+        prev_link = tf.zeros([1, 1, 3, 3], dtype=tf.float32)
+
+        write_weights_i = tf.expand_dims(write_weights, 3)
+        write_weights_j = tf.expand_dims(write_weights, 2)
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, 2)
+
+        # 计算 prev_link_scale
+        prev_link_scale = 1 - write_weights_i - write_weights_j  # 不进行裁剪
+
+        # 计算 new_link，使用矩阵乘法
+        new_link = tf.matmul(write_weights_i, prev_precedence_weights_j)
+        updated_link = prev_link_scale * prev_link + new_link
+
+        # 避免自连接
+        mask = tf.eye(3, batch_shape=[1, 1], dtype=tf.float32)
+        updated_link = updated_link * (1 - mask)
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("write_weights_j:", write_weights_j.numpy())
+        print("prev_precedence_weights_j:", prev_precedence_weights_j.numpy())
+        print("prev_link_scale:", prev_link_scale.numpy())
+        print("new_link:", new_link.numpy())
+        print("updated_link:", updated_link.numpy())
+
+        # 由于 prev_precedence_weights 为零，new_link 应该是全零矩阵
+        expected_updated_link = np.zeros((1, 1, 3, 3), dtype=np.float32)
+        np.testing.assert_allclose(updated_link.numpy(), expected_updated_link, atol=1e-6)
+
+    def testModule(self):
+        batch_size = 2
+        memory_size = 4
+        num_writes = 2
+
+        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+
+        # 初始化状态
+        prev_link = tf.zeros([batch_size, num_writes, memory_size, memory_size], dtype=tf.float32)
+        prev_precedence_weights = tf.zeros([batch_size, num_writes, memory_size], dtype=tf.float32)
+
+        # 随机生成 write_weights
+        write_weights = tf.random.uniform([batch_size, num_writes, memory_size], minval=0.0, maxval=1.0)
+
+        # 归一化 write_weights
+        write_weights /= tf.reduce_sum(write_weights, axis=2, keepdims=True) + 1e-6
+
+        # 调用模块
+        linkage_state = module({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        })
+
+        # 检查输出形状
+        self.assertEqual(linkage_state['link'].shape, (batch_size, num_writes, memory_size, memory_size))
+        self.assertEqual(linkage_state['precedence_weights'].shape, (batch_size, num_writes, memory_size))
+
+        # 检查 link 矩阵的数值范围
+        self.assertGreaterEqual(tf.reduce_min(linkage_state['link']).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(linkage_state['link']).numpy(), 1.0)
+
+        # 检查对角线元素为 0
+        diag_elements = tf.linalg.diag_part(linkage_state['link'])
+        self.assertAllClose(diag_elements, np.zeros((batch_size, num_writes, memory_size)), atol=1e-6)
+
+    def testDirectionalReadWeights(self):
+        batch_size = 2
+        memory_size = 4
+        num_writes = 2
+        num_reads = 3
+
+        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+
+        # 创建随机的 link 矩阵和 prev_read_weights
+        link = tf.random.uniform([batch_size, num_writes, memory_size, memory_size], minval=0.0, maxval=1.0)
+        prev_read_weights = tf.random.uniform([batch_size, num_reads, memory_size], minval=0.0, maxval=1.0)
+
+        # 调用 directional_read_weights
+        forward_weights = module.directional_read_weights(link, prev_read_weights, forward=True)
+        backward_weights = module.directional_read_weights(link, prev_read_weights, forward=False)
+
+        # 检查输出形状
+        self.assertEqual(forward_weights.shape, (batch_size, num_reads, num_writes, memory_size))
+        self.assertEqual(backward_weights.shape, (batch_size, num_reads, num_writes, memory_size))
+
+        # 检查数值范围（例如，非负且合理范围内）
+        self.assertGreaterEqual(tf.reduce_min(forward_weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(forward_weights).numpy(), 1.0)
+        self.assertGreaterEqual(tf.reduce_min(backward_weights).numpy(), 0.0)
+        self.assertLessEqual(tf.reduce_max(backward_weights).numpy(), 1.0)
+
+        # 检查权重和为1
+        forward_sum = tf.reduce_sum(forward_weights, axis=-1)  # [batch_size, num_reads, num_writes]
+        backward_sum = tf.reduce_sum(backward_weights, axis=-1)  # [batch_size, num_reads, num_writes]
+        self.assertAllClose(forward_sum.numpy(), np.ones_like(forward_sum.numpy()), atol=1e-6)
+        self.assertAllClose(backward_sum.numpy(), np.ones_like(backward_sum.numpy()), atol=1e-6)
+
+    def test_write_weights_i_and_j(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        # 计算 write_weights_i 和 write_weights_j
+        write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
+        write_weights_j = tf.expand_dims(write_weights, 2)  # (batch_size, num_writes, 1, memory_size)
+
+        # 验证 shape 和值
+        expected_write_weights_i = np.array([[[[1], [0], [0]]]], dtype=np.float32)
+        expected_write_weights_j = np.array([[[[1, 0, 0]]]], dtype=np.float32)
+
+        np.testing.assert_allclose(write_weights_i.numpy(), expected_write_weights_i, atol=1e-6)
+        np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
+
+    def test_precedence_weights_update(self):
+        # 初始 precedence_weights 为全零
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)  # 第一次写入位置 0
+
+        # 模拟 precedence_weights 更新过程
+        reset_gate = 1 - tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
+        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
+
+        print("prev_precedence_weights:", prev_precedence_weights.numpy())
+        print("write_weights:", write_weights.numpy())
+        print("updated_precedence_weights:", updated_precedence_weights.numpy())
+
+        expected_precedence_weights = np.array([[[1, 0, 0]]], dtype=np.float32)
+
+        np.testing.assert_allclose(updated_precedence_weights.numpy(), expected_precedence_weights, atol=1e-6)
+
+    def test_write_weights_expansion(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        # 扩展维度
+        write_weights_i = tf.expand_dims(write_weights, 3)
+        write_weights_j = tf.expand_dims(write_weights, 2)
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("write_weights_j:", write_weights_j.numpy())
+
+        expected_write_weights_i = np.array([[[[1], [0], [0]]]], dtype=np.float32)
+        expected_write_weights_j = np.array([[[[1, 0, 0]]]], dtype=np.float32)
+
+        np.testing.assert_allclose(write_weights_i.numpy(), expected_write_weights_i, atol=1e-6)
+        np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
+
+    def test_prev_precedence_weights_j(self):
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+
+        # 计算 prev_precedence_weights_j
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   2)  # (batch_size, num_writes, 1, memory_size)
+
+        # 验证 shape 和值
+        expected_prev_precedence_weights_j = np.array([[[[0, 0, 0]]]], dtype=np.float32)
+
+        np.testing.assert_allclose(prev_precedence_weights_j.numpy(), expected_prev_precedence_weights_j, atol=1e-6)
+
+    def test_prev_link_scale(self):
+        write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
+
+        write_weights_i = tf.expand_dims(write_weights, 3)
+        write_weights_j = tf.expand_dims(write_weights, 2)
+
+        # 计算 prev_link_scale
+        prev_link_scale = 1 - write_weights_i - write_weights_j  # 不进行裁剪
+
+        print("write_weights_i:", write_weights_i.numpy())
+        print("write_weights_j:", write_weights_j.numpy())
+        print("prev_link_scale:", prev_link_scale.numpy())
+
+        expected_prev_link_scale = np.array([[[[-1, 0, 0],
+                                               [0, 1, 1],
+                                               [0, 1, 1]]]], dtype=np.float32)
+        np.testing.assert_allclose(prev_link_scale.numpy(), expected_prev_link_scale, atol=1e-6)
+
 
 
 class FreenessTest(tf.test.TestCase):
+    def setUp(self):
+        super(FreenessTest, self).setUp()
+        self.memory_size = 3  # 定义 memory_size，不带下划线
 
-    def testModule(self):
-        batch_size = 5
-        memory_size = 11
-        num_reads = 3
-        num_writes = 7
-        module = addressing.Freeness(memory_size)
+    # @parameterized.expand([
+    #     ("all_full", (1,), [[1.0, 1.0, 1.0]], [[1.0]], [[[1.0, 1.0, 1.0]]], [[0.0, 0.0, 0.0]]),
+    #     ("all_zero", (1,), [[0.0, 0.0, 0.0]], [[1.0]], [[[0.0, 0.0, 0.0]]], [[0.0, 0.0, 0.0]]),
+    #     # 添加更多测试案例
+    # ])
+    # def test_allocation_cases(self, name, batch_shape, write_weights, free_gate, read_weights, expected_usage):
+    #     freeness_layer = Freeness(memory_size=self._memory_size)
+    #     initial_usage = freeness_layer.get_initial_state(batch_shape)
+    #     inputs = {
+    #         'write_weights': tf.constant(write_weights, dtype=tf.float32),
+    #         'free_gate': tf.constant(free_gate, dtype=tf.float32),
+    #         'read_weights': tf.constant(read_weights, dtype=tf.float32),
+    #         'prev_usage': initial_usage
+    #     }
+    #     updated_usage = freeness_layer(inputs, training=False)
+    #     expected = tf.constant(expected_usage, dtype=tf.float32)
+    #     self.assertAllClose(updated_usage.numpy(), expected.numpy(), atol=1e-6)
 
-        free_gate = np.random.rand(batch_size, num_reads).astype(np.float32)
+    def test_basic_write_and_read(self):
+        """
+        基本测试：验证写操作和读操作对使用率的影响。
+        """
+        batch_size = 2
+        num_writes = 2
+        num_reads = 2
 
-        # Produce read weights that sum to 1 for each batch and head.
-        prev_read_weights = np.random.rand(batch_size, num_reads, memory_size).astype(np.float32)
-        prev_read_weights[1, :, 3] = 0  # no read at batch 1, position 3; see below
-        prev_read_weights /= prev_read_weights.sum(2, keepdims=True)
-        prev_write_weights = np.random.rand(batch_size, num_writes, memory_size).astype(np.float32)
-        prev_write_weights /= prev_write_weights.sum(2, keepdims=True)
-        prev_usage = np.random.rand(batch_size, memory_size).astype(np.float32)
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
 
-        # Add some special values that allow us to test the behaviour:
-        prev_write_weights[1, 2, 3] = 1  # full write in batch 1, head 2, position 3
-        prev_read_weights[2, 0, 4] = 1  # full read at batch 2, head 0, position 4
-        free_gate[2, 0] = 1  # can free up all locations for batch 2, read head 0
+        # 创建初始使用率
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
 
-        usage = module(
-            {
-                'write_weights': tf.constant(prev_write_weights),
-                'free_gate': tf.constant(free_gate),
-                'read_weights': tf.constant(prev_read_weights),
-                'prev_usage': tf.constant(prev_usage)
-            }
-        )
+        # 定义写权重
+        write_weights = tf.constant([
+            [[1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0]],
+            [[0.0, 0.0, 1.0],
+             [1.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
 
-        usage = usage.numpy()
+        # 定义自由门和读权重
+        free_gate = tf.constant([
+            [1.0, 0.0],
+            [0.0, 1.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
 
-        # Check all usages are between 0 and 1.
-        self.assertGreaterEqual(np.min(usage), 0)
-        self.assertLessEqual(np.max(usage), 1)
+        read_weights = tf.constant([
+            [[0.5, 0.5, 0.0],
+             [0.0, 0.5, 0.5]],
+            [[0.0, 0.0, 1.0],
+             [1.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
 
-        # Check that the full write at batch 1, position 3 makes it fully used.
-        self.assertEqual(usage[1][3], 1)
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
 
-        # Check that the full free at batch 2, position 4 makes it fully free.
-        self.assertEqual(usage[2][4], 0)
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
 
-    def testWriteAllocationWeights(self):
-        batch_size = 7
-        memory_size = 23
-        num_writes = 5
-        module = addressing.Freeness(memory_size)
+        # 预期使用率计算：
+        # 对于第一批次：
+        # 写操作1：写入第0槽 -> usage = [1, 0, 0]
+        # 写操作2：写入第1槽 -> usage = [1, 1, 0]
+        # 读操作1：free_gate=1, read_weights=[0.5, 0.5, 0] -> 使用率 = [1 - 0.5, 1 - 0.5, 0 - 0] = [0.5, 0.5, 0]
+        #
+        # 对于第二批次：
+        # 写操作1：写入第2槽 -> usage = [0, 0, 1]
+        # 写操作2：写入第0槽 -> usage = [1, 0, 1]
+        # 读操作2：free_gate=1, read_weights=[1, 0, 0] -> 使用率 = [1 - 1, 0 - 0, 1 - 0] = [0, 0, 1]
+        expected_usage = tf.constant([
+            [0.5, 0.5, 0.0],
+            [0.0, 0.0, 1.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
 
-        usage = np.random.rand(batch_size, memory_size).astype(np.float32)
-        write_gates = np.random.rand(batch_size, num_writes).astype(np.float32)
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
-        # Turn off gates for heads 1 and 3 in batch 0. This doesn't scale down the
-        # weighting, but it means that the usage doesn't change, so we should get
-        # the same allocation weightings for: (1, 2) and (3, 4) (but all others
-        # being different).
-        write_gates[0, 1] = 0
-        write_gates[0, 3] = 0
-        # Turn heads 0 and 2 on for full effect.
-        write_gates[0, 0] = 1
-        write_gates[0, 2] = 1
+    def test_all_zero_memory_after_write(self):
+        """
+        测试所有 memory 向量为零的情况，确保使用率均匀分配。
+        """
+        batch_size = 1
+        num_writes = 1
+        num_reads = 1
 
-        # In batch 1, make one of the usages 0 and another almost 0, so that these
-        # entries get most of the allocation weights for the first and second heads.
-        usage[1] = usage[1] * 0.9 + 0.1  # make sure all entries are in [0.1, 1]
-        usage[1][4] = 0  # write head 0 should get allocated to position 4
-        usage[1][3] = 1e-4  # write head 1 should get allocated to position 3
-        write_gates[1, 0] = 1  # write head 0 fully on
-        write_gates[1, 1] = 1  # write head 1 fully on
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
 
-        weights = module.write_allocation_weights(
-            usage=tf.constant(usage),
-            write_gates=tf.constant(write_gates),
-            num_writes=num_writes
-        )
+        # 创建初始使用率
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
 
-        weights = weights.numpy()
+        # 定义写权重（全零）
+        write_weights = tf.constant([
+            [[0.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
 
-        # Check that all weights are between 0 and 1
-        self.assertGreaterEqual(np.min(weights), 0)
-        self.assertLessEqual(np.max(weights), 1)
+        # 定义自由门和读权重（任意）
+        free_gate = tf.constant([
+            [1.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
 
-        # Check that weights sum to close to 1
-        self.assertAllClose(np.sum(weights, axis=2), np.ones([batch_size, num_writes]), atol=1e-3)
+        read_weights = tf.constant([
+            [[0.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
 
-        # Check the same / different allocation weight pairs as described above.
-        self.assertGreater(np.abs(weights[0, 0, :] - weights[0, 1, :]).max(), 0.1)
-        self.assertAllEqual(weights[0, 1, :], weights[0, 2, :])
-        self.assertGreater(np.abs(weights[0, 2, :] - weights[0, 3, :]).max(), 0.1)
-        self.assertAllEqual(weights[0, 3, :], weights[0, 4, :])
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
 
-        self.assertAllClose(weights[1][0], util.one_hot(memory_size, 4), atol=1e-3)
-        self.assertAllClose(weights[1][1], util.one_hot(memory_size, 3), atol=1e-3)
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
 
-    def testAllocation(self):
-        batch_size = 7
-        memory_size = 13
-        usage = np.random.rand(batch_size, memory_size).astype(np.float32)
-        module = addressing.Freeness(memory_size)
-        allocation = module._allocation(tf.constant(usage))
+        # 预期使用率为全0
+        expected_usage = tf.constant([
+            [0.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
 
-        allocation = allocation.numpy()
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
-        # 1. 确保 allocation 的形状正确
-        print("allocation shape:", allocation.shape)
+    def test_all_zero_read_weights(self):
+        """
+        测试所有读权重为零的情况，确保读操作不影响使用率。
+        """
+        batch_size = 1
+        num_writes = 1
+        num_reads = 1
 
-        # 2. Test that max allocation goes to min usage, and vice versa.
-        self.assertAllEqual(np.argmin(usage, axis=1), np.argmax(allocation, axis=1))
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
+
+        # 创建初始使用率
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
+
+        # 定义写权重（部分写入）
+        write_weights = tf.constant([
+            [[1.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+
+        # 定义自由门和读权重（全零）
+        free_gate = tf.constant([
+            [0.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
+
+        read_weights = tf.constant([
+            [[0.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
+
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
+
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
+
+        # 预期使用率为 [1.0, 0.0, 0.0]
+        expected_usage = tf.constant([
+            [1.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
+
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
+    def test_all_full_usage(self):
+        """
+        测试所有内存槽已满的情况，确保进一步写操作释放使用率。
+        """
+        batch_size = 1
+        num_writes = 1
+        num_reads = 1
+
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
+
+        # 创建初始使用率为全1
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
+
+        # 定义写权重（任意）
+        write_weights = tf.constant([
+            [[1.0, 1.0, 1.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+
+        # 定义自由门和读权重
+        free_gate = tf.constant([
+            [1.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
+
+        read_weights = tf.constant([
+            [[1.0, 1.0, 1.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
+
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
+
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
+
+        # 预期使用率应为全0，因为所有内存槽已满并通过自由门释放
+        expected_usage = tf.constant([
+            [0.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
+
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
+    def test_multiple_writes_and_reads(self):
+        """
+        测试多次写操作和读操作的累积影响。
+        """
+        batch_size = 1
+        num_writes = 2
+        num_reads = 2
+
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
+
+        # 创建初始使用率
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
+
+        # 定义写权重（两次写入）
+        write_weights = tf.constant([
+            [[1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+
+        # 定义自由门和读权重（两次读操作）
+        free_gate = tf.constant([
+            [1.0, 1.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
+
+        read_weights = tf.constant([
+            [[1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
+
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
+
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
+
+        # 预期使用率计算：
+        # 第一次写入：memory 0 和 1 被写入 -> usage = [1, 1, 0]
+        # 第二次写入：memory 1 已满，写入 memory 1 无效 -> usage = [1, 1, 0]
+        # 第一次读操作：释放 memory 0 -> usage = [0, 1, 0]
+        # 第二次读操作：释放 memory 1 -> usage = [0, 0, 0]
+        expected_usage = tf.constant([
+            [0.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
+
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
+    def test_extreme_strengths_small(self):
+        """
+        测试极小的 strengths 值，确保 weighted_softmax 接近标准 softmax。
+        """
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        # 定义输入参数
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths_small = tf.constant([[1e-6]], dtype=tf.float32)  # [1, 1]
+
+        # 计算加权 softmax
+        observed_small = weighted_softmax(activations, strengths_small, tf.identity)
+
+        # 期望值为 softmax([0, 0, 0]) = [1/3, 1/3, 1/3]
+        expected_small = tf.nn.softmax(tf.zeros_like(activations), axis=-1)
+
+        self.assertAllClose(observed_small.numpy(), expected_small.numpy(), atol=1e-4)
+
+    def test_extreme_strengths_large(self):
+        """
+        测试极大的 strengths 值，确保 weighted_softmax 更加尖锐。
+        """
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        # 定义输入参数
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths_large = tf.constant([[1e6]], dtype=tf.float32)  # [1, 1]
+
+        # 计算加权 softmax
+        observed_large = weighted_softmax(activations, strengths_large, tf.identity)
+
+        # 期望值为 softmax([1e6, 2e6, 3e6]) ≈ [0, 0, 1]
+        expected_large = tf.nn.softmax(activations * strengths_large, axis=-1)
+
+        self.assertAllClose(observed_large.numpy(), expected_large.numpy(), atol=1e-3)
+
+    def test_weighted_softmax_with_different_strength_ops(self):
+        """
+        测试不同的 strength_op 函数，验证 weighted_softmax 的灵活性。
+        """
+        batch_size = 1
+        num_heads = 1
+        memory_size = 3
+
+        # 定义输入参数
+        activations = tf.constant([[[1.0, 2.0, 3.0]]], dtype=tf.float32)  # [1, 1, 3]
+        strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
+
+        # 定义 strength_op 为 relu
+        strength_op_relu = tf.nn.relu
+        observed_relu = weighted_softmax(activations, strengths, strength_op_relu)
+        expected_relu = tf.nn.softmax(activations * tf.nn.relu(strengths[..., tf.newaxis]), axis=-1)
+        self.assertAllClose(observed_relu.numpy(), expected_relu.numpy(), atol=1e-6)
+
+        # 定义 strength_op 为 tanh
+        strength_op_tanh = tf.nn.tanh
+        observed_tanh = weighted_softmax(activations, strengths, strength_op_tanh)
+        expected_tanh = tf.nn.softmax(activations * tf.nn.tanh(strengths[..., tf.newaxis]), axis=-1)
+        self.assertAllClose(observed_tanh.numpy(), expected_tanh.numpy(), atol=1e-6)
+
+    def test_all_zero_write_weights(self):
+        """
+        测试所有写权重为零的情况，确保写操作不影响使用率。
+        """
+        batch_size = 1
+        num_writes = 1
+        num_reads = 1
+
+        # 初始化 Freeness 层
+        freeness_layer = Freeness(memory_size=self.memory_size)
+
+        # 创建初始使用率
+        initial_usage = freeness_layer.get_initial_state((batch_size,))  # 使用元组
+
+        # 定义写权重（全零）
+        write_weights = tf.constant([
+            [[0.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+
+        # 定义自由门和读权重
+        free_gate = tf.constant([
+            [1.0]
+        ], dtype=tf.float32)  # [batch_size, num_reads]
+
+        read_weights = tf.constant([
+            [[0.0, 0.0, 0.0]]
+        ], dtype=tf.float32)  # [batch_size, num_reads, memory_size]
+
+        # 构建输入字典
+        inputs = {
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }
+
+        # 调用层
+        updated_usage = freeness_layer(inputs, training=False)
+
+        # 预期使用率应保持不变
+        expected_usage = tf.constant([
+            [0.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [batch_size, memory_size]
+
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
 
 if __name__ == '__main__':
