@@ -478,12 +478,14 @@ class Freeness(tf.keras.layers.Layer):
             'usage': inputs['usage'],
             'write_gates_sum': inputs['write_gates_sum']
         }, training=training)
+        tf.print("Write weights:", write_weights)
         updated_usage = self.usage_update({
             'write_weights': write_weights,
             'free_gate': inputs['free_gate'],
             'read_weights': inputs['read_weights'],
             'prev_usage': inputs['usage']
         }, training=training)
+        tf.print("Updated usage:", updated_usage)
         return updated_usage
 
     def get_initial_state(self, batch_shape):
