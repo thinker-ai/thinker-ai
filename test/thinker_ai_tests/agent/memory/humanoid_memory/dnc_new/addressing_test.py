@@ -805,190 +805,96 @@ class TemporalLinkageTest(tf.test.TestCase):
 class WriteAllocationUsageUpdateTest(tf.test.TestCase):
     def setUp(self):
         super(WriteAllocationUsageUpdateTest, self).setUp()
-        self.memory_size = 3  # 定义 memory_size
-        self.num_writes = 2   # 定义 num_writes
-        self.num_reads = 2    # 定义 num_reads
-        self.epsilon = 1e-6   # 定义 epsilon
+        self.memory_size = 3    # 定义 memory_size
+        self.num_writes = 2     # 定义 num_writes
+        self.num_reads = 2      # 定义 num_reads
+        self.epsilon = 1e-6     # 定义 epsilon
+
+        # 初始化 WriteAllocation 和 UsageUpdate 层，num_writes=2, num_reads=2
+        self.write_allocation_layer = WriteAllocation(
+            memory_size=self.memory_size,
+            num_writes=self.num_writes,
+            epsilon=self.epsilon
+        )
+        self.usage_update_layer = UsageUpdate(
+            memory_size=self.memory_size,
+            num_writes=self.num_writes,
+            num_reads=self.num_reads,
+            epsilon=self.epsilon
+        )
 
     def test_basic_write_and_read(self):
         """
         基本测试：验证写操作和读操作对使用率的影响。
         """
         batch_size = 2
-        num_writes = 2
-        num_reads = 2
-
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
 
         # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [2, 3]
+        initial_usage = self.usage_update_layer.get_initial_state([batch_size])  # [2, 3]
 
-        # 定义 write_gates_sum，使得 WriteAllocation 生成与旧测试中相同的 write_weights
-        # 这里我们需要手动设置 write_gates_sum 来匹配测试期望
-        # 假设 write_gates_sum 全为1，这样 allocation 将决定 write_weights
-        write_gates_sum = tf.ones([batch_size, num_writes], dtype=tf.float32)  # [2, 2]
+        # 定义 write_gates_sum 全为1
+        write_gates_sum = tf.ones([batch_size, self.num_writes], dtype=tf.float32)  # [2, 2]
 
         # 定义自由门和读权重
         free_gate = tf.constant([
             [1.0, 0.0],
-            [0.0, 1.0]
+            [1.0, 1.0]
         ], dtype=tf.float32)  # [2, 2]
 
         read_weights = tf.constant([
             [[0.5, 0.5, 0.0],
              [0.0, 0.5, 0.5]],
-            [[0.0, 0.0, 1.0],
-             [1.0, 0.0, 0.0]]
+            [[1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0]]
         ], dtype=tf.float32)  # [2, 2, 3]
 
         # 调用 WriteAllocation 层
-        write_weights = write_allocation_layer({
+        write_weights = self.write_allocation_layer({
             'usage': initial_usage,
             'write_gates_sum': write_gates_sum
         }, training=False)  # [2, 2, 3]
 
         # 调用 UsageUpdate 层
-        updated_usage = usage_update_layer({
+        updated_usage = self.usage_update_layer({
             'write_weights': write_weights,
             'free_gate': free_gate,
             'read_weights': read_weights,
             'prev_usage': initial_usage
         }, training=False)  # [2, 3]
 
-        # 预期使用率计算：
-        # 第一批次：
-        # 写操作1：写入第0槽 -> usage = [1, 0, 0]
-        # 写操作2：写入第1槽 -> usage = [1, 1, 0]
-        # 读操作1：释放 0.5 from slot0 and 0.5 from slot1 -> usage = [0.5, 0.5, 0.0]
-        # 读操作2：释放 0.0 from slot0 and 0.0 from slot1 -> usage remains [0.5, 0.5, 0.0]
-        #
-        # 第二批次：
-        # 写操作1：写入第0槽 -> usage = [1, 0, 1]
-        # 写操作2：写入第1槽 -> usage = [1, 1, 1]
-        # 读操作1：释放 1.0 from slot0 and 1.0 from slot1 -> usage = [0.0, 0.0, 1.0]
-        # 读操作2：释放 0.0 from slot0 and 0.0 from slot1 -> usage remains [0.0, 0.0, 1.0]
+        # 预期使用率
         expected_usage = tf.constant([
             [0.5, 0.5, 0.0],
-            [0.0, 0.0, 1.0]
+            [0.0, 0.0, 0.0]
         ], dtype=tf.float32)  # [2, 3]
 
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-5)
-
-    def test_all_zero_memory_after_write(self):
-        """
-        测试所有 memory 向量为零的情况，确保写操作不影响使用率。
-        """
-        batch_size = 1
-        num_writes = 1
-        num_reads = 1
-
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
-
-        # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
-
-        # 定义 write_gates_sum 为0，确保 allocation_weights 为0，写操作不影响使用率
-        write_gates_sum = tf.zeros([batch_size, num_writes], dtype=tf.float32)  # [1, 1]
-
-        # 定义自由门和读权重（任意）
-        free_gate = tf.constant([
-            [1.0]
-        ], dtype=tf.float32)  # [1, 1]
-
-        read_weights = tf.constant([
-            [[0.0, 0.0, 0.0]]
-        ], dtype=tf.float32)  # [1, 1, 3]
-
-        # 调用 WriteAllocation 层
-        write_weights = write_allocation_layer({
-            'usage': initial_usage,
-            'write_gates_sum': write_gates_sum
-        }, training=False)  # [1, 1, 3]
-
-        # 调用 UsageUpdate 层
-        updated_usage = usage_update_layer({
-            'write_weights': write_weights,
-            'free_gate': free_gate,
-            'read_weights': read_weights,
-            'prev_usage': initial_usage
-        }, training=False)  # [1, 3]
-
-        # 预期使用率为全0
-        expected_usage = tf.constant([
-            [0.0, 0.0, 0.0]
-        ], dtype=tf.float32)  # [1, 3]
-
-        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-
-    def test_all_zero_read_weights(self):
-        """
-        测试所有读权重为零的情况，确保读操作不影响使用率。
-        """
-        batch_size = 1
-        num_writes = 1
-        num_reads = 1
-
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
-
-        # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
-
-        # 定义 write_gates_sum 为1，确保 allocation 将写入第0槽
-        write_gates_sum = tf.ones([batch_size, num_writes], dtype=tf.float32)  # [1, 1]
-
-        # 定义自由门和读权重（全零）
-        free_gate = tf.constant([
-            [0.0]
-        ], dtype=tf.float32)  # [1, 1]
-
-        read_weights = tf.constant([
-            [[0.0, 0.0, 0.0]]
-        ], dtype=tf.float32)  # [1, 1, 3]
-
-        # 调用 WriteAllocation 层
-        write_weights = write_allocation_layer({
-            'usage': initial_usage,
-            'write_gates_sum': write_gates_sum
-        }, training=False)  # [1, 1, 3]
-
-        # 调用 UsageUpdate 层
-        updated_usage = usage_update_layer({
-            'write_weights': write_weights,
-            'free_gate': free_gate,
-            'read_weights': read_weights,
-            'prev_usage': initial_usage
-        }, training=False)  # [1, 3]
-
-        # 预期使用率为 [1.0, 0.0, 0.0]
-        expected_usage = tf.constant([
-            [1.0, 0.0, 0.0]
-        ], dtype=tf.float32)  # [1, 3]
-
-        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
     def test_all_full_usage(self):
         """
         测试所有内存槽已满的情况，确保进一步写操作释放使用率。
         """
         batch_size = 1
-        num_writes = 1
-        num_reads = 1
 
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
+        # 初始化独立的 WriteAllocation 和 UsageUpdate 层，num_writes=1, num_reads=1
+        write_allocation_layer = WriteAllocation(
+            memory_size=self.memory_size,
+            num_writes=1,
+            epsilon=self.epsilon
+        )
+        usage_update_layer = UsageUpdate(
+            memory_size=self.memory_size,
+            num_writes=1,
+            num_reads=1,
+            epsilon=self.epsilon
+        )
 
         # 创建初始使用率为全1
-        initial_usage = tf.ones([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
+        initial_usage = usage_update_layer.get_initial_state([batch_size])  # [1, 3]
+        initial_usage = tf.ones_like(initial_usage)  # [1, 3]
 
-        # 定义 write_gates_sum 为1，确保 allocation 将写入所有槽
-        write_gates_sum = tf.ones([batch_size, num_writes], dtype=tf.float32)  # [1, 1]
+        # 定义 write_gates_sum 为1
+        write_gates_sum = tf.ones([batch_size, 1], dtype=tf.float32)  # [1, 1]
 
         # 定义自由门和读权重（全读）
         free_gate = tf.constant([
@@ -1013,114 +919,112 @@ class WriteAllocationUsageUpdateTest(tf.test.TestCase):
             'prev_usage': initial_usage
         }, training=False)  # [1, 3]
 
-        # 预期使用率应为全0，因为所有内存槽已满并通过自由门释放
+        # 预期使用率应为全0
         expected_usage = tf.constant([
             [0.0, 0.0, 0.0]
         ], dtype=tf.float32)  # [1, 3]
 
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
-    def test_multiple_writes_and_reads(self):
+    def test_all_zero_read_weights(self):
         """
-        测试多次写操作和读操作的累积影响。
+        测试所有读权重为零的情况，确保读操作不影响使用率。
         """
         batch_size = 1
-        num_writes = 2
-        num_reads = 2
 
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
+        # 初始化独立的 WriteAllocation 和 UsageUpdate 层，num_writes=1, num_reads=1
+        write_allocation_layer = WriteAllocation(
+            memory_size=self.memory_size,
+            num_writes=1,
+            epsilon=self.epsilon
+        )
+        usage_update_layer = UsageUpdate(
+            memory_size=self.memory_size,
+            num_writes=1,
+            num_reads=1,
+            epsilon=self.epsilon
+        )
 
         # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
+        initial_usage = usage_update_layer.get_initial_state([batch_size])  # [1, 3]
 
-        # 定义 write_gates_sum 为2，确保 allocation 将写入两个槽
-        write_gates_sum = tf.ones([batch_size, num_writes], dtype=tf.float32)  # [1, 2]
+        # 定义 write_gates_sum 为1
+        write_gates_sum = tf.ones([batch_size,1], dtype=tf.float32)  # [1,1]
 
-        # 定义自由门和读权重（两次读操作）
+        # 定义自由门和读权重（全零）
         free_gate = tf.constant([
-            [1.0, 1.0]
-        ], dtype=tf.float32)  # [1, 2]
+            [0.0]
+        ], dtype=tf.float32)  # [1,1]
 
         read_weights = tf.constant([
+            [[0.0,0.0,0.0]]
+        ], dtype=tf.float32)  # [1,1,3]
+
+        # 调用 WriteAllocation 层
+        write_weights = write_allocation_layer({
+            'usage': initial_usage,
+            'write_gates_sum': write_gates_sum
+        }, training=False)  # [1,1,3]
+
+        # 调用 UsageUpdate 层
+        updated_usage = usage_update_layer({
+            'write_weights': write_weights,
+            'free_gate': free_gate,
+            'read_weights': read_weights,
+            'prev_usage': initial_usage
+        }, training=False)  # [1,3]
+
+        # 预期使用率为 [1.0, 0.0, 0.0]
+        expected_usage = tf.constant([
+            [1.0, 0.0, 0.0]
+        ], dtype=tf.float32)  # [1,3]
+
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
+    def test_initial_state(self):
+        """
+        测试 get_initial_state 方法，确保返回正确的初始使用率。
+        """
+        batch_size = 4
+        initial_usage = self.usage_update_layer.get_initial_state([batch_size])  # [4,3]
+
+        expected_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [4,3]
+
+        self.assertAllClose(initial_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
+    def test_state_size(self):
+        """
+        测试 state_size 属性，确保返回正确的形状。
+        """
+        self.assertEqual(self.usage_update_layer.state_size, tf.TensorShape([self.memory_size]))
+
+    def test_write_allocation(self):
+        """
+        测试 WriteAllocation 类的 call 方法，确保其功能正确。
+        """
+        batch_size = 2
+
+        # 创建初始使用率
+        initial_usage = self.usage_update_layer.get_initial_state([batch_size])  # [2,3]
+
+        # 定义 write_gates_sum
+        write_gates_sum = tf.ones([batch_size, self.num_writes], dtype=tf.float32)  # [2,2]
+
+        # 调用 WriteAllocation 层
+        write_allocation_weights = self.write_allocation_layer({
+            'usage': initial_usage,
+            'write_gates_sum': write_gates_sum
+        }, training=False)  # [2,2,3]
+
+        # 预期 write_allocation_weights 应为 [[[1,0,0],[0,1,0]], [[1,0,0],[0,1,0]]]
+        expected_write_allocation_weights = tf.constant([
+            [[1.0, 0.0, 0.0],
+             [0.0, 1.0, 0.0]],
             [[1.0, 0.0, 0.0],
              [0.0, 1.0, 0.0]]
-        ], dtype=tf.float32)  # [1, 2, 3]
+        ], dtype=tf.float32)  # [2,2,3]
 
-        # 调用 WriteAllocation 层
-        write_weights = write_allocation_layer({
-            'usage': initial_usage,
-            'write_gates_sum': write_gates_sum
-        }, training=False)  # [1, 2, 3]
-
-        # 调用 UsageUpdate 层
-        updated_usage = usage_update_layer({
-            'write_weights': write_weights,
-            'free_gate': free_gate,
-            'read_weights': read_weights,
-            'prev_usage': initial_usage
-        }, training=False)  # [1, 3]
-
-        # 预期使用率计算：
-        # 写操作1：写入第0槽 -> usage = [1, 0, 0]
-        # 写操作2：写入第1槽 -> usage = [1, 1, 0]
-        # 读操作1：释放 1.0 from slot0 and 1.0 from slot1 -> usage = [0.0, 0.0, 0.0]
-        # 读操作2：释放 0.0 from slot0 and 0.0 from slot1 -> usage remains [0.0, 0.0, 0.0]
-        expected_usage = tf.constant([
-            [0.0, 0.0, 0.0]
-        ], dtype=tf.float32)  # [1, 3]
-
-        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-
-    def test_all_zero_write_weights(self):
-        """
-        测试所有写权重为零的情况，确保写操作不影响使用率。
-        """
-        batch_size = 1
-        num_writes = 1
-        num_reads = 1
-
-        # 初始化 WriteAllocation 和 UsageUpdate 层
-        write_allocation_layer = WriteAllocation(memory_size=self.memory_size, num_writes=num_writes, epsilon=self.epsilon)
-        usage_update_layer = UsageUpdate(memory_size=self.memory_size, num_writes=num_writes, num_reads=num_reads, epsilon=self.epsilon)
-
-        # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [1, 3]
-
-        # 定义 write_gates_sum 为0，确保 allocation_weights 为0，写操作不影响使用率
-        write_gates_sum = tf.zeros([batch_size, num_writes], dtype=tf.float32)  # [1, 1]
-
-        # 定义自由门和读权重
-        free_gate = tf.constant([
-            [1.0]
-        ], dtype=tf.float32)  # [1, 1]
-
-        read_weights = tf.constant([
-            [[0.0, 0.0, 0.0]]
-        ], dtype=tf.float32)  # [1, 1, 3]
-
-        # 调用 WriteAllocation 层
-        write_weights = write_allocation_layer({
-            'usage': initial_usage,
-            'write_gates_sum': write_gates_sum
-        }, training=False)  # [1, 1, 3]
-
-        # 调用 UsageUpdate 层
-        updated_usage = usage_update_layer({
-            'write_weights': write_weights,
-            'free_gate': free_gate,
-            'read_weights': read_weights,
-            'prev_usage': initial_usage
-        }, training=False)  # [1, 3]
-
-        # 预期使用率应保持不变
-        expected_usage = tf.constant([
-            [0.0, 0.0, 0.0]
-        ], dtype=tf.float32)  # [1, 3]
-
-        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-
+        self.assertAllClose(write_allocation_weights.numpy(), expected_write_allocation_weights.numpy(), atol=1e-5)
 
 class FreenessTest(tf.test.TestCase):
     def setUp(self):

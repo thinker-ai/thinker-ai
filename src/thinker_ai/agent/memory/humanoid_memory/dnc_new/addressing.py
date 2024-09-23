@@ -137,7 +137,7 @@ class CosineWeights(tf.keras.layers.Layer):
 
         # 计算余弦相似度
         normed_scores = scores / (
-                    memory_norms_expanded * keys_norms_expanded + self._epsilon)  # [batch_shape..., num_heads, memory_size]
+                memory_norms_expanded * keys_norms_expanded + self._epsilon)  # [batch_shape..., num_heads, memory_size]
 
         # 使用 strengths 调整相似度，并通过 weighted_softmax 得到权重
         weights = weighted_softmax(normed_scores, strengths,
@@ -291,18 +291,14 @@ class TemporalLinkage(tf.keras.layers.Layer):
         }
 
 
-import tensorflow as tf
-
 class WriteAllocation(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, epsilon=1e-6, name='write_allocation'):
         super(WriteAllocation, self).__init__(name=name)
         self._memory_size = memory_size
         self._num_writes = num_writes
         self._epsilon = epsilon
-        self.batch_dims = 1  # 假设 usage 的形状为 [batch_size, memory_size]
 
     def build(self, input_shape):
-        # input_shape 是一个字典，包含 'usage' 和 'write_gates_sum'
         usage_shape = input_shape['usage']  # [batch_size, memory_size]
         if isinstance(usage_shape, tf.TensorShape):
             self.batch_dims = len(usage_shape) - 1
@@ -316,17 +312,14 @@ class WriteAllocation(tf.keras.layers.Layer):
         usage = inputs['usage']  # [batch_size, memory_size]
         write_gates_sum = inputs['write_gates_sum']  # [batch_size, num_writes]
 
-        # 计算写操作的分配权重
-        allocation = self._allocation(usage)  # [batch_size, memory_size]
-
-        # 扩展 allocation 以匹配 write_gates_sum 的维度
-        allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_size, 1, memory_size]
-
-        # 计算 allocation_weights
-        allocation_weights = allocation_expanded * tf.ones_like(write_gates_sum[..., tf.newaxis])  # [batch_size, num_writes, memory_size]
+        # 逐批次分配写操作
+        allocations = self._allocation(usage)  # [batch_size, num_writes, memory_size]
 
         # 根据 write_gates_sum 调整 allocation_weights
-        write_allocation_weights = write_gates_sum[..., tf.newaxis] * allocation_weights  # [batch_size, num_writes, memory_size]
+        # write_gates_sum: [batch_size, num_writes]
+        # allocations: [batch_size, num_writes, memory_size]
+        write_gates_sum_expanded = tf.expand_dims(write_gates_sum, axis=-1)  # [batch_size, num_writes, 1]
+        write_allocation_weights = write_gates_sum_expanded * allocations  # [batch_size, num_writes, memory_size]
 
         tf.print("Write allocation weights:", write_allocation_weights)
 
@@ -334,23 +327,41 @@ class WriteAllocation(tf.keras.layers.Layer):
 
     def _allocation(self, usage):
         """
-        将写操作分配到最少使用的内存槽。
+        逐批次分配写操作到最少使用的内存槽，确保每个写操作分配到不同的槽。
         """
-        # 找到 top-k 最少使用的内存槽的索引
-        sorted_nonusage, indices = tf.nn.top_k(1 - usage, k=self._num_writes, sorted=False)  # [batch_size, num_writes]
 
-        # 创建 one-hot 编码
-        allocated = tf.one_hot(indices, depth=self._memory_size, dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+        def allocate_per_batch(single_usage):
+            """
+            为单个批次分配写操作。
+            """
+            allocations = []
+            current_usage = single_usage  # [memory_size]
 
-        # 将多个写操作的分配叠加
-        allocation = tf.reduce_sum(allocated, axis=1)  # [batch_size, memory_size]
+            for _ in range(self._num_writes):
+                adjusted_usage = self._epsilon + (1 - self._epsilon) * current_usage
+                nonusage = 1 - adjusted_usage  # [memory_size]
 
-        # 确保分配权重不超过 1.0
-        allocation = tf.clip_by_value(allocation, 0.0, 1.0)
+                # 找到当前最少使用的槽的索引
+                _, idx = tf.nn.top_k(nonusage, k=1, sorted=True)  # [1]
+                allocation = tf.one_hot(idx[0], depth=self._memory_size, dtype=tf.float32)  # [memory_size]
 
-        tf.print("Allocation:", allocation)
+                allocations.append(allocation)
 
-        return allocation  # [batch_size, memory_size]
+                # 更新使用率，防止多个写操作分配到同一槽
+                current_usage += allocation  # [memory_size]
+
+            allocations = tf.stack(allocations, axis=0)  # [num_writes, memory_size]
+            return allocations  # [num_writes, memory_size]
+
+        # 使用 tf.map_fn 对每个批次进行分配
+        allocations = tf.map_fn(
+            allocate_per_batch,
+            usage,
+            dtype=tf.float32
+        )  # [batch_size, num_writes, memory_size]
+
+        return allocations
+
 
 class UsageUpdate(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, num_reads, epsilon=1e-6, name='usage_update'):
@@ -365,25 +376,40 @@ class UsageUpdate(tf.keras.layers.Layer):
         super(UsageUpdate, self).build(input_shape)
 
     def call(self, inputs, training=False):
-        write_weights = inputs['write_weights']      # [batch_size, num_writes, memory_size]
-        free_gate = inputs['free_gate']              # [batch_size, num_reads]
-        read_weights = inputs['read_weights']        # [batch_size, num_reads, memory_size]
-        prev_usage = inputs['prev_usage']            # [batch_size, memory_size]
+        write_weights = inputs['write_weights']  # [batch_size, num_writes, memory_size]
+        free_gate = inputs['free_gate']  # [batch_size, num_reads]
+        read_weights = inputs['read_weights']  # [batch_size, num_reads, memory_size]
+        prev_usage = inputs['prev_usage']  # [batch_size, memory_size]
 
         # 计算写操作后的使用率
         usage_after_write = self._usage_after_write(prev_usage, write_weights)  # [batch_size, memory_size]
-
         tf.print("Usage after write:", usage_after_write)
 
         # 计算读操作后的使用率
-        usage_after_read = self._usage_after_read(usage_after_write, free_gate, read_weights)  # [batch_size, memory_size]
-
+        usage_after_read = self._usage_after_read(usage_after_write, free_gate,
+                                                  read_weights)  # [batch_size, memory_size]
         tf.print("Usage after read:", usage_after_read)
 
         # 裁剪使用率到 [0, 1]
         clipped_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)
-
         tf.print("Clipped usage:", clipped_usage)
+
+        # 计算总写入权重
+        total_write = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
+        tf.print("Usage total write:", total_write)
+
+        # 计算总读出权重
+        total_read = tf.reduce_sum(read_weights * tf.expand_dims(free_gate, axis=-1),
+                                   axis=1)  # [batch_size, memory_size]
+        tf.print("Usage total read:", total_read)
+
+        # 更新使用率
+        updated_usage = prev_usage + total_write - total_read
+        tf.print("Updated total usage:", updated_usage)
+
+        # Clip usage to [0, 1] to prevent negative values
+        clip_updated_usage = tf.clip_by_value(updated_usage, 0.0, 1.0)
+        tf.print("Clip updated total usage:", clip_updated_usage)
 
         return clipped_usage  # [batch_size, memory_size]
 
@@ -423,158 +449,9 @@ class UsageUpdate(tf.keras.layers.Layer):
 
         return updated_usage
 
-class Freeness(tf.keras.layers.Layer):
-    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='freeness'):
-        super(Freeness, self).__init__(name=name)
-        self._memory_size = memory_size
-        self._num_writes = num_writes
-        self._epsilon = epsilon
-
-    def build(self, input_shape):
-        # 假设 input_shape 是 usage 的形状，即 [batch_size, memory_size]
-        if isinstance(input_shape, tuple):
-            self.batch_dims = len(input_shape) - 1
-        else:
-            self.batch_dims = 1  # 默认设置
-        super(Freeness, self).build(input_shape)
-
-    def call(self, inputs, training=False):
-        write_weights = inputs['write_weights']  # [batch_shape..., num_writes, memory_size]
-        free_gate = inputs['free_gate']  # [batch_shape..., num_reads]
-        read_weights = inputs['read_weights']  # [batch_shape..., num_reads, memory_size]
-        prev_usage = inputs['prev_usage']  # [batch_shape..., memory_size]
-
-        # 更新使用率：先处理写操作，再处理读操作
-        usage_after_write = self._usage_after_write(prev_usage, write_weights)  # [batch_shape..., memory_size]
-        tf.print("Usage after write:", usage_after_write)
-
-        usage_after_read = self._usage_after_read(usage_after_write, free_gate,
-                                                  read_weights)  # [batch_shape..., memory_size]
-        tf.print("Usage after read:", usage_after_read)
-
-        # 裁剪使用率到 [0, 1]
-        clipped_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)
-        tf.print("Clipped usage:", clipped_usage)
-
-        # 计算总写入权重
-        total_write = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
-        tf.print("Usage total write:", total_write)
-
-        # 计算总读出权重
-        total_read = tf.reduce_sum(read_weights * tf.expand_dims(free_gate, axis=-1),
-                                   axis=1)  # [batch_size, memory_size]
-        tf.print("Usage total read:", total_read)
-
-        # 更新使用率
-        updated_usage = prev_usage + total_write - total_read
-        tf.print("Updated total usage:", updated_usage)
-
-        # Clip usage to [0, 1] to prevent negative values
-        clip_updated_usage = tf.clip_by_value(updated_usage, 0.0, 1.0)
-        tf.print("Clip updated total usage:", clip_updated_usage)
-
-        return clipped_usage  # [batch_shape..., memory_size]
-
-    def _usage_after_write(self, usage, write_weights):
-        """
-        计算写操作后内存的使用率。
-
-        Args:
-            usage (tf.Tensor): 当前使用率，形状为 [batch_shape..., memory_size]
-            write_weights (tf.Tensor): 写权重，形状为 [batch_shape..., num_writes, memory_size]
-
-        Returns:
-            tf.Tensor: 写操作后的使用率，形状为 [batch_shape..., memory_size]
-        """
-        # 计算每个内存槽被任一写操作写入的概率
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=-2)  # [batch_shape..., memory_size]
-        write_allocation = 1 - write_weights_cumprod  # [batch_shape..., memory_size]
-
-        # 更新使用率：增加被写入的内存槽，同时保持已使用的部分
-        updated_usage = usage + (1 - usage) * write_allocation  # [batch_shape..., memory_size]
-        tf.print("Updated usage after write:", updated_usage)
-        return updated_usage
-
-    def _usage_after_read(self, usage, free_gate, read_weights):
-        """
-        计算读操作后内存的使用率。
-
-        Args:
-            usage (tf.Tensor): 写操作后的使用率，形状为 [batch_shape..., memory_size]
-            free_gate (tf.Tensor): 自由门，形状为 [batch_shape..., num_reads]
-            read_weights (tf.Tensor): 读权重，形状为 [batch_shape..., num_reads, memory_size]
-
-        Returns:
-            tf.Tensor: 读操作后的使用率，形状为 [batch_shape..., memory_size]
-        """
-        # 扩展 free_gate 的维度以匹配 read_weights
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [batch_shape..., num_reads, 1]
-
-        # 计算自由读权重
-        free_read_weights = free_gate_expanded * read_weights  # [batch_shape..., num_reads, memory_size]
-
-        # 计算每个内存槽因自由读操作释放的使用率
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=-2)  # [batch_shape..., memory_size]
-
-        # 更新使用率：减少被自由读释放的部分
-        updated_usage = usage - total_free_read_weights  # [batch_shape..., memory_size]
-        updated_usage = tf.maximum(updated_usage, 0.0)  # 确保不低于0
-        tf.print("Updated usage after read:", updated_usage)
-        return updated_usage
-
-    def _allocation(self, usage):
-        """
-        计算内存分配权重。
-
-        Args:
-            usage: 形状为 [batch_size, memory_size] 的张量，表示当前的内存使用情况。
-
-        Returns:
-            形状为 [batch_size, memory_size] 的张量，表示分配权重。
-        """
-        # 直接从 usage 的形状中计算 batch_dims
-        batch_dims = len(usage.shape) - 1
-
-        adjusted_usage = self._epsilon + (1 - self._epsilon) * usage  # [batch_shape..., memory_size]
-        nonusage = 1 - adjusted_usage  # [batch_shape..., memory_size]
-
-        # 对 nonusage 进行降序排序并获取索引
-        sorted_nonusage, indices = tf.nn.top_k(nonusage, k=self._memory_size, sorted=True)
-
-        sorted_usage = 1 - sorted_nonusage
-        cumprod_sorted_usage = tf.math.cumprod(sorted_usage + self._epsilon, axis=-1, exclusive=True)
-        sorted_allocation = sorted_nonusage * cumprod_sorted_usage
-
-        # 恢复原始顺序
-        inverse_indices = tf.argsort(indices, axis=-1)
-        allocation = tf.gather(sorted_allocation, inverse_indices, batch_dims=batch_dims)
-
-        return allocation
-
-    def write_allocation_weights(self, usage, write_gates):
-        """
-        计算写操作的分配权重。
-        """
-        write_gates_expanded = tf.expand_dims(write_gates, axis=-1)  # [batch_size, num_writes, 1]
-
-        # 计算 allocation
-        allocation = self._allocation(usage)  # [batch_size, memory_size]
-        allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_size, 1, memory_size]
-
-        # 计算 allocation_weights
-        allocation_weights = allocation_expanded * tf.ones_like(
-            write_gates_expanded)  # [batch_size, num_writes, memory_size]
-
-        # 根据 write_gates 调整 allocation_weights
-        write_allocation_weights = write_gates_expanded * allocation_weights  # [batch_size, num_writes, memory_size]
-
-        tf.print("Write allocation weights:", write_allocation_weights)
-
-        return write_allocation_weights
-
     def get_initial_state(self, batch_shape):
         """
-        返回 Freeness 模块的初始状态。
+        返回 UsageUpdate 层的初始状态。
 
         Args:
             batch_shape (tuple or list): 批次形状，不包括 memory_size。
@@ -588,3 +465,30 @@ class Freeness(tf.keras.layers.Layer):
     @property
     def state_size(self):
         return tf.TensorShape([self._memory_size])
+
+
+class Freeness(tf.keras.layers.Layer):
+    def __init__(self, memory_size, num_writes, num_reads, epsilon=1e-6, name='freeness'):
+        super(Freeness, self).__init__(name=name)
+        self.write_allocation = WriteAllocation(memory_size, num_writes, epsilon)
+        self.usage_update = UsageUpdate(memory_size, num_writes, num_reads, epsilon)
+
+    def call(self, inputs, training=False):
+        write_weights = self.write_allocation({
+            'usage': inputs['usage'],
+            'write_gates_sum': inputs['write_gates_sum']
+        }, training=training)
+        updated_usage = self.usage_update({
+            'write_weights': write_weights,
+            'free_gate': inputs['free_gate'],
+            'read_weights': inputs['read_weights'],
+            'prev_usage': inputs['usage']
+        }, training=training)
+        return updated_usage
+
+    def get_initial_state(self, batch_shape):
+        return self.usage_update.get_initial_state(batch_shape)
+
+    @property
+    def state_size(self):
+        return self.usage_update.state_size
