@@ -113,6 +113,7 @@ class MemoryAccess(tf.keras.layers.Layer):
         # 初始化其他子层
         self.write_content_weights = CosineWeights(num_heads=self.num_writes, word_size=self.word_size)
         self.read_content_weights = CosineWeights(num_heads=self.num_reads, word_size=self.word_size)
+        self.temporal_linkage = TemporalLinkage(memory_size=self.memory_size,num_writes=self.num_writes,name='temporal_linkage')
         self.write_allocation = WriteAllocation(memory_size=self.memory_size, num_writes=self.num_writes, epsilon=self.epsilon, name='write_allocation')
         self.usage_update = UsageUpdate(memory_size=self.memory_size, num_writes=self.num_writes, num_reads=self.num_reads, epsilon=self.epsilon, name='usage_update')
 
