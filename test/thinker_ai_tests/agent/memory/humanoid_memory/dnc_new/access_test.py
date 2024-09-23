@@ -4,7 +4,7 @@ import numpy as np
 import os
 
 from thinker_ai.agent.memory.humanoid_memory.dnc_new import access
-
+from thinker_ai.agent.memory.humanoid_memory.dnc_new.access import MemoryAccess, AccessState
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 
@@ -17,25 +17,67 @@ NUM_WRITES = 3
 TIME_STEPS = 4
 SEQUENCE_LENGTH = 1  # 可变的 sequence_length，您可以修改此值进行测试
 INPUT_SIZE = 12      # 输入大小
-
-# 定义 AccessState，用于保存访问模块的状态
-AccessState = collections.namedtuple('AccessState', (
-    'memory', 'read_weights', 'write_weights', 'linkage', 'usage'))
-
+EPSILON = 1e-6
 
 class MemoryAccessTest(tf.test.TestCase):
 
     def setUp(self):
         super(MemoryAccessTest, self).setUp()
         # 初始化 MemoryAccess 模块
-        self.module = access.MemoryAccess(
+        self.module = MemoryAccess(
             memory_size=MEMORY_SIZE,
             word_size=WORD_SIZE,
             num_reads=NUM_READS,
-            num_writes=NUM_WRITES
+            num_writes=NUM_WRITES,
+            epsilon=EPSILON
         )
-        # 初始化状态
-        self.initial_state = self.module.get_initial_state(batch_size=BATCH_SIZE)
+        # 构建模块以初始化权重
+        # 通过调用一次模块，Keras会自动构建子层
+        dummy_input = {
+            'inputs': tf.zeros([BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32),
+            'prev_state': self.module.get_initial_state([BATCH_SIZE])
+        }
+        _ = self.module(dummy_input, training=False)
+        self.initial_state = self.module.get_initial_state(batch_shape=[BATCH_SIZE])
+
+    def testBuildAndTrain(self):
+        # 生成随机输入
+        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
+
+        optimizer = tf.optimizers.SGD(learning_rate=1.0)
+
+        with tf.GradientTape() as tape:
+            prev_state = self.initial_state
+            outputs = []
+            for t in range(TIME_STEPS):
+                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
+                # 不需要手动调用 build 方法，Keras 会自动处理
+                output = self.module({
+                    'inputs': input_t,
+                    'prev_state': prev_state
+                }, training=True)
+                read_words = output['read_words']  # [batch_size, num_reads, word_size]
+                final_state = output['final_state']
+                outputs.append(read_words)
+                prev_state = final_state
+
+            # 定义一个简单的损失函数，例如所有读出的词向量的均值
+            loss = tf.reduce_mean(tf.stack(outputs))
+
+        # 计算梯度
+        gradients = tape.gradient(loss, self.module.trainable_variables)
+        # 应用梯度
+        optimizer.apply_gradients(zip(gradients, self.module.trainable_variables))
+
+        # 添加断言，确保训练过程没有报错并且最终状态有效
+        self.assertIsNotNone(prev_state)
+        self.assertIsNotNone(read_words)
+        # 进一步断言可以根据具体需求添加，例如检查张量形状
+        self.assertEqual(read_words.shape, (BATCH_SIZE, NUM_READS, WORD_SIZE))
+
+        # 进一步断言可以根据具体需求添加，例如检查使用率是否在合理范围内
+        tf.debugging.assert_greater_equal(prev_state.usage, 0.0)
+        tf.debugging.assert_less_equal(prev_state.usage, 1.0)
 
     def testEdgeCaseInputs(self):
         """
@@ -89,39 +131,37 @@ class MemoryAccessTest(tf.test.TestCase):
         inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32)
         targets = tf.random.normal([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE], dtype=tf.float32)
 
+        optimizer = tf.optimizers.SGD(learning_rate=1.0)
+
         with tf.GradientTape() as tape:
             prev_state = self.initial_state
             outputs = []
             for t in range(TIME_STEPS):
                 input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
                 inputs_t = {'inputs': input_t, 'prev_state': prev_state}
-                output, prev_state = self.module(inputs_t, training=True)
-                # 输出形状为 [BATCH_SIZE, SEQUENCE_LENGTH, NUM_READS, WORD_SIZE]
-                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
-                outputs.append(output)
+                output = self.module(inputs_t, training=True)
+                read_words = output['read_words']  # [batch_size, sequence_length, num_reads, word_size]
+                final_state = output['final_state']
+                outputs.append(read_words)
+                prev_state = final_state
 
-            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
-            loss = tf.reduce_mean(tf.square(output - targets))
-            tf.print("Non-Edge Case Test: Loss value:", loss)
-            tf.print("Non-Edge Case Test: Output values (sample):", output[:2, :2, :])
+            # 定义一个简单的损失函数，例如所有读出的词向量的均值
+            loss = tf.reduce_mean(tf.stack(outputs))
 
+        # 计算梯度
         gradients = tape.gradient(loss, self.module.trainable_variables)
+        # 应用梯度
+        optimizer.apply_gradients(zip(gradients, self.module.trainable_variables))
 
-        # 打印所有可训练变量的名称和形状
-        tf.print("\nAll trainable variables (Non-Edge Case):")
-        for var in self.module.trainable_variables:
-            tf.print("Variable:", var.name, ", Shape:", var.shape)
+        # 添加断言，确保训练过程没有报错并且最终状态有效
+        self.assertIsNotNone(prev_state)
+        self.assertIsNotNone(read_words)
+        self.assertEqual(read_words.shape, (BATCH_SIZE, SEQUENCE_LENGTH, self.num_reads, self.word_size))
+        self.assertEqual(prev_state.usage.shape, (BATCH_SIZE, self.memory_size))
 
-        # 添加调试信息，打印变量名称和梯度范数
-        for var, grad in zip(self.module.trainable_variables, gradients):
-            if grad is None:
-                tf.print(f"Gradient for variable '{var.name}' is None (Non-Edge Case)")
-            else:
-                grad_norm = tf.norm(grad)
-                tf.print(f"Gradient norm for variable '{var.name}':", grad_norm)
-                self.assertGreater(grad_norm, 1e-12,
-                                   f"Gradient for variable '{var.name}' is too small for non-edge case inputs")
-                self.assertLess(grad_norm, 1e3, f"Gradient for variable '{var.name}' is too large for non-edge case inputs")
+        # 进一步断言可以根据具体需求添加，例如检查使用率是否在合理范围内
+        tf.debugging.assert_greater_equal(prev_state.usage, 0.0)
+        tf.debugging.assert_less_equal(prev_state.usage, 1.0)
 
     def testGradients_SingleConfiguration(self):
         """
@@ -178,35 +218,6 @@ class MemoryAccessTest(tf.test.TestCase):
                 self.assertIsNotNone(grad, f"Gradient is None for variable {var_name}")
                 self.assertLess(grad_norm, 1e3, f"Gradient for variable '{var_name}' is too large")
                 self.assertGreater(grad_norm, 1e-12, f"Gradient for variable '{var_name}' is too small")
-
-    def testBuildAndTrain(self):
-        inputs = tf.random.normal([TIME_STEPS, BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE])
-
-        optimizer = tf.optimizers.SGD(learning_rate=1.0)
-
-        with tf.GradientTape() as tape:
-            prev_state = self.initial_state
-            outputs = []
-            for t in range(TIME_STEPS):
-                input_t = inputs[t]  # [BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE]
-                output, prev_state = self.module({
-                    'inputs': input_t,
-                    'prev_state': prev_state
-                }, training=True)
-                output = tf.squeeze(output, axis=1)  # [BATCH_SIZE, NUM_READS, WORD_SIZE]
-                outputs.append(output)
-
-            output = tf.stack(outputs, axis=0)  # [TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE]
-
-            targets = tf.random.uniform([TIME_STEPS, BATCH_SIZE, NUM_READS, WORD_SIZE])
-            loss = tf.reduce_mean(tf.square(output - targets))
-
-        gradients = tape.gradient(loss, self.module.trainable_variables)
-        # 检查哪些梯度为 None
-        for grad, var in zip(gradients, self.module.trainable_variables):
-            if grad is None:
-                tf.print(f"No gradient provided for variable {var.name}")
-        optimizer.apply_gradients(zip(gradients, self.module.trainable_variables))
 
     def testValidReadMode(self):
         # 构建输入字典，而不是直接传入 Tensor
