@@ -4,9 +4,11 @@ import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 
+
 # 配置类，用于动态调整 epsilon 等参数
 class Config:
     epsilon = 1e-6  # 可调整的全局 epsilon 值
+
 
 # 定义 TemporalLinkageState，用于跟踪记忆链路
 TemporalLinkageState = collections.namedtuple('TemporalLinkageState', ('link', 'precedence_weights'))
@@ -42,6 +44,7 @@ def _vector_norms(m, epsilon=None):
     squared_norms = tf.reduce_sum(m * m, axis=-1, keepdims=True)
     return tf.sqrt(squared_norms + epsilon)
 
+
 def weighted_softmax(scores, weights, strength_op=tf.nn.softplus):
     """
     计算加权的 softmax。
@@ -70,6 +73,7 @@ def weighted_softmax(scores, weights, strength_op=tf.nn.softplus):
     normalized_weights = tf.nn.softmax(weighted_scores, axis=-1)  # [batch_shape..., num_heads, memory_size]
 
     return normalized_weights
+
 
 class CosineWeights(tf.keras.layers.Layer):
     def __init__(self, num_heads, word_size, epsilon=1e-6, strength_op=tf.nn.softplus, name='cosine_weights'):
@@ -104,9 +108,9 @@ class CosineWeights(tf.keras.layers.Layer):
             tf.Tensor: 计算得到的权重，形状为 [batch_shape..., num_heads, memory_size]
         """
         # 从输入中提取 memory（存储器）、keys（查询向量）和 strengths（强度）
-        memory = inputs['memory']          # [batch_shape..., memory_size, word_size]
-        keys = inputs['keys']              # [batch_shape..., num_heads, word_size]
-        strengths = inputs['strengths']    # [batch_shape..., num_heads]
+        memory = inputs['memory']  # [batch_shape..., memory_size, word_size]
+        keys = inputs['keys']  # [batch_shape..., num_heads, word_size]
+        strengths = inputs['strengths']  # [batch_shape..., num_heads]
 
         # 获取张量的秩（维度数）
         memory_rank = tf.rank(memory)
@@ -118,26 +122,29 @@ class CosineWeights(tf.keras.layers.Layer):
 
         # 扩展 memory 和 keys 的维度以便进行广播和点积
         memory_expanded = tf.expand_dims(memory, axis=memory_expand_axis)  # [batch_shape..., 1, memory_size, word_size]
-        keys_expanded = tf.expand_dims(keys, axis=-2)                      # [batch_shape..., num_heads, 1, word_size]
+        keys_expanded = tf.expand_dims(keys, axis=-2)  # [batch_shape..., num_heads, 1, word_size]
 
         # 计算点积
         scores = tf.reduce_sum(memory_expanded * keys_expanded, axis=-1)  # [batch_shape..., num_heads, memory_size]
 
         # 计算 L2 范数
         memory_norms = tf.norm(memory, axis=-1)  # [batch_shape..., memory_size]
-        keys_norms = tf.norm(keys, axis=-1)      # [batch_shape..., num_heads]
+        keys_norms = tf.norm(keys, axis=-1)  # [batch_shape..., num_heads]
 
         # 调整维度以便广播
         memory_norms_expanded = tf.expand_dims(memory_norms, axis=-2)  # [batch_shape..., 1, memory_size]
-        keys_norms_expanded = tf.expand_dims(keys_norms, axis=-1)      # [batch_shape..., num_heads, 1]
+        keys_norms_expanded = tf.expand_dims(keys_norms, axis=-1)  # [batch_shape..., num_heads, 1]
 
         # 计算余弦相似度
-        normed_scores = scores / (memory_norms_expanded * keys_norms_expanded + self._epsilon)  # [batch_shape..., num_heads, memory_size]
+        normed_scores = scores / (
+                    memory_norms_expanded * keys_norms_expanded + self._epsilon)  # [batch_shape..., num_heads, memory_size]
 
         # 使用 strengths 调整相似度，并通过 weighted_softmax 得到权重
-        weights = weighted_softmax(normed_scores, strengths, self._strength_op)  # [batch_shape..., num_heads, memory_size]
+        weights = weighted_softmax(normed_scores, strengths,
+                                   self._strength_op)  # [batch_shape..., num_heads, memory_size]
 
         return weights
+
 
 class TemporalLinkage(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, name='temporal_linkage'):
@@ -156,10 +163,10 @@ class TemporalLinkage(tf.keras.layers.Layer):
         Returns:
             dict: 包含更新后的 'link' 和 'precedence_weights'。
         """
-        write_weights = inputs['write_weights']          # [batch_shape..., num_writes, memory_size]
+        write_weights = inputs['write_weights']  # [batch_shape..., num_writes, memory_size]
         prev_linkage = inputs['prev_linkage']
 
-        prev_link = prev_linkage['link']                 # [batch_shape..., num_writes, memory_size, memory_size]
+        prev_link = prev_linkage['link']  # [batch_shape..., num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_shape..., num_writes, memory_size]
 
         # 更新优先级权重
@@ -167,7 +174,8 @@ class TemporalLinkage(tf.keras.layers.Layer):
         updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [batch_shape..., num_writes, memory_size]
 
         # 更新链路矩阵
-        new_link = self._link(prev_link, prev_precedence_weights, write_weights)  # [batch_shape..., num_writes, memory_size, memory_size]
+        new_link = self._link(prev_link, prev_precedence_weights,
+                              write_weights)  # [batch_shape..., num_writes, memory_size, memory_size]
 
         return {
             'link': new_link,
@@ -187,26 +195,28 @@ class TemporalLinkage(tf.keras.layers.Layer):
             tf.Tensor: 更新后的链路矩阵 [batch_shape..., num_writes, memory_size, memory_size]
         """
         # 扩展维度以进行外积计算
-        write_weights_i = tf.expand_dims(write_weights, axis=-1)                   # [batch_shape..., num_writes, memory_size, 1]
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, axis=-2)  # [batch_shape..., num_writes, 1, memory_size]
+        write_weights_i = tf.expand_dims(write_weights, axis=-1)  # [batch_shape..., num_writes, memory_size, 1]
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   axis=-2)  # [batch_shape..., num_writes, 1, memory_size]
 
         # 计算新链路，使用外积
-        new_link = write_weights_i * prev_precedence_weights_j                     # [batch_shape..., num_writes, memory_size, memory_size]
+        new_link = write_weights_i * prev_precedence_weights_j  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 计算链路缩放因子
-        write_weights_j = tf.expand_dims(write_weights, axis=-2)                   # [batch_shape..., num_writes, 1, memory_size]
-        prev_link_scale = 1 - write_weights_i - write_weights_j                      # [batch_shape..., num_writes, memory_size, memory_size]
+        write_weights_j = tf.expand_dims(write_weights, axis=-2)  # [batch_shape..., num_writes, 1, memory_size]
+        prev_link_scale = 1 - write_weights_i - write_weights_j  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 确保链路缩放因子不为负
         prev_link_scale = tf.clip_by_value(prev_link_scale, 0.0, 1.0)
 
         # 更新链路矩阵
-        updated_link = prev_link_scale * prev_link + new_link                      # [batch_shape..., num_writes, memory_size, memory_size]
+        updated_link = prev_link_scale * prev_link + new_link  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 避免自连接
         memory_size = tf.shape(updated_link)[-1]
-        mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2], dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
-        final_link = updated_link * mask                                              # [batch_shape..., num_writes, memory_size, memory_size]
+        mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2],
+                          dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
+        final_link = updated_link * mask  # [batch_shape..., num_writes, memory_size, memory_size]
 
         return final_link
 
@@ -257,8 +267,10 @@ class TemporalLinkage(tf.keras.layers.Layer):
             batch_shape = tf.shape(batch_size)  # 获取动态批次形状
 
         # 初始化链路矩阵和优先级权重为零
-        link = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size, self.memory_size]], axis=0), dtype=tf.float32)
-        precedence_weights = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size]], axis=0), dtype=tf.float32)
+        link = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size, self.memory_size]], axis=0),
+                        dtype=tf.float32)
+        precedence_weights = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size]], axis=0),
+                                      dtype=tf.float32)
 
         return {
             'link': link,
@@ -278,6 +290,138 @@ class TemporalLinkage(tf.keras.layers.Layer):
             'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
         }
 
+
+import tensorflow as tf
+
+class WriteAllocation(tf.keras.layers.Layer):
+    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='write_allocation'):
+        super(WriteAllocation, self).__init__(name=name)
+        self._memory_size = memory_size
+        self._num_writes = num_writes
+        self._epsilon = epsilon
+        self.batch_dims = 1  # 假设 usage 的形状为 [batch_size, memory_size]
+
+    def build(self, input_shape):
+        # input_shape 是一个字典，包含 'usage' 和 'write_gates_sum'
+        usage_shape = input_shape['usage']  # [batch_size, memory_size]
+        if isinstance(usage_shape, tf.TensorShape):
+            self.batch_dims = len(usage_shape) - 1
+        elif isinstance(usage_shape, (list, tuple)):
+            self.batch_dims = len(usage_shape) - 1
+        else:
+            self.batch_dims = 1  # 默认值
+        super(WriteAllocation, self).build(input_shape)
+
+    def call(self, inputs, training=False):
+        usage = inputs['usage']  # [batch_size, memory_size]
+        write_gates_sum = inputs['write_gates_sum']  # [batch_size, num_writes]
+
+        # 计算写操作的分配权重
+        allocation = self._allocation(usage)  # [batch_size, memory_size]
+
+        # 扩展 allocation 以匹配 write_gates_sum 的维度
+        allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_size, 1, memory_size]
+
+        # 计算 allocation_weights
+        allocation_weights = allocation_expanded * tf.ones_like(write_gates_sum[..., tf.newaxis])  # [batch_size, num_writes, memory_size]
+
+        # 根据 write_gates_sum 调整 allocation_weights
+        write_allocation_weights = write_gates_sum[..., tf.newaxis] * allocation_weights  # [batch_size, num_writes, memory_size]
+
+        tf.print("Write allocation weights:", write_allocation_weights)
+
+        return write_allocation_weights  # [batch_size, num_writes, memory_size]
+
+    def _allocation(self, usage):
+        """
+        将写操作分配到最少使用的内存槽。
+        """
+        # 找到 top-k 最少使用的内存槽的索引
+        sorted_nonusage, indices = tf.nn.top_k(1 - usage, k=self._num_writes, sorted=False)  # [batch_size, num_writes]
+
+        # 创建 one-hot 编码
+        allocated = tf.one_hot(indices, depth=self._memory_size, dtype=tf.float32)  # [batch_size, num_writes, memory_size]
+
+        # 将多个写操作的分配叠加
+        allocation = tf.reduce_sum(allocated, axis=1)  # [batch_size, memory_size]
+
+        # 确保分配权重不超过 1.0
+        allocation = tf.clip_by_value(allocation, 0.0, 1.0)
+
+        tf.print("Allocation:", allocation)
+
+        return allocation  # [batch_size, memory_size]
+
+class UsageUpdate(tf.keras.layers.Layer):
+    def __init__(self, memory_size, num_writes, num_reads, epsilon=1e-6, name='usage_update'):
+        super(UsageUpdate, self).__init__(name=name)
+        self._memory_size = memory_size
+        self._num_writes = num_writes
+        self._num_reads = num_reads
+        self._epsilon = epsilon
+
+    def build(self, input_shape):
+        # input_shape 是一个字典，包含 'write_weights', 'free_gate', 'read_weights', 'prev_usage'
+        super(UsageUpdate, self).build(input_shape)
+
+    def call(self, inputs, training=False):
+        write_weights = inputs['write_weights']      # [batch_size, num_writes, memory_size]
+        free_gate = inputs['free_gate']              # [batch_size, num_reads]
+        read_weights = inputs['read_weights']        # [batch_size, num_reads, memory_size]
+        prev_usage = inputs['prev_usage']            # [batch_size, memory_size]
+
+        # 计算写操作后的使用率
+        usage_after_write = self._usage_after_write(prev_usage, write_weights)  # [batch_size, memory_size]
+
+        tf.print("Usage after write:", usage_after_write)
+
+        # 计算读操作后的使用率
+        usage_after_read = self._usage_after_read(usage_after_write, free_gate, read_weights)  # [batch_size, memory_size]
+
+        tf.print("Usage after read:", usage_after_read)
+
+        # 裁剪使用率到 [0, 1]
+        clipped_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)
+
+        tf.print("Clipped usage:", clipped_usage)
+
+        return clipped_usage  # [batch_size, memory_size]
+
+    def _usage_after_write(self, usage, write_weights):
+        """
+        计算写操作后的内存使用率。
+        """
+        # 计算每个内存槽被写入的概率
+        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [batch_size, memory_size]
+        write_allocation = 1 - write_weights_cumprod  # [batch_size, memory_size]
+
+        # 更新使用率：增加被写入的内存槽
+        updated_usage = usage + (1 - usage) * write_allocation  # [batch_size, memory_size]
+
+        tf.print("Updated usage after write:", updated_usage)
+
+        return updated_usage
+
+    def _usage_after_read(self, usage, free_gate, read_weights):
+        """
+        计算读操作后的内存使用率。
+        """
+        # 扩展 free_gate 的维度以匹配 read_weights
+        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [batch_size, num_reads, 1]
+
+        # 计算自由读权重
+        free_read_weights = free_gate_expanded * read_weights  # [batch_size, num_reads, memory_size]
+
+        # 计算每个内存槽因自由读操作释放的使用率
+        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [batch_size, memory_size]
+
+        # 更新使用率：减少被自由读释放的部分
+        updated_usage = usage - total_free_read_weights  # [batch_size, memory_size]
+        updated_usage = tf.maximum(updated_usage, 0.0)  # 确保不低于0
+
+        tf.print("Updated usage after read:", updated_usage)
+
+        return updated_usage
 
 class Freeness(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, epsilon=1e-6, name='freeness'):
@@ -312,8 +456,24 @@ class Freeness(tf.keras.layers.Layer):
         clipped_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)
         tf.print("Clipped usage:", clipped_usage)
 
-        return clipped_usage  # [batch_shape..., memory_size]
+        # 计算总写入权重
+        total_write = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
+        tf.print("Usage total write:", total_write)
 
+        # 计算总读出权重
+        total_read = tf.reduce_sum(read_weights * tf.expand_dims(free_gate, axis=-1),
+                                   axis=1)  # [batch_size, memory_size]
+        tf.print("Usage total read:", total_read)
+
+        # 更新使用率
+        updated_usage = prev_usage + total_write - total_read
+        tf.print("Updated total usage:", updated_usage)
+
+        # Clip usage to [0, 1] to prevent negative values
+        clip_updated_usage = tf.clip_by_value(updated_usage, 0.0, 1.0)
+        tf.print("Clip updated total usage:", clip_updated_usage)
+
+        return clipped_usage  # [batch_shape..., memory_size]
 
     def _usage_after_write(self, usage, write_weights):
         """
@@ -365,40 +525,30 @@ class Freeness(tf.keras.layers.Layer):
     def _allocation(self, usage):
         """
         计算内存分配权重。
-        [保持不变]
+
+        Args:
+            usage: 形状为 [batch_size, memory_size] 的张量，表示当前的内存使用情况。
+
+        Returns:
+            形状为 [batch_size, memory_size] 的张量，表示分配权重。
         """
+        # 直接从 usage 的形状中计算 batch_dims
+        batch_dims = len(usage.shape) - 1
+
         adjusted_usage = self._epsilon + (1 - self._epsilon) * usage  # [batch_shape..., memory_size]
         nonusage = 1 - adjusted_usage  # [batch_shape..., memory_size]
 
-        # 对 nonusage 进行降序排序，并获取排序的索引
-        sorted_nonusage, indices = tf.nn.top_k(nonusage, k=self._memory_size,
-                                               sorted=True)  # [batch_shape..., memory_size]
+        # 对 nonusage 进行降序排序并获取索引
+        sorted_nonusage, indices = tf.nn.top_k(nonusage, k=self._memory_size, sorted=True)
 
-        # 计算排序后的使用率
-        sorted_usage = 1 - sorted_nonusage  # [batch_shape..., memory_size]
-
-        # 计算累积乘积（不包含当前元素）
-        cumprod_sorted_usage = tf.math.cumprod(sorted_usage + self._epsilon, axis=-1,
-                                               exclusive=True)  # [batch_shape..., memory_size]
-
-        # 计算排序后的分配权重
-        sorted_allocation = sorted_nonusage * cumprod_sorted_usage  # [batch_shape..., memory_size]
+        sorted_usage = 1 - sorted_nonusage
+        cumprod_sorted_usage = tf.math.cumprod(sorted_usage + self._epsilon, axis=-1, exclusive=True)
+        sorted_allocation = sorted_nonusage * cumprod_sorted_usage
 
         # 恢复原始顺序
-        inverse_indices = tf.argsort(indices, axis=-1)  # [batch_shape..., memory_size]
+        inverse_indices = tf.argsort(indices, axis=-1)
+        allocation = tf.gather(sorted_allocation, inverse_indices, batch_dims=batch_dims)
 
-        tf.print("Adjusted usage shape:", tf.shape(adjusted_usage))
-        tf.print("Non-usage shape:", tf.shape(nonusage))
-        tf.print("Sorted non-usage shape:", tf.shape(sorted_nonusage))
-        tf.print("Indices shape:", tf.shape(indices))
-        tf.print("Sorted usage shape:", tf.shape(sorted_usage))
-        tf.print("Cumulative product sorted usage shape:", tf.shape(cumprod_sorted_usage))
-        tf.print("Sorted allocation shape:", tf.shape(sorted_allocation))
-        tf.print("Inverse indices shape:", tf.shape(inverse_indices))
-
-        # 使用在 build 方法中确定的 batch_dims
-        allocation = tf.gather(sorted_allocation, inverse_indices, batch_dims=self.batch_dims)
-        tf.print("Allocation shape after gather:", tf.shape(allocation))
         return allocation
 
     def write_allocation_weights(self, usage, write_gates):
@@ -412,7 +562,8 @@ class Freeness(tf.keras.layers.Layer):
         allocation_expanded = tf.expand_dims(allocation, axis=-2)  # [batch_size, 1, memory_size]
 
         # 计算 allocation_weights
-        allocation_weights = allocation_expanded * tf.ones_like(write_gates_expanded)  # [batch_size, num_writes, memory_size]
+        allocation_weights = allocation_expanded * tf.ones_like(
+            write_gates_expanded)  # [batch_size, num_writes, memory_size]
 
         # 根据 write_gates 调整 allocation_weights
         write_allocation_weights = write_gates_expanded * allocation_weights  # [batch_size, num_writes, memory_size]
