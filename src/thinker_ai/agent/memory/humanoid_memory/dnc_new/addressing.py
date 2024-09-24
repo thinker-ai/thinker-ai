@@ -1,4 +1,6 @@
 import collections
+from typing import Optional, Callable
+
 import tensorflow as tf
 import os
 
@@ -45,14 +47,14 @@ def _vector_norms(m, epsilon=None):
     return tf.sqrt(squared_norms + epsilon)
 
 
-def weighted_softmax(scores, weights, strength_op=tf.nn.softplus):
+def weighted_softmax(scores: tf.Tensor, weights: tf.Tensor, strength_op: Callable = tf.nn.softmax) -> tf.Tensor:
     """
     计算加权的 softmax。
 
     Args:
         scores (tf.Tensor): 分数张量，形状为 [batch_shape..., num_heads, memory_size]
         weights (tf.Tensor): 权重张量，形状为 [batch_shape..., num_heads]
-        strength_op (callable): 用于调整权重的操作，默认使用 softplus
+        strength_op (callable): 用于调整权重的操作，默认使用 softmax
 
     Returns:
         tf.Tensor: 归一化后的权重，形状为 [batch_shape..., num_heads, memory_size]
@@ -76,7 +78,8 @@ def weighted_softmax(scores, weights, strength_op=tf.nn.softplus):
 
 
 class CosineWeights(tf.keras.layers.Layer):
-    def __init__(self, num_heads, word_size, epsilon=1e-6, strength_op=tf.nn.softplus, name='cosine_weights'):
+    def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6,
+                 strength_op: Callable = tf.nn.softmax, name: str = 'cosine_weights'):
         """
         初始化 CosineWeights 层。
 
@@ -84,7 +87,7 @@ class CosineWeights(tf.keras.layers.Layer):
             num_heads (int): 头的数量。
             word_size (int): 词向量的维度。
             epsilon (float, optional): 防止除零的小值。默认值为 1e-6。
-            strength_op (callable, optional): 用于调整强度的操作。默认使用 softplus。
+            strength_op (callable, optional): 用于调整强度的操作。默认使用 softmax。
             name (str, optional): 层的名称。默认值为 'cosine_weights'。
         """
         super(CosineWeights, self).__init__(name=name)
@@ -93,7 +96,7 @@ class CosineWeights(tf.keras.layers.Layer):
         self._strength_op = strength_op
         self._epsilon = epsilon
 
-    def call(self, inputs, training=False):
+    def call(self, inputs: dict, training: bool = False) -> tf.Tensor:
         """
         前向传播方法。
 
@@ -145,6 +148,124 @@ class CosineWeights(tf.keras.layers.Layer):
 
         return weights
 
+
+class WriteAllocation(tf.keras.layers.Layer):
+    def __init__(
+        self,
+        memory_size: int,
+        num_writes: int,
+        epsilon: float = 1e-6,
+        write_content_weights_fn: Optional[Callable[[dict], tf.Tensor]] = None,
+        allocation_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
+        write_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
+        name: str = 'write_allocation'
+    ):
+        """
+        初始化 WriteAllocation 层。
+
+        Args:
+            memory_size (int): 存储器的大小。
+            num_writes (int): 写操作的数量。
+            epsilon (float, optional): 防止数值不稳定的小值。默认值为 1e-6。
+            write_content_weights_fn (Callable[[dict], tf.Tensor], optional):
+                用于生成 write_content_weights 的函数，返回值应为 [batch_size, num_writes, memory_size]。
+            allocation_gate_fn (Callable[[int, int], tf.Tensor], optional):
+                用于生成 allocation_gate 的函数，返回值应为 [batch_size, num_writes]。
+            write_gate_fn (Callable[[int, int], tf.Tensor], optional):
+                用于生成 write_gate 的函数，返回值应为 [batch_size, num_writes]。
+            name (str, optional): 层的名称。默认值为 'write_allocation'。
+        """
+        super(WriteAllocation, self).__init__(name=name)
+        self.memory_size = memory_size
+        self.num_writes = num_writes
+        self.epsilon = epsilon
+        self.write_content_weights_fn = write_content_weights_fn
+        self.allocation_gate_fn = allocation_gate_fn or self.default_allocation_gate
+        self.write_gate_fn = write_gate_fn or self.default_write_gate
+
+    def default_allocation_gate(self, batch_size: int, num_writes: int) -> tf.Tensor:
+        """
+        默认的 allocation_gate 生成逻辑：返回全 1 矩阵。
+
+        Args:
+            batch_size (int): 批量大小。
+            num_writes (int): 写操作的数量。
+
+        Returns:
+            tf.Tensor: 形状为 [batch_size, num_writes] 的全 1 张量。
+        """
+        return tf.ones([batch_size, num_writes], dtype=tf.float32)
+
+    def default_write_gate(self, batch_size: int, num_writes: int) -> tf.Tensor:
+        """
+        默认的 write_gate 生成逻辑：返回全 1 矩阵。
+
+        Args:
+            batch_size (int): 批量大小。
+            num_writes (int): 写操作的数量。
+
+        Returns:
+            tf.Tensor: 形状为 [batch_size, num_writes] 的全 1 张量。
+        """
+        return tf.ones([batch_size, num_writes], dtype=tf.float32)
+
+    def _compute_write_weights(
+        self,
+        write_content_weights: tf.Tensor,
+        allocation_gate: tf.Tensor,
+        write_gate: tf.Tensor
+    ) -> tf.Tensor:
+        """
+        计算最终的写入权重。
+
+        Args:
+            write_content_weights (tf.Tensor): [batch_size, num_writes, memory_size]
+            allocation_gate (tf.Tensor): [batch_size, num_writes]
+            write_gate (tf.Tensor): [batch_size, num_writes]
+
+        Returns:
+            tf.Tensor: [batch_size, num_writes, memory_size]
+        """
+        allocation_gate_expanded = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
+        write_gate_expanded = tf.expand_dims(write_gate, axis=-1)            # [batch_size, num_writes, 1]
+        write_weights = write_content_weights * allocation_gate_expanded * write_gate_expanded  # [batch_size, num_writes, memory_size]
+        tf.print("Write Weights:", write_weights)
+        return write_weights
+
+    def call(
+        self,
+        inputs: dict,
+        training: bool = False,
+        num_writes: Optional[int] = None
+    ) -> tf.Tensor:
+        """
+        前向传播方法，支持动态指定 num_writes。
+
+        Args:
+            inputs (dict): 包含任意输入，根据 `write_content_weights_fn` 来生成 `write_content_weights`。
+            training (bool, optional): 指示是否为训练模式。默认值为 False。
+            num_writes (int, optional): 写操作的数量，覆盖构造器中的默认值。
+
+        Returns:
+            tf.Tensor: 计算得到的写入权重，形状为 [batch_size, num_writes, memory_size]
+        """
+        if num_writes is None:
+            num_writes = self.num_writes
+
+        # 使用用户提供的函数生成 write_content_weights
+        if self.write_content_weights_fn is not None:
+            write_content_weights = self.write_content_weights_fn(inputs)  # [batch_size, num_writes, memory_size]
+        else:
+            raise ValueError("write_content_weights_fn must be provided.")
+
+        # 生成 allocation_gate 和 write_gate
+        batch_size = tf.shape(write_content_weights)[0]
+        allocation_gate = self.allocation_gate_fn(batch_size, num_writes)  # [batch_size, num_writes]
+        write_gate = self.write_gate_fn(batch_size, num_writes)            # [batch_size, num_writes]
+
+        # 计算写入权重
+        write_weights = self._compute_write_weights(write_content_weights, allocation_gate, write_gate)
+        return write_weights
 
 class TemporalLinkage(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, name='temporal_linkage'):
@@ -291,78 +412,6 @@ class TemporalLinkage(tf.keras.layers.Layer):
         }
 
 
-class WriteAllocation(tf.keras.layers.Layer):
-    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='write_allocation'):
-        super(WriteAllocation, self).__init__(name=name)
-        self._memory_size = memory_size
-        self._num_writes = num_writes
-        self._epsilon = epsilon
-
-    def build(self, input_shape):
-        usage_shape = input_shape['usage']  # [batch_size, memory_size]
-        if isinstance(usage_shape, tf.TensorShape):
-            self.batch_dims = len(usage_shape) - 1
-        elif isinstance(usage_shape, (list, tuple)):
-            self.batch_dims = len(usage_shape) - 1
-        else:
-            self.batch_dims = 1  # 默认值
-        super(WriteAllocation, self).build(input_shape)
-
-    def call(self, inputs, training=False):
-        usage = inputs['usage']  # [batch_size, memory_size]
-        write_gates_sum = inputs['write_gates_sum']  # [batch_size, num_writes]
-
-        # 逐批次分配写操作
-        allocations = self._allocation(usage)  # [batch_size, num_writes, memory_size]
-
-        # 根据 write_gates_sum 调整 allocation_weights
-        # write_gates_sum: [batch_size, num_writes]
-        # allocations: [batch_size, num_writes, memory_size]
-        write_gates_sum_expanded = tf.expand_dims(write_gates_sum, axis=-1)  # [batch_size, num_writes, 1]
-        write_allocation_weights = write_gates_sum_expanded * allocations  # [batch_size, num_writes, memory_size]
-
-        tf.print("Write allocation weights:", write_allocation_weights)
-
-        return write_allocation_weights  # [batch_size, num_writes, memory_size]
-
-    def _allocation(self, usage):
-        """
-        逐批次分配写操作到最少使用的内存槽，确保每个写操作分配到不同的槽。
-        """
-
-        def allocate_per_batch(single_usage):
-            """
-            为单个批次分配写操作。
-            """
-            allocations = []
-            current_usage = single_usage  # [memory_size]
-
-            for _ in range(self._num_writes):
-                adjusted_usage = self._epsilon + (1 - self._epsilon) * current_usage
-                nonusage = 1 - adjusted_usage  # [memory_size]
-
-                # 找到当前最少使用的槽的索引
-                _, idx = tf.nn.top_k(nonusage, k=1, sorted=True)  # [1]
-                allocation = tf.one_hot(idx[0], depth=self._memory_size, dtype=tf.float32)  # [memory_size]
-
-                allocations.append(allocation)
-
-                # 更新使用率，防止多个写操作分配到同一槽
-                current_usage += allocation  # [memory_size]
-
-            allocations = tf.stack(allocations, axis=0)  # [num_writes, memory_size]
-            return allocations  # [num_writes, memory_size]
-
-        # 使用 tf.map_fn 对每个批次进行分配
-        allocations = tf.map_fn(
-            allocate_per_batch,
-            usage,
-            dtype=tf.float32
-        )  # [batch_size, num_writes, memory_size]
-
-        return allocations
-
-
 class UsageUpdate(tf.keras.layers.Layer):
     def __init__(self, memory_size, num_writes, num_reads, epsilon=1e-6, name='usage_update'):
         super(UsageUpdate, self).__init__(name=name)
@@ -393,23 +442,6 @@ class UsageUpdate(tf.keras.layers.Layer):
         # 裁剪使用率到 [0, 1]
         clipped_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)
         tf.print("Clipped usage:", clipped_usage)
-
-        # 计算总写入权重
-        total_write = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
-        tf.print("Usage total write:", total_write)
-
-        # 计算总读出权重
-        total_read = tf.reduce_sum(read_weights * tf.expand_dims(free_gate, axis=-1),
-                                   axis=1)  # [batch_size, memory_size]
-        tf.print("Usage total read:", total_read)
-
-        # 更新使用率
-        updated_usage = prev_usage + total_write - total_read
-        tf.print("Updated total usage:", updated_usage)
-
-        # Clip usage to [0, 1] to prevent negative values
-        clip_updated_usage = tf.clip_by_value(updated_usage, 0.0, 1.0)
-        tf.print("Clip updated total usage:", clip_updated_usage)
 
         return clipped_usage  # [batch_size, memory_size]
 
@@ -466,31 +498,3 @@ class UsageUpdate(tf.keras.layers.Layer):
     def state_size(self):
         return tf.TensorShape([self._memory_size])
 
-
-class Freeness(tf.keras.layers.Layer):
-    def __init__(self, memory_size, num_writes, num_reads, epsilon=1e-6, name='freeness'):
-        super(Freeness, self).__init__(name=name)
-        self.write_allocation = WriteAllocation(memory_size, num_writes, epsilon)
-        self.usage_update = UsageUpdate(memory_size, num_writes, num_reads, epsilon)
-
-    def call(self, inputs, training=False):
-        write_weights = self.write_allocation({
-            'usage': inputs['usage'],
-            'write_gates_sum': inputs['write_gates_sum']
-        }, training=training)
-        tf.print("Write weights:", write_weights)
-        updated_usage = self.usage_update({
-            'write_weights': write_weights,
-            'free_gate': inputs['free_gate'],
-            'read_weights': inputs['read_weights'],
-            'prev_usage': inputs['usage']
-        }, training=training)
-        tf.print("Updated usage:", updated_usage)
-        return updated_usage
-
-    def get_initial_state(self, batch_shape):
-        return self.usage_update.get_initial_state(batch_shape)
-
-    @property
-    def state_size(self):
-        return self.usage_update.state_size
