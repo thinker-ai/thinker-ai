@@ -8,8 +8,15 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 
 
 # 配置类，用于动态调整 epsilon 等参数
+from dataclasses import dataclass
+
+@dataclass
 class Config:
-    epsilon = 1e-6  # 可调整的全局 epsilon 值
+    epsilon: float = 1e-6
+
+    @staticmethod
+    def set_epsilon(value: float):
+        Config.epsilon = value
 
 
 # 定义 TemporalLinkageState，用于跟踪记忆链路
@@ -17,27 +24,7 @@ TemporalLinkageState = collections.namedtuple('TemporalLinkageState', ('link', '
 
 
 def swap_axes(tensor, axis1, axis2):
-    """
-    交换张量的两个轴。
-
-    Args:
-        tensor (tf.Tensor): 输入张量。
-        axis1 (int): 第一个轴的索引。
-        axis2 (int): 第二个轴的索引。
-
-    Returns:
-        tf.Tensor: 交换指定轴后的张量。
-    """
-    rank = tf.rank(tensor)
-    axis1 = tf.cast(axis1, tf.int32)
-    axis2 = tf.cast(axis2, tf.int32)
-
-    # 生成新的轴顺序
-    axes = tf.range(rank)
-    axes = tf.where(tf.equal(axes, axis1), axis2, axes)
-    axes = tf.where(tf.equal(axes, axis2), axis1, axes)
-
-    return tf.transpose(tensor, perm=axes)
+    return tf.experimental.numpy.swapaxes(tensor, axis1, axis2)
 
 
 def _vector_norms(m, epsilon=None):
@@ -79,7 +66,7 @@ def weighted_softmax(scores: tf.Tensor, weights: tf.Tensor, strength_op: Callabl
 
 class CosineWeights(tf.keras.layers.Layer):
     def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6,
-                 strength_op: Callable = tf.nn.softmax, name: str = 'cosine_weights'):
+                 strength_op: Optional[Callable] = None, name: str = 'cosine_weights'):
         """
         初始化 CosineWeights 层。
 
@@ -93,7 +80,7 @@ class CosineWeights(tf.keras.layers.Layer):
         super(CosineWeights, self).__init__(name=name)
         self._num_heads = num_heads
         self._word_size = word_size
-        self._strength_op = strength_op
+        self._strength_op = strength_op or tf.nn.softmax
         self._epsilon = epsilon
 
     def call(self, inputs: dict, training: bool = False) -> tf.Tensor:
