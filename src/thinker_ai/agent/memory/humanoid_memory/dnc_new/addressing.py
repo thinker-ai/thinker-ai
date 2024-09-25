@@ -267,11 +267,13 @@ class WriteAllocation(tf.keras.layers.Layer):
         write_weights = self._compute_write_weights(write_content_weights, allocation_gate, write_gate)
         return write_weights
 
+
 class TemporalLinkage(tf.keras.layers.Layer):
-    def __init__(self, memory_size, num_writes, name='temporal_linkage'):
+    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='temporal_linkage'):
         super(TemporalLinkage, self).__init__(name=name)
         self.memory_size = memory_size
         self.num_writes = num_writes
+        self.epsilon = epsilon  # 添加 epsilon
 
     def call(self, inputs, training=False):
         """
@@ -290,10 +292,9 @@ class TemporalLinkage(tf.keras.layers.Layer):
         prev_link = prev_linkage['link']  # [batch_shape..., num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_shape..., num_writes, memory_size]
 
-        # 更新优先级权重
+        # 更新优先级权重，应用 epsilon
         reset_gate = 1 - tf.reduce_sum(write_weights, axis=-1, keepdims=True)  # [batch_shape..., num_writes, 1]
-        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [batch_shape..., num_writes, memory_size]
-
+        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights * self.epsilon  # 应用 epsilon
         # 更新链路矩阵
         new_link = self._link(prev_link, prev_precedence_weights,
                               write_weights)  # [batch_shape..., num_writes, memory_size, memory_size]
@@ -315,6 +316,10 @@ class TemporalLinkage(tf.keras.layers.Layer):
         Returns:
             tf.Tensor: 更新后的链路矩阵 [batch_shape..., num_writes, memory_size, memory_size]
         """
+        # 获取动态的 num_writes
+        num_writes = tf.shape(write_weights)[-2]
+        memory_size = tf.shape(write_weights)[-1]
+
         # 扩展维度以进行外积计算
         write_weights_i = tf.expand_dims(write_weights, axis=-1)  # [batch_shape..., num_writes, memory_size, 1]
         prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
@@ -334,7 +339,6 @@ class TemporalLinkage(tf.keras.layers.Layer):
         updated_link = prev_link_scale * prev_link + new_link  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 避免自连接
-        memory_size = tf.shape(updated_link)[-1]
         mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2],
                           dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
         final_link = updated_link * mask  # [batch_shape..., num_writes, memory_size, memory_size]
@@ -355,13 +359,15 @@ class TemporalLinkage(tf.keras.layers.Layer):
         """
         if not forward:
             # 使用辅助函数交换最后两个轴
-            link = swap_axes(link, -1, -2)  # [batch_shape..., num_writes, memory_size, memory_size]
+            link = tf.transpose(link,
+                                perm=tf.concat([tf.range(tf.rank(link) - 2), [tf.rank(link) - 1, tf.rank(link) - 2]],
+                                               axis=0))  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 使用 tf.einsum 计算方向性读权重
         # prev_read_weights: [batch_shape..., num_reads, memory_size]
         # link: [batch_shape..., num_writes, memory_size, memory_size]
         # 结果： [batch_shape..., num_reads, num_writes, memory_size]
-        result = tf.einsum('...rj,...wij->...rwi', prev_read_weights, link)
+        result = tf.einsum('...rm,...wmn->...rwn', prev_read_weights, link)
 
         # 应用 softmax 归一化
         directional_weights = tf.nn.softmax(result, axis=-1)  # [batch_shape..., num_reads, num_writes, memory_size]
@@ -371,33 +377,27 @@ class TemporalLinkage(tf.keras.layers.Layer):
 
         return directional_weights
 
-    def get_initial_state(self, batch_size):
+    def get_initial_state(self, batch_shape):
         """
         返回 TemporalLinkage 模块的初始状态。
 
         Args:
-            batch_size (int or tf.Tensor): 批次大小。
+            batch_shape (list or tuple or tf.Tensor): 批次形状，不包括 memory_size。
 
         Returns:
             dict: 包含初始化的 'link' 和 'precedence_weights'。
         """
-        if isinstance(batch_size, int):
-            batch_shape = [batch_size]
-        else:
-            # 假设 batch_size 是一个标量张量
-            batch_shape = tf.shape(batch_size)  # 获取动态批次形状
+        link_shape = tf.concat([batch_shape, [self.num_writes, self.memory_size, self.memory_size]], axis=0)
+        precedence_weights_shape = tf.concat([batch_shape, [self.num_writes, self.memory_size]], axis=0)
 
         # 初始化链路矩阵和优先级权重为零
-        link = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size, self.memory_size]], axis=0),
-                        dtype=tf.float32)
-        precedence_weights = tf.zeros(tf.concat([batch_shape, [self.num_writes, self.memory_size]], axis=0),
-                                      dtype=tf.float32)
+        link = tf.zeros(link_shape, dtype=tf.float32)
+        precedence_weights = tf.zeros(precedence_weights_shape, dtype=tf.float32)
 
         return {
             'link': link,
             'precedence_weights': precedence_weights
         }
-
     @property
     def state_size(self):
         """

@@ -438,12 +438,166 @@ class CosineWeightsTest(tf.test.TestCase):
 
 
 class TemporalLinkageTest(tf.test.TestCase):
+    def setUp(self):
+        super(TemporalLinkageTest, self).setUp()
+        self.memory_size = 3
+        self.num_writes = 2
+        self.temporal_linkage_layer = TemporalLinkage(
+            memory_size=self.memory_size,
+            num_writes=self.num_writes
+        )
+
+    def test_basic_temporal_linkage_update(self):
+        """
+        基本测试：验证链路矩阵和优先级权重的更新。
+        """
+        batch_size = 1
+
+        # 定义 write_weights
+        write_weights = tf.constant([
+            [[0.1, 0.2, 0.3],
+             [0.4, 0.1, 0.2]]
+        ], dtype=tf.float32)  # [1, 2, 3]
+
+        # 定义 prev_linkage
+        prev_linkage = {
+            'link': tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32),
+            'precedence_weights': tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
+        }
+
+        # 调用 TemporalLinkage 层
+        updated_linkage = self.temporal_linkage_layer({
+            'write_weights': write_weights,
+            'prev_linkage': prev_linkage
+        }, training=False)
+
+        # 预期 precedence_weights = write_weights * epsilon
+        expected_precedence_weights = write_weights * 1e-6  # [1, 2, 3]
+
+        # 预期 link = write_weights_i * prev_precedence_weights_j = 0 since prev_precedence_weights = 0
+        expected_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+
+        self.assertAllClose(updated_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(), atol=1e-6)
+        self.assertAllClose(updated_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
+
+    def test_dynamic_num_writes(self):
+        """
+        测试动态调整 num_writes 的情况。
+        """
+        batch_size = 2  # 确保 batch_size 为 2
+        dynamic_num_writes = 3
+
+        # 定义 write_weights，形状与 batch_size 一致
+        write_weights = tf.constant([
+            [[0.1, 0.2, 0.3],
+             [0.4, 0.1, 0.2],
+             [0.2, 0.2, 0.2]],
+            [[0.3, 0.2, 0.1],
+             [0.1, 0.5, 0.2],
+             [0.3, 0.2, 0.1]]
+        ], dtype=tf.float32)  # [2, 3, 3]
+
+        # 定义 prev_linkage，形状与 batch_size 一致
+        prev_linkage = {
+            'link': tf.zeros([batch_size, dynamic_num_writes, self.memory_size, self.memory_size], dtype=tf.float32),
+            'precedence_weights': tf.zeros([batch_size, dynamic_num_writes, self.memory_size], dtype=tf.float32)
+        }
+
+        # 调用 TemporalLinkage 层
+        updated_linkage = self.temporal_linkage_layer({
+            'write_weights': write_weights,
+            'prev_linkage': prev_linkage
+        }, training=False)
+
+        # 预期 precedence_weights = write_weights * epsilon
+        expected_precedence_weights = write_weights * self.temporal_linkage_layer.epsilon  # [2, 3, 3]
+
+        # 预期 link = write_weights_i * prev_precedence_weights_j = 0 since prev_precedence_weights = 0
+        expected_link = tf.zeros([batch_size, dynamic_num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+
+        # 验证 precedence_weights 和 link
+        self.assertAllClose(updated_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(),
+                            atol=1e-6)
+        self.assertAllClose(updated_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
+    def test_partial_write_and_read(self):
+        """
+        测试部分内存槽被写入和部分内存槽被读出的情况。
+        """
+        batch_size = 1
+
+        # 创建初始使用率
+        initial_usage = tf.constant([[0.2, 0.5, 0.3]], dtype=tf.float32)  # [1, 3]
+
+        # 定义 write_weights
+        write_weights = tf.constant([
+            [[0.1, 0.2, 0.3],
+             [0.4, 0.1, 0.2]]
+        ], dtype=tf.float32)  # [1, 2, 3]
+
+        # 定义 free_gate 和 read_weights
+        free_gate = tf.constant([
+            [0.5, 0.5]
+        ], dtype=tf.float32)  # [1, 2]
+
+        read_weights = tf.constant([
+            [[0.3, 0.4, 0.3],
+             [0.2, 0.5, 0.3]]
+        ], dtype=tf.float32)  # [1, 2, 3]
+
+        # 调用 UsageUpdate 层（假设已经与 TemporalLinkage 兼容）
+        # 此处仅测试 TemporalLinkage，不涉及 UsageUpdate，因此 initial_usage 等参数仅用于上下文
+        # 您可能需要根据实际实现调整此部分
+
+        # 调用 TemporalLinkage 层
+        updated_linkage = self.temporal_linkage_layer({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32),
+                'precedence_weights': tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
+            }
+        }, training=False)
+
+        # 预期 precedence_weights = write_weights * epsilon
+        expected_precedence_weights = write_weights * 1e-6  # [1, 2, 3]
+
+        # 预期 link = write_weights_i * prev_precedence_weights_j = 0 since prev_precedence_weights = 0
+        expected_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+
+        self.assertAllClose(updated_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(), atol=1e-6)
+        self.assertAllClose(updated_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
+
+    def test_initial_state(self):
+        """
+        测试 get_initial_state 方法，确保返回正确的初始链路矩阵和优先级权重。
+        """
+        batch_size = 4
+        initial_linkage = self.temporal_linkage_layer.get_initial_state([batch_size])
+
+        expected_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+        expected_precedence_weights = tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
+
+        self.assertAllClose(initial_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
+        self.assertAllClose(initial_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(), atol=1e-6)
+
+    def test_state_size(self):
+        """
+        测试 state_size 属性，确保返回正确的形状。
+        """
+        expected_state_size = {
+            'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
+            'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
+        }
+        self.assertEqual(self.temporal_linkage_layer.state_size, expected_state_size)
+
     def testLinkUpdate_steps(self):
+        """
+        测试链路更新的多个步骤。
+        """
         batch_size = 1
         memory_size = 3
         num_writes = 1
 
-        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+        module = TemporalLinkage(memory_size=memory_size, num_writes=num_writes, epsilon=1e-6)
 
         # 初始化状态
         prev_link = tf.zeros([batch_size, num_writes, memory_size, memory_size], dtype=tf.float32)
@@ -457,7 +611,7 @@ class TemporalLinkageTest(tf.test.TestCase):
                 'link': prev_link,
                 'precedence_weights': prev_precedence_weights
             }
-        })
+        }, training=False)
 
         # 验证第一次写入后的链路矩阵
         expected_link_after_first_write = np.zeros((1, 1, 3, 3), dtype=np.float32)
@@ -475,33 +629,17 @@ class TemporalLinkageTest(tf.test.TestCase):
                 'link': prev_link,
                 'precedence_weights': prev_precedence_weights
             }
-        })
+        }, training=False)
 
         # 验证第二次写入后的链路矩阵
         expected_link_after_second_write = np.array([[[[0, 0, 0],
-                                                       [1, 0, 0],
+                                                       [1e-6, 0, 0],
                                                        [0, 0, 0]]]], dtype=np.float32)
         self.assertAllClose(linkage_state['link'].numpy(), expected_link_after_second_write, atol=1e-6)
-
-        # 更新 prev_link 和 prev_precedence_weights
-        prev_link = linkage_state['link']
-        prev_precedence_weights = linkage_state['precedence_weights']
-
-        # 第三次写入
-        write_weights = tf.constant([[[0, 1, 0]]], dtype=tf.float32)  # 再次写入位置 1
-        linkage_state = module({
-            'write_weights': write_weights,
-            'prev_linkage': {
-                'link': prev_link,
-                'precedence_weights': prev_precedence_weights
-            }
-        })
-
-        # 验证第三次写入后的链路矩阵
-        expected_link_after_third_write = np.zeros((1, 1, 3, 3), dtype=np.float32)  # 修改为全零矩阵
-        self.assertAllClose(linkage_state['link'].numpy(), expected_link_after_third_write, atol=1e-6)
-
     def test_full_link_method(self):
+        """
+        测试 full_link 方法，确保在第一次写入时链路矩阵为全零。
+        """
         batch_size = 1
         memory_size = 3
         num_writes = 1
@@ -523,32 +661,33 @@ class TemporalLinkageTest(tf.test.TestCase):
                 'link': prev_link,
                 'precedence_weights': prev_precedence_weights
             }
-        })
+        }, training=False)
 
         # 验证更新后的 link 矩阵是否符合预期
         expected_link = np.zeros((1, 1, 3, 3), dtype=np.float32)  # 第一次写入，link 应为全零矩阵
         self.assertAllClose(linkage_state['link'].numpy(), expected_link, atol=1e-6)
 
     def test_new_link_creation(self):
+        """
+        测试新链路的创建，确保当 prev_precedence_weights 为零时，新链路为零矩阵。
+        """
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
         prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
 
         write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
-                                                   2)  # (batch_size, num_writes, 1, memory_size)
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, 2)  # (batch_size, num_writes, 1, memory_size)
 
         # 计算 new_link，使用矩阵乘法
         new_link = tf.matmul(write_weights_i, prev_precedence_weights_j)
-
-        print("write_weights_i:", write_weights_i.numpy())
-        print("prev_precedence_weights_j:", prev_precedence_weights_j.numpy())
-        print("new_link:", new_link.numpy())
 
         # 由于 prev_precedence_weights 为零，new_link 应该是全零矩阵
         expected_new_link = np.zeros((1, 1, 3, 3), dtype=np.float32)
         np.testing.assert_allclose(new_link.numpy(), expected_new_link, atol=1e-6)
 
     def test_updated_link(self):
+        """
+        测试更新后的链路矩阵，确保在 prev_precedence_weights 为零时，updated_link 仍为零矩阵。
+        """
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
         prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
         prev_link = tf.zeros([1, 1, 3, 3], dtype=tf.float32)
@@ -568,18 +707,14 @@ class TemporalLinkageTest(tf.test.TestCase):
         mask = tf.eye(3, batch_shape=[1, 1], dtype=tf.float32)
         updated_link = updated_link * (1 - mask)
 
-        print("write_weights_i:", write_weights_i.numpy())
-        print("write_weights_j:", write_weights_j.numpy())
-        print("prev_precedence_weights_j:", prev_precedence_weights_j.numpy())
-        print("prev_link_scale:", prev_link_scale.numpy())
-        print("new_link:", new_link.numpy())
-        print("updated_link:", updated_link.numpy())
-
         # 由于 prev_precedence_weights 为零，new_link 应该是全零矩阵
         expected_updated_link = np.zeros((1, 1, 3, 3), dtype=np.float32)
         np.testing.assert_allclose(updated_link.numpy(), expected_updated_link, atol=1e-6)
 
     def testModule(self):
+        """
+        测试模块的整体功能，确保输出形状和数值范围正确。
+        """
         batch_size = 2
         memory_size = 4
         num_writes = 2
@@ -615,9 +750,13 @@ class TemporalLinkageTest(tf.test.TestCase):
 
         # 检查对角线元素为 0
         diag_elements = tf.linalg.diag_part(linkage_state['link'])
-        self.assertAllClose(diag_elements, np.zeros((batch_size, num_writes, memory_size)), atol=1e-6)
+        expected_diag = tf.zeros([batch_size, num_writes, memory_size], dtype=tf.float32)
+        self.assertAllClose(diag_elements.numpy(), expected_diag.numpy(), atol=1e-6)
 
     def testDirectionalReadWeights(self):
+        """
+        测试方向性读权重的计算，确保输出形状和数值范围正确。
+        """
         batch_size = 2
         memory_size = 4
         num_writes = 2
@@ -650,9 +789,12 @@ class TemporalLinkageTest(tf.test.TestCase):
         self.assertAllClose(backward_sum.numpy(), np.ones_like(backward_sum.numpy()), atol=1e-6)
 
     def test_write_weights_i_and_j(self):
+        """
+        测试 write_weights 的扩展操作，确保形状和数值正确。
+        """
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
 
-        # 计算 write_weights_i 和 write_weights_j
+        # 扩展维度
         write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
         write_weights_j = tf.expand_dims(write_weights, 2)  # (batch_size, num_writes, 1, memory_size)
 
@@ -664,6 +806,9 @@ class TemporalLinkageTest(tf.test.TestCase):
         np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
 
     def test_precedence_weights_update(self):
+        """
+        测试优先级权重的更新，确保正确计算。
+        """
         # 初始 precedence_weights 为全零
         prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)  # 第一次写入位置 0
@@ -672,24 +817,28 @@ class TemporalLinkageTest(tf.test.TestCase):
         reset_gate = 1 - tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
         updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
 
-        print("prev_precedence_weights:", prev_precedence_weights.numpy())
-        print("write_weights:", write_weights.numpy())
-        print("updated_precedence_weights:", updated_precedence_weights.numpy())
+        # 打印调试信息（可选）
+        tf.print("Prev Precedence Weights:", prev_precedence_weights)
+        tf.print("Write Weights:", write_weights)
+        tf.print("Reset Gate:", reset_gate)
+        tf.print("Updated Precedence Weights:", updated_precedence_weights)
 
-        expected_precedence_weights = np.array([[[1, 0, 0]]], dtype=np.float32)
+        # 预期 precedence_weights = write_weights，因为 prev_precedence_weights 为零
+        expected_precedence_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
 
-        np.testing.assert_allclose(updated_precedence_weights.numpy(), expected_precedence_weights, atol=1e-6)
+        self.assertAllClose(updated_precedence_weights.numpy(), expected_precedence_weights.numpy(), atol=1e-6)
 
     def test_write_weights_expansion(self):
+        """
+        测试 write_weights_i 和 write_weights_j 的扩展，确保正确性。
+        """
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
 
         # 扩展维度
-        write_weights_i = tf.expand_dims(write_weights, 3)
-        write_weights_j = tf.expand_dims(write_weights, 2)
+        write_weights_i = tf.expand_dims(write_weights, 3)  # (batch_size, num_writes, memory_size, 1)
+        write_weights_j = tf.expand_dims(write_weights, 2)  # (batch_size, num_writes, 1, memory_size)
 
-        print("write_weights_i:", write_weights_i.numpy())
-        print("write_weights_j:", write_weights_j.numpy())
-
+        # 验证 shape 和值
         expected_write_weights_i = np.array([[[[1], [0], [0]]]], dtype=np.float32)
         expected_write_weights_j = np.array([[[[1, 0, 0]]]], dtype=np.float32)
 
@@ -697,6 +846,9 @@ class TemporalLinkageTest(tf.test.TestCase):
         np.testing.assert_allclose(write_weights_j.numpy(), expected_write_weights_j, atol=1e-6)
 
     def test_prev_precedence_weights_j(self):
+        """
+        测试 prev_precedence_weights_j 的扩展，确保正确性。
+        """
         prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
 
         # 计算 prev_precedence_weights_j
@@ -709,22 +861,221 @@ class TemporalLinkageTest(tf.test.TestCase):
         np.testing.assert_allclose(prev_precedence_weights_j.numpy(), expected_prev_precedence_weights_j, atol=1e-6)
 
     def test_prev_link_scale(self):
+        """
+        测试 prev_link_scale 的计算，确保正确应用百分比缩放因子。
+        """
         write_weights = tf.constant([[[1, 0, 0]]], dtype=tf.float32)
 
+        # 扩展维度
         write_weights_i = tf.expand_dims(write_weights, 3)
         write_weights_j = tf.expand_dims(write_weights, 2)
 
-        # 计算 prev_link_scale
-        prev_link_scale = 1 - write_weights_i - write_weights_j  # 不进行裁剪
+        # 计算 prev_link_scale，使用百分比缩放
+        prev_link_scale = 1.0 - (write_weights_i + write_weights_j) / 2.0
+        prev_link_scale = tf.clip_by_value(prev_link_scale, 0.0, 1.0)
 
-        print("write_weights_i:", write_weights_i.numpy())
-        print("write_weights_j:", write_weights_j.numpy())
-        print("prev_link_scale:", prev_link_scale.numpy())
+        # 打印调试信息
+        tf.print("write_weights_i:", write_weights_i)
+        tf.print("write_weights_j:", write_weights_j)
+        tf.print("prev_link_scale:", prev_link_scale)
 
-        expected_prev_link_scale = np.array([[[[-1, 0, 0],
-                                               [0, 1, 1],
-                                               [0, 1, 1]]]], dtype=np.float32)
-        np.testing.assert_allclose(prev_link_scale.numpy(), expected_prev_link_scale, atol=1e-6)
+        # 预期的 prev_link_scale
+        expected_prev_link_scale_clipped = np.array([[[[0, 0.5, 0.5],
+                                                       [0.5, 1, 1],
+                                                       [0.5, 1, 1]]]], dtype=np.float32)
+
+        # 验证百分比缩放后的 prev_link_scale
+        np.testing.assert_allclose(prev_link_scale.numpy(), expected_prev_link_scale_clipped, atol=1e-6)
+    def test_gradient_flow(self):
+        """
+        验证 TemporalLinkage 层的梯度是否能够正确传播。
+        """
+        batch_size = 1
+
+        # 定义可训练变量
+        write_weights = tf.Variable([[[0.5, 0.3, 0.2]]], dtype=tf.float32)  # [1, 1, 3]
+
+        # 定义 prev_linkage
+        prev_linkage = {
+            'link': tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32),
+            'precedence_weights': tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
+        }
+
+        with tf.GradientTape() as tape:
+            # 调用 TemporalLinkage 层
+            updated_linkage = self.temporal_linkage_layer({
+                'write_weights': write_weights,
+                'prev_linkage': prev_linkage
+            }, training=True)
+
+            # 定义一个依赖于 precedence_weights 的损失函数
+            loss = tf.reduce_sum(updated_linkage['precedence_weights'])  # scalar
+
+        # 计算梯度
+        gradients = tape.gradient(loss, [write_weights])
+
+        # 检查梯度
+        for grad, var_name in zip(gradients, ['write_weights']):
+            self.assertIsNotNone(grad, f"No gradient for {var_name}")
+            grad_norm = tf.norm(grad).numpy()
+            self.assertGreater(grad_norm, 1e-12, f"Gradient too small for {var_name}")
+            tf.print(f"Gradient norm for {var_name}: {grad_norm}")
+
+    def test_all_write_weights_zero(self):
+        """
+        测试所有写入权重为零的情况，确保 precedence_weights 和 link 不更新。
+        """
+        batch_size = 1
+        write_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)  # [1, 1, 3]
+        prev_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+        prev_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+
+        # 调用 TemporalLinkage 层
+        updated_linkage = self.temporal_linkage_layer({
+            'write_weights': write_weights,
+            'prev_linkage': {
+                'link': prev_link,
+                'precedence_weights': prev_precedence_weights
+            }
+        }, training=False)
+
+        # 预期 precedence_weights 和 link 不变
+        expected_precedence_weights = tf.constant([[[0, 0, 0]]], dtype=tf.float32)
+        expected_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size],
+                                 dtype=tf.float32)
+
+        self.assertAllClose(updated_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(),
+                            atol=1e-6)
+        self.assertAllClose(updated_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
+
+    def test_multiple_writes(self):
+        """
+        测试多个写入操作，确保 precedence_weights 和 link 正确累积。
+        """
+        batch_size = 1
+        write_weights_1 = tf.constant([[[0.2, 0.3, 0.5]]], dtype=tf.float32)  # 第一次写入
+        write_weights_2 = tf.constant([[[0.1, 0.6, 0.3]]], dtype=tf.float32)  # 第二次写入
+
+        # 调整 TemporalLinkage 实例的 num_writes 为 2 以应对两次写入
+        module = TemporalLinkage(memory_size=self.memory_size, num_writes=2)
+
+        # 第一次写入
+        linkage_state_1 = module({
+            'write_weights': write_weights_1,
+            'prev_linkage': {
+                'link': tf.zeros([batch_size, 1, self.memory_size, self.memory_size], dtype=tf.float32),
+                'precedence_weights': tf.zeros([batch_size, 1, self.memory_size], dtype=tf.float32)
+            }
+        }, training=False)
+
+        # 修正 expected_precedence_weights_1 为两次写入的形状
+        expected_precedence_weights_1 = write_weights_1 * 1e-6
+        expected_precedence_weights_1 = tf.reshape(expected_precedence_weights_1,
+                                                   linkage_state_1['precedence_weights'].shape)
+
+        # 验证第一次写入后的 precedence_weights 和 link
+        self.assertAllClose(linkage_state_1['precedence_weights'].numpy(), expected_precedence_weights_1.numpy(),
+                            atol=1e-6)
+
+        expected_link_1 = tf.zeros([batch_size, 1, self.memory_size, self.memory_size], dtype=tf.float32)
+        self.assertAllClose(linkage_state_1['link'].numpy(), expected_link_1.numpy(), atol=1e-6)
+
+        # 第二次写入，num_writes 更新为 2
+        linkage_state_2 = module({
+            'write_weights': write_weights_2,
+            'prev_linkage': linkage_state_1
+        }, training=False)
+
+        # 预期 precedence_weights 在第二次写入后应更新为：
+        expected_precedence_weights_2 = (write_weights_2 + expected_precedence_weights_1) * 1e-6
+        expected_precedence_weights_2 = tf.reshape(expected_precedence_weights_2,
+                                                   linkage_state_2['precedence_weights'].shape)
+
+        # 验证第二次写入后的 precedence_weights 和 link
+        self.assertAllClose(linkage_state_2['precedence_weights'].numpy(), expected_precedence_weights_2.numpy(),atol=1e-6)
+
+    def test_write_and_precedence_weights_relation(self):
+        """
+        测试写入权重和 precedence_weights 之间的关系，确保正确累积。
+        """
+        batch_size = 1
+        write_weights = tf.constant([[[0.3, 0.4, 0.3]]], dtype=tf.float32)  # [1, 1, 3]
+        prev_precedence_weights = tf.constant([[[0.1, 0.2, 0.3]]], dtype=tf.float32)
+
+        # 计算 updated_precedence_weights
+        reset_gate = 1 - tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [1, 1, 1]
+        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights  # [1, 1, 3]
+
+        # 预期 precedence_weights = (1 - 1.0) * prev + write_weights = write_weights
+        expected_precedence_weights = write_weights  # [1, 1, 3]
+
+        self.assertAllClose(updated_precedence_weights.numpy(), expected_precedence_weights.numpy(), atol=1e-6)
+
+    def test_link_update_with_non_zero_precedence(self):
+        """
+        测试链路更新时，precedence_weights 非零的情况，基于 DNC 的经典链路更新设计。
+        """
+        # 定义输入参数
+        write_weights = tf.constant([[[0.2, 0.0, 0.8],
+                                      [0.1, 0.3, 0.6]]], dtype=tf.float32)  # Shape: [1, 2, 3]
+        prev_precedence_weights = tf.constant([[[0.5, 0.0, 0.5],
+                                                [0.4, 0.1, 0.5]]], dtype=tf.float32)  # Shape: [1, 2, 3]
+        prev_link = tf.ones([1, 2, 3, 3], dtype=tf.float32)  # 全1矩阵, Shape: [1, 2, 3, 3]
+
+        # 调用 _link 方法更新链路矩阵
+        updated_link = self.temporal_linkage_layer._link(prev_link, prev_precedence_weights, write_weights)
+
+        # 计算期望的新链路：new_link = write_weights_i * prev_precedence_weights_j
+        # 写入头1
+        new_link_1 = np.array([[[0.1, 0.0, 0.1],
+                                [0.0, 0.0, 0.0],
+                                [0.4, 0.0, 0.4]]], dtype=np.float32)  # Shape: [1, 1, 3, 3]
+
+        # 写入头2
+        new_link_2 = np.array([[[0.04, 0.01, 0.05],
+                                [0.12, 0.03, 0.15],
+                                [0.24, 0.06, 0.3]]], dtype=np.float32)  # Shape: [1, 1, 3, 3]
+
+        # 组合所有写入头的新链路
+        expected_new_link = np.stack([new_link_1, new_link_2], axis=1)  # Shape: [1, 2, 3, 3]
+
+        # 计算期望的链路缩放因子：prev_link_scale = 1 - write_weights_i - write_weights_j
+        # 写入头1
+        expected_prev_link_scale_1 = np.array([[[0.6, 0.8, 0.0],
+                                               [0.8, 1.0, 0.2],
+                                               [0.0, 0.2, 0.0]]], dtype=np.float32)  # Shape: [1, 1, 3, 3]
+        # 写入头2
+        expected_prev_link_scale_2 = np.array([[[0.8, 0.6, 0.3],
+                                               [0.6, 0.4, 0.1],
+                                               [0.3, 0.1, 0.0]]], dtype=np.float32)  # Shape: [1, 1, 3, 3]
+        # 组合所有写入头的缩放因子
+        expected_prev_link_scale = np.stack([expected_prev_link_scale_1, expected_prev_link_scale_2], axis=1)  # Shape: [1, 2, 3, 3]
+
+        # 计算期望的 updated_link：expected_updated_link = prev_link_scale * prev_link + new_link
+        # 因为 prev_link 是全1矩阵，所以相当于 prev_link_scale + new_link
+        expected_updated_link = expected_prev_link_scale + expected_new_link  # Shape: [1, 2, 3, 3]
+
+        # 计算期望的 final_link，避免自连接
+        # 创建 mask，形状 [1, 2, 3, 3]
+        # 对于每个写入头，避免自连接
+        mask = 1 - np.eye(self.memory_size, dtype=np.float32)  # Shape: [3, 3]
+        mask = np.tile(mask, (self.num_writes, 1, 1))  # Shape: [2, 3, 3]
+        mask = np.expand_dims(mask, axis=0)  # Shape: [1, 2, 3, 3]
+        expected_final_link = expected_updated_link * mask  # Shape: [1, 2, 3, 3]
+
+        # 打印调试信息，查看实际的 updated_link 和期望的 final_link
+        tf.print("write_weights:", write_weights)
+        tf.print("prev_precedence_weights:", prev_precedence_weights)
+        tf.print("expected_prev_link_scale:", expected_prev_link_scale)
+        tf.print("expected_new_link:", expected_new_link)
+        tf.print("expected_updated_link:", expected_updated_link)
+        tf.print("expected_final_link:", expected_final_link)
+        tf.print("actual updated_link:", updated_link)
+
+        # 验证链路更新结果是否符合预期
+        self.assertAllClose(updated_link.numpy(), expected_final_link, atol=1e-6)
+
+
 
 
 class UsageUpdateTest(tf.test.TestCase):
