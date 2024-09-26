@@ -156,9 +156,12 @@ class MemoryAccess(tf.keras.layers.Layer):
         reshaped_controller_output = tf.reshape(controller_output,
                                                 [-1, input_size])  # [batch_size * sequence_length, input_size]
 
-        # Tile memory to match sequence_length
-        memory_tiled = tf.tile(prev_state.memory,
-                               [1, sequence_length, 1])  # [batch_size, sequence_length, memory_size, word_size]
+        # Correct tiling: expand dims and then tile
+        memory_expanded = tf.expand_dims(prev_state.memory, 1)  # [batch_size, 1, memory_size, word_size]
+        memory_tiled = tf.tile(memory_expanded,
+                               [1, sequence_length, 1, 1])  # [batch_size, sequence_length, memory_size, word_size]
+
+        # Reshape memory_tiled to [batch_size * sequence_length, memory_size, word_size]
         memory_tiled = tf.reshape(memory_tiled, [batch_size * sequence_length, self.memory_size,
                                                  self.word_size])  # [batch_size * sequence_length, memory_size, word_size]
 
@@ -321,6 +324,7 @@ class MemoryAccess(tf.keras.layers.Layer):
         # 计算前向和后向读取权重
         link = linkage_state['link']  # [batch_size, num_writes, memory_size, memory_size]
         prev_read_weights = prev_state.read_weights[:, -1, :, :]  # [batch_size, num_reads, memory_size]
+        tf.print("Prev Read Weights Shape:", tf.shape(prev_read_weights))
         forward_weights = self.temporal_linkage.directional_read_weights(
             link=link,
             prev_read_weights=prev_read_weights,
@@ -419,24 +423,21 @@ class MemoryAccess(tf.keras.layers.Layer):
 
         return memory_updated
 
-    def get_initial_state(self, batch_shape, initial_time_steps=0):
-        """
-        返回 MemoryAccess 模块的初始状态。
+    def get_initial_state(self, batch_size: int, initial_time_steps: int = 0) -> AccessState:
+        # 类型断言
+        if not isinstance(batch_size, int):
+            raise TypeError(f"batch_size must be an integer, got {type(batch_size)}")
+        if not isinstance(initial_time_steps, int):
+            raise TypeError(f"initial_time_steps must be an integer, got {type(initial_time_steps)}")
 
-        Args:
-            batch_shape (tf.Tensor): 批次形状，例如 tf.constant(BATCH_SIZE, dtype=tf.int32)
-            initial_time_steps (int, optional): 初始时间步数。默认值为 0。
+        memory = tf.zeros([batch_size, self.memory_size, self.word_size], dtype=tf.float32)
+        read_weights = tf.zeros([batch_size, initial_time_steps, self.num_reads, self.memory_size], dtype=tf.float32)
+        write_weights = tf.zeros([batch_size, initial_time_steps, self.num_writes, self.memory_size], dtype=tf.float32)
 
-        Returns:
-            AccessState: 包含初始化的 memory、read_weights、write_weights、linkage、usage、read_words。
-        """
-        memory = tf.zeros([batch_shape, self.memory_size, self.word_size], dtype=tf.float32)
-        read_weights = tf.zeros([batch_shape, initial_time_steps, self.num_reads, self.memory_size], dtype=tf.float32)
-        write_weights = tf.zeros([batch_shape, initial_time_steps, self.num_writes, self.memory_size], dtype=tf.float32)
+        linkage = self.temporal_linkage.get_initial_state(batch_size=batch_size)
+        usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)
+        read_words = tf.zeros([batch_size, self.num_reads, self.word_size], dtype=tf.float32)
 
-        linkage = self.temporal_linkage.get_initial_state(batch_shape=batch_shape)
-        usage = tf.zeros([batch_shape, self.memory_size], dtype=tf.float32)
-        read_words = tf.zeros([batch_shape, self.num_reads, self.word_size], dtype=tf.float32)
         return AccessState(
             memory=memory,
             read_weights=read_weights,

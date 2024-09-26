@@ -22,12 +22,31 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
     def setUp(self):
         super(MemoryAccessBasicFunctionalityTest, self).setUp()
 
-        # 定义一个简单的 write_content_weights_fn，返回未归一化的 logits
+        # 定义一个可训练的 Dense 层用于生成 write_content_weights
+        self.write_content_weights_layer = tf.keras.layers.Dense(
+            units=NUM_WRITES * MEMORY_SIZE,
+            activation=None,
+            name='write_content_weights',
+            kernel_initializer=tf.keras.initializers.GlorotUniform(),
+            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            use_bias=True
+        )
+
+        # 定义 write_content_weights_fn，使其依赖于 inputs
         def write_content_weights_fn(inputs):
-            batch_size = tf.shape(inputs['usage'])[0]
-            # 返回全1张量作为 logits
+            # 检查 inputs 中是否包含 'usage' 键，并根据 'usage' 的 batch size 推导出 batch_size
+            if 'usage' in inputs:
+                batch_size = tf.shape(inputs['usage'])[0]
+            else:
+                raise KeyError("The input 'usage' is missing in the inputs dictionary.")
+
+            # 根据输入 'usage' 大小生成 write_content_weights
             logits = tf.ones([batch_size, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
+            tf.print("Write Content Weights Shape:", tf.shape(logits))
             return logits  # 移除 softmax
+
+        # 将函数赋值给类成员
+        self.write_content_weights_fn = write_content_weights_fn
 
         # 初始化 MemoryAccess 模块，传入 write_content_weights_fn
         self.module = MemoryAccess(
@@ -36,22 +55,17 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
             num_reads=NUM_READS,
             num_writes=NUM_WRITES,
             epsilon=EPSILON,
-            write_content_weights_fn=write_content_weights_fn  # 传入函数
+            write_content_weights_fn=self.write_content_weights_fn  # 传入函数
         )
 
-        # 将 batch_shape 定义为标量 Tensor
-        batch_shape = tf.constant(BATCH_SIZE, dtype=tf.int32)
-
-        # 构建模块以初始化权重
-        # 通过调用一次模块，Keras会自动构建子层
+        # 初始化状态
+        batch_size = BATCH_SIZE  # 直接使用整数
         dummy_input = {
-            'inputs': tf.zeros([BATCH_SIZE, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32),
-            'prev_state': self.module.get_initial_state(batch_shape=batch_shape, initial_time_steps=1)
-            # 设置 initial_time_steps=1
+            'inputs': tf.zeros([batch_size, SEQUENCE_LENGTH, INPUT_SIZE], dtype=tf.float32),
+            'prev_state': self.module.get_initial_state(batch_size=batch_size, initial_time_steps=1)
         }
         _ = self.module(dummy_input, training=False)
-        self.initial_state = self.module.get_initial_state(batch_shape=batch_shape,
-                                                           initial_time_steps=1)  # 设置 initial_time_steps=1
+        self.initial_state = self.module.get_initial_state(batch_size=batch_size, initial_time_steps=1)
     def testBuildAndTrain(self):
         """测试模块的构建和基本训练过程。"""
         # 生成随机输入

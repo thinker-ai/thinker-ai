@@ -364,34 +364,25 @@ class TemporalLinkage(tf.keras.layers.Layer):
 
         return directional_weights
 
-    def get_initial_state(self, batch_shape):
+    def get_initial_state(self, batch_size: int):
         """
         返回 TemporalLinkage 模块的初始状态。
 
         Args:
-            batch_shape (tf.Tensor): 批次形状，不包括 memory_size。
+            batch_size (int): 批次大小，不包括 memory_size。
 
         Returns:
             dict: 包含初始化的 'link' 和 'precedence_weights'。
         """
-        # 确保 batch_shape 是一个 1-D Tensor
-        if len(batch_shape.shape) == 0:
-            # 如果 batch_shape 是标量，则扩展为 1-D Tensor
-            batch_shape = tf.expand_dims(batch_shape, axis=0)
-
         # 创建一个 Tensor 来表示 [num_writes, memory_size, memory_size]
-        writes_memory_memory = tf.constant(
-            [self.num_writes, self.memory_size, self.memory_size],
-            dtype=batch_shape.dtype
-        )
+        writes_memory_memory = [self.num_writes, self.memory_size, self.memory_size]
 
-        # 拼接 [batch_size] 和 [num_writes, memory_size, memory_size] 以形成 link_shape
-        link_shape = tf.concat([batch_shape, writes_memory_memory], axis=0)
+        # 拼接 batch_size 和 [num_writes, memory_size, memory_size] 以形成 link_shape
+        link_shape = [batch_size] + writes_memory_memory
         link = tf.zeros(link_shape, dtype=tf.float32)
 
         # 创建 precedence_weights 的形状 [batch_size, num_writes, memory_size]
-        precedence_shape = tf.concat(
-            [batch_shape, tf.constant([self.num_writes, self.memory_size], dtype=batch_shape.dtype)], axis=0)
+        precedence_shape = [batch_size, self.num_writes, self.memory_size]
         precedence_weights = tf.zeros(precedence_shape, dtype=tf.float32)
 
         return {
