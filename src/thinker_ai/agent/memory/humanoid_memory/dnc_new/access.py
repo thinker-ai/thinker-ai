@@ -20,10 +20,9 @@ AccessState = collections.namedtuple('AccessState', [
 ])
 
 
-# 以下是 MemoryAccess 类的定义，请确保其存在于您的代码库中
 class MemoryAccess(tf.keras.layers.Layer):
-    def __init__(self, memory_size, word_size, num_reads, num_writes,
-                 epsilon=1e-6, write_content_weights_fn=None, name='memory_access'):
+    def __init__(self, memory_size, word_size, num_reads, num_writes, write_content_weights_fn,
+                 epsilon=1e-6, name='memory_access'):
         super(MemoryAccess, self).__init__(name=name)
         self.memory_size = memory_size
         self.word_size = word_size
@@ -113,11 +112,13 @@ class MemoryAccess(tf.keras.layers.Layer):
             use_bias=True
         )
 
-        # 初始化其他子层
+        # 初始化 CosineWeights 层
         self.write_content_weights = CosineWeights(num_heads=self.num_writes, word_size=self.word_size)
         self.read_content_weights = CosineWeights(num_heads=self.num_reads, word_size=self.word_size)
+
         # 初始化 TemporalLinkage
         self.temporal_linkage = TemporalLinkage(memory_size, num_writes, name='temporal_linkage')
+
         # 初始化 WriteAllocation，传入 write_content_weights_fn
         self.write_allocation = WriteAllocation(
             num_writes=num_writes,
@@ -125,8 +126,26 @@ class MemoryAccess(tf.keras.layers.Layer):
             write_content_weights_fn=write_content_weights_fn,  # 传入函数
             name='write_allocation'
         )
-        self.usage_update = UsageUpdate(memory_size=self.memory_size, num_writes=self.num_writes,
-                                        num_reads=self.num_reads, epsilon=self.epsilon, name='usage_update')
+
+        self.usage_update = UsageUpdate(
+            memory_size=self.memory_size,
+            num_writes=self.num_writes,
+            num_reads=self.num_reads,
+            epsilon=self.epsilon,
+            name='usage_update'
+        )
+
+        # 添加新的 Dense 层用于根据 'usage' 和 'write_gates_sum' 生成 write_content_weights
+        self.write_content_weights_from_usage_layer = tf.keras.layers.Dense(
+            units=self.num_writes * self.memory_size,
+            activation=None,
+            name='write_content_weights_from_usage',
+            kernel_initializer=tf.keras.initializers.GlorotUniform(),
+            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            use_bias=True
+        )
+
+        self.write_content_weights_fn = write_content_weights_fn
 
     def build(self, input_shape):
         # 让Keras自动处理子层的构建
@@ -156,14 +175,10 @@ class MemoryAccess(tf.keras.layers.Layer):
         reshaped_controller_output = tf.reshape(controller_output,
                                                 [-1, input_size])  # [batch_size * sequence_length, input_size]
 
-        # Correct tiling: expand dims and then tile
-        memory_expanded = tf.expand_dims(prev_state.memory, 1)  # [batch_size, 1, memory_size, word_size]
-        memory_tiled = tf.tile(memory_expanded,
-                               [1, sequence_length, 1, 1])  # [batch_size, sequence_length, memory_size, word_size]
-
         # Reshape memory_tiled to [batch_size * sequence_length, memory_size, word_size]
-        memory_tiled = tf.reshape(memory_tiled, [batch_size * sequence_length, self.memory_size,
-                                                 self.word_size])  # [batch_size * sequence_length, memory_size, word_size]
+        memory_tiled = tf.tile(tf.expand_dims(prev_state.memory, 1),
+                               [1, sequence_length, 1, 1])
+        memory_tiled = tf.reshape(memory_tiled, [batch_size * sequence_length, self.memory_size, self.word_size])
 
         # Process inputs to generate required parameters
         processed_inputs = self._read_inputs(reshaped_controller_output, memory_tiled)  # dict with parameters
@@ -173,7 +188,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             processed_inputs[key] = tf.reshape(
                 processed_inputs[key],
                 [batch_size, sequence_length] + processed_inputs[key].shape.as_list()[1:]
-            )  # [batch_size, sequence_length, ...]
+            )
 
         # Perform one step computation for each time step
         next_state = prev_state
@@ -182,8 +197,12 @@ class MemoryAccess(tf.keras.layers.Layer):
             # Extract parameters for the current time step
             current_inputs = {key: processed_inputs[key][:, t] for key in processed_inputs}
 
-            # Perform one step
-            next_state = self._step(current_inputs, next_state, training)
+            # Get 'inputs' for the current time step
+            controller_inputs = controller_output[:, t, :]  # [batch_size, input_size]
+            tf.print("Time step", t, "controller_inputs:", controller_inputs)
+
+            # Perform one step, passing controller_inputs
+            next_state = self._step(current_inputs, next_state, training, controller_inputs)
 
             # Collect read_words
             read_words_all.append(next_state.read_words)  # [batch_size, num_reads, word_size]
@@ -257,32 +276,56 @@ class MemoryAccess(tf.keras.layers.Layer):
             'read_mode': read_mode  # [batch_size * sequence_length, num_reads, 1 + 2*num_writes]
         }
 
-    def _compute_write_weights(self, write_content_weights, allocation_gate, write_gate, prev_usage, training):
+    def _compute_write_weights(self, write_content_weights, allocation_gate, write_gate, prev_usage, training,
+                               controller_inputs):
         """
         计算写入权重（write_weights）
+
+        Args:
+            write_content_weights (tf.Tensor): [batch_size, num_writes, memory_size]
+            allocation_gate (tf.Tensor): [batch_size, num_writes]
+            write_gate (tf.Tensor): [batch_size, num_writes]
+            prev_usage (tf.Tensor): [batch_size, memory_size]
+            training (bool): 是否在训练模式
+            controller_inputs (tf.Tensor): [batch_size, input_size]
+
+        Returns:
+            tf.Tensor: final_write_weights [batch_size, num_writes, memory_size]
         """
-        # 计算 write_gates_sum
+        tf.print("_compute_write_weights called with 'controller_inputs':", controller_inputs)
         write_gates_sum = allocation_gate * write_gate  # [batch_size, num_writes]
 
-        # 计算 write_allocation_weights via WriteAllocation layer
-        write_allocation_weights = self.write_allocation({
+        # 使用 WriteAllocation 生成 write_weights，同时传递 'inputs'
+        write_weights = self.write_allocation({
             'usage': prev_usage,  # [batch_size, memory_size]
-            'write_gates_sum': write_gates_sum  # [batch_size, num_writes]
+            'write_gates_sum': write_gates_sum,  # [batch_size, num_writes]
+            'inputs': controller_inputs  # [batch_size, input_size]
         }, training=training)  # [batch_size, num_writes, memory_size]
+        tf.print("_compute_write_weights received write_weights from WriteAllocation:", write_weights)
 
         # 计算 final_write_weights
         write_gates_sum_expanded = tf.expand_dims(write_gates_sum, axis=-1)  # [batch_size, num_writes, 1]
         allocation_gate_expanded = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
         final_write_weights = write_gates_sum_expanded * (
-                allocation_gate_expanded * write_allocation_weights +
+                allocation_gate_expanded * write_weights +
                 (1 - allocation_gate_expanded) * write_content_weights
         )  # [batch_size, num_writes, memory_size]
+        tf.print("_compute_write_weights final_write_weights:", final_write_weights)
 
         return final_write_weights
 
-    def _step(self, inputs, prev_state, training):
+    def _step(self, inputs, prev_state, training, controller_inputs):
         """
         执行 MemoryAccess 的一个时间步操作，更新状态。
+
+        Args:
+            inputs (dict): 当前时间步的输入参数
+            prev_state (AccessState): 上一个时间步的状态
+            training (bool): 是否在训练模式
+            controller_inputs (tf.Tensor): 当前时间步的 controller 输入 [batch_size, input_size]
+
+        Returns:
+            AccessState: 下一个时间步的状态
         """
         # 获取输入参数
         write_content_weights = inputs['write_content_weights']  # [batch_size, num_writes, memory_size]
@@ -296,7 +339,7 @@ class MemoryAccess(tf.keras.layers.Layer):
 
         # 使用提取出来的辅助函数来计算写入权重
         final_write_weights = self._compute_write_weights(
-            write_content_weights, allocation_gate, write_gate, prev_state.usage, training
+            write_content_weights, allocation_gate, write_gate, prev_state.usage, training, controller_inputs
         )  # [batch_size, num_writes, memory_size]
 
         # 更新使用率 via UsageUpdate layer
@@ -316,10 +359,10 @@ class MemoryAccess(tf.keras.layers.Layer):
         )  # [batch_size, memory_size, word_size]
 
         # 更新链接 via TemporalLinkage layer
-        linkage_state = self.temporal_linkage({
-            'write_weights': final_write_weights,  # [batch_size, num_writes, memory_size]
-            'prev_linkage': prev_state.linkage  # {'link': ..., 'precedence_weights': ...}
-        }, training=training)
+        linkage_state = self.temporal_linkage(
+            inputs=(final_write_weights, prev_state.linkage),
+            training=training
+        )
 
         # 计算前向和后向读取权重
         link = linkage_state['link']  # [batch_size, num_writes, memory_size, memory_size]
@@ -389,15 +432,11 @@ class MemoryAccess(tf.keras.layers.Layer):
             tf.Tensor: 更新后的内存 [batch_size, memory_size, word_size]
         """
         with tf.name_scope('erase_memory'):
-            # reset_weights: [batch_size, num_writes, word_size]
-            # address: [batch_size, num_writes, memory_size]
-
             # Compute erase_gate: 1 - address * reset_weights
             # Expand dimensions to [batch_size, num_writes, memory_size, word_size]
             reset_weights_expanded = tf.expand_dims(reset_weights, axis=2)  # [batch_size, num_writes, 1, word_size]
             address_expanded = tf.expand_dims(address, axis=-1)  # [batch_size, num_writes, memory_size, 1]
-            erase_gate = 1 - tf.multiply(address_expanded,
-                                         reset_weights_expanded)  # [batch_size, num_writes, memory_size, word_size]
+            erase_gate = 1 - tf.multiply(address_expanded, reset_weights_expanded)  # [batch_size, num_writes, memory_size, word_size]
 
             # Compute total erase_gate: product over writes
             total_erase_gate = tf.reduce_prod(erase_gate, axis=1)  # [batch_size, memory_size, word_size]

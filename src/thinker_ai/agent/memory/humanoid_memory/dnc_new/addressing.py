@@ -6,9 +6,9 @@ import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
 
-
 # 配置类，用于动态调整 epsilon 等参数
 from dataclasses import dataclass
+
 
 @dataclass
 class Config:
@@ -138,14 +138,14 @@ class CosineWeights(tf.keras.layers.Layer):
 
 class WriteAllocation(tf.keras.layers.Layer):
     def __init__(
-        self,
-        memory_size: int,
-        num_writes: int,
-        epsilon: float = 1e-6,
-        write_content_weights_fn: Optional[Callable[[dict], tf.Tensor]] = None,
-        allocation_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
-        write_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
-        name: str = 'write_allocation'
+            self,
+            memory_size: int,
+            num_writes: int,
+            epsilon: float = 1e-6,
+            write_content_weights_fn: Optional[Callable[[dict], tf.Tensor]] = None,
+            allocation_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
+            write_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
+            name: str = 'write_allocation'
     ):
         """
         初始化 WriteAllocation 层。
@@ -197,10 +197,10 @@ class WriteAllocation(tf.keras.layers.Layer):
         return tf.ones([batch_size, num_writes], dtype=tf.float32)
 
     def _compute_write_weights(
-        self,
-        write_content_weights: tf.Tensor,
-        allocation_gate: tf.Tensor,
-        write_gate: tf.Tensor
+            self,
+            write_content_weights: tf.Tensor,
+            allocation_gate: tf.Tensor,
+            write_gate: tf.Tensor
     ) -> tf.Tensor:
         """
         计算最终的写入权重。
@@ -214,16 +214,16 @@ class WriteAllocation(tf.keras.layers.Layer):
             tf.Tensor: [batch_size, num_writes, memory_size]
         """
         allocation_gate_expanded = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
-        write_gate_expanded = tf.expand_dims(write_gate, axis=-1)            # [batch_size, num_writes, 1]
+        write_gate_expanded = tf.expand_dims(write_gate, axis=-1)  # [batch_size, num_writes, 1]
         write_weights = write_content_weights * allocation_gate_expanded * write_gate_expanded  # [batch_size, num_writes, memory_size]
         tf.print("Write Weights:", write_weights)
         return write_weights
 
     def call(
-        self,
-        inputs: dict,
-        training: bool = False,
-        num_writes: Optional[int] = None
+            self,
+            inputs: dict,
+            training: bool = False,
+            num_writes: Optional[int] = None
     ) -> tf.Tensor:
         """
         前向传播方法，支持动态指定 num_writes。
@@ -248,7 +248,7 @@ class WriteAllocation(tf.keras.layers.Layer):
         # 生成 allocation_gate 和 write_gate
         batch_size = tf.shape(write_content_weights)[0]
         allocation_gate = self.allocation_gate_fn(batch_size, num_writes)  # [batch_size, num_writes]
-        write_gate = self.write_gate_fn(batch_size, num_writes)            # [batch_size, num_writes]
+        write_gate = self.write_gate_fn(batch_size, num_writes)  # [batch_size, num_writes]
 
         # 计算写入权重
         write_weights = self._compute_write_weights(write_content_weights, allocation_gate, write_gate)
@@ -256,13 +256,22 @@ class WriteAllocation(tf.keras.layers.Layer):
 
 
 class TemporalLinkage(tf.keras.layers.Layer):
-    def __init__(self, memory_size, num_writes, epsilon=1e-6, name='temporal_linkage'):
+    def __init__(self, memory_size: int, num_writes: int, epsilon: float = 1e-6, name: str = 'temporal_linkage'):
+        """
+        初始化 TemporalLinkage 层。
+
+        Args:
+            memory_size (int): 内存大小。
+            num_writes (int): 写操作的数量。
+            epsilon (float, optional): 用于更新优先级权重的小常数。默认值为 1e-6。
+            name (str, optional): 层的名称。默认值为 'temporal_linkage'。
+        """
         super(TemporalLinkage, self).__init__(name=name)
         self.memory_size = memory_size
         self.num_writes = num_writes
         self.epsilon = epsilon  # 添加 epsilon
 
-    def call(self, inputs, training=False):
+    def call(self,inputs: dict,training: bool = False) -> dict:
         """
         前向传播方法。
 
@@ -291,7 +300,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
             'precedence_weights': updated_precedence_weights
         }
 
-    def _link(self, prev_link, prev_precedence_weights, write_weights):
+    def _link(self, prev_link: tf.Tensor, prev_precedence_weights: tf.Tensor, write_weights: tf.Tensor) -> tf.Tensor:
         """
         更新链路矩阵，计算每次写入的影响。
 
@@ -303,14 +312,13 @@ class TemporalLinkage(tf.keras.layers.Layer):
         Returns:
             tf.Tensor: 更新后的链路矩阵 [batch_shape..., num_writes, memory_size, memory_size]
         """
-        # 获取动态的 num_writes
+        # 获取动态的 num_writes 和 memory_size
         num_writes = tf.shape(write_weights)[-2]
         memory_size = tf.shape(write_weights)[-1]
 
         # 扩展维度以进行外积计算
         write_weights_i = tf.expand_dims(write_weights, axis=-1)  # [batch_shape..., num_writes, memory_size, 1]
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
-                                                   axis=-2)  # [batch_shape..., num_writes, 1, memory_size]
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, axis=-2)  # [batch_shape..., num_writes, 1, memory_size]
 
         # 计算新链路，使用外积
         new_link = write_weights_i * prev_precedence_weights_j  # [batch_shape..., num_writes, memory_size, memory_size]
@@ -326,29 +334,32 @@ class TemporalLinkage(tf.keras.layers.Layer):
         updated_link = prev_link_scale * prev_link + new_link  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 避免自连接
-        mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2],
-                          dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
+        mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2], dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
         final_link = updated_link * mask  # [batch_shape..., num_writes, memory_size, memory_size]
 
         return final_link
 
-    def directional_read_weights(self, link, prev_read_weights, forward=True):
+    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor, forward: bool = True) -> tf.Tensor:
         """
         计算前向或后向的读权重。
 
         Args:
             link (tf.Tensor): 当前的链路矩阵 [batch_shape..., num_writes, memory_size, memory_size]
             prev_read_weights (tf.Tensor): 之前的读权重 [batch_shape..., num_reads, memory_size]
-            forward (bool): 指示是否为前向计算
+            forward (bool, optional): 指示是否为前向计算。默认值为 True。
 
         Returns:
             tf.Tensor: 方向性的读权重 [batch_shape..., num_reads, num_writes, memory_size]
         """
         if not forward:
             # 使用辅助函数交换最后两个轴
-            link = tf.transpose(link,
-                                perm=tf.concat([tf.range(tf.rank(link) - 2), [tf.rank(link) - 1, tf.rank(link) - 2]],
-                                               axis=0))  # [batch_shape..., num_writes, memory_size, memory_size]
+            link = tf.transpose(
+                link,
+                perm=tf.concat(
+                    [tf.range(tf.rank(link) - 2), [tf.rank(link) - 1, tf.rank(link) - 2]],
+                    axis=0
+                )
+            )  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 使用 tf.einsum 计算方向性读权重
         # prev_read_weights: [batch_shape..., num_reads, memory_size]
@@ -364,7 +375,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
 
         return directional_weights
 
-    def get_initial_state(self, batch_size: int):
+    def get_initial_state(self, batch_size: int) -> dict:
         """
         返回 TemporalLinkage 模块的初始状态。
 
@@ -390,7 +401,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
             'precedence_weights': precedence_weights
         }
     @property
-    def state_size(self):
+    def state_size(self) -> dict:
         """
         返回状态的大小。
 
@@ -488,4 +499,3 @@ class UsageUpdate(tf.keras.layers.Layer):
     @property
     def state_size(self):
         return tf.TensorShape([self._memory_size])
-
