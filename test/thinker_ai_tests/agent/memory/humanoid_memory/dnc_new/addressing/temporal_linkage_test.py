@@ -143,14 +143,15 @@ class TemporalLinkageTest(tf.test.TestCase):
         测试 get_initial_state 方法，确保返回正确的初始链路矩阵和优先级权重。
         """
         batch_size = 4
-        initial_linkage = self.temporal_linkage_layer.get_initial_state(batch_size)
+        batch_size_tensor = tf.constant(batch_size, dtype=tf.int32)  # 将 batch_size 转换为 tf.Tensor
+        initial_linkage = self.temporal_linkage_layer.get_initial_state(batch_size=batch_size_tensor)
 
         expected_link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
         expected_precedence_weights = tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
 
         self.assertAllClose(initial_linkage['link'].numpy(), expected_link.numpy(), atol=1e-6)
-        self.assertAllClose(initial_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(), atol=1e-6)
-
+        self.assertAllClose(initial_linkage['precedence_weights'].numpy(), expected_precedence_weights.numpy(),
+                            atol=1e-6)
     def test_state_size(self):
         """
         测试 state_size 属性，确保返回正确的形状。

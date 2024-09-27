@@ -271,7 +271,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
         self.num_writes = num_writes
         self.epsilon = epsilon  # 添加 epsilon
 
-    def call(self,inputs: dict,training: bool = False) -> dict:
+    def call(self, inputs: dict, training: bool = False) -> dict:
         """
         前向传播方法。
 
@@ -334,7 +334,8 @@ class TemporalLinkage(tf.keras.layers.Layer):
         updated_link = prev_link_scale * prev_link + new_link  # [batch_shape..., num_writes, memory_size, memory_size]
 
         # 避免自连接
-        mask = 1 - tf.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2], dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
+        # 使用动态 memory_size 生成掩码
+        mask = 1 - tf.linalg.eye(memory_size, batch_shape=tf.shape(updated_link)[:-2], dtype=tf.float32)  # [batch_shape..., memory_size, memory_size]
         final_link = updated_link * mask  # [batch_shape..., num_writes, memory_size, memory_size]
 
         return final_link
@@ -375,12 +376,12 @@ class TemporalLinkage(tf.keras.layers.Layer):
 
         return directional_weights
 
-    def get_initial_state(self, batch_size: int) -> dict:
+    def get_initial_state(self, batch_size: tf.Tensor) -> dict:
         """
         返回 TemporalLinkage 模块的初始状态。
 
         Args:
-            batch_size (int): 批次大小，不包括 memory_size。
+            batch_size (tf.Tensor): 批次大小，类型为 tf.Tensor。
 
         Returns:
             dict: 包含初始化的 'link' 和 'precedence_weights'。
@@ -389,7 +390,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
         writes_memory_memory = [self.num_writes, self.memory_size, self.memory_size]
 
         # 拼接 batch_size 和 [num_writes, memory_size, memory_size] 以形成 link_shape
-        link_shape = [batch_size] + writes_memory_memory
+        link_shape = tf.concat([tf.expand_dims(batch_size, 0), writes_memory_memory], axis=0)
         link = tf.zeros(link_shape, dtype=tf.float32)
 
         # 创建 precedence_weights 的形状 [batch_size, num_writes, memory_size]
@@ -400,6 +401,7 @@ class TemporalLinkage(tf.keras.layers.Layer):
             'link': link,
             'precedence_weights': precedence_weights
         }
+
     @property
     def state_size(self) -> dict:
         """
@@ -483,17 +485,17 @@ class UsageUpdate(tf.keras.layers.Layer):
 
         return updated_usage
 
-    def get_initial_state(self, batch_shape):
+    def get_initial_state(self, batch_size: tf.Tensor) -> tf.Tensor:
         """
         返回 UsageUpdate 层的初始状态。
 
         Args:
-            batch_shape (tuple or list): 批次形状，不包括 memory_size。
+            batch_size (tf.Tensor): 批次大小，类型为 tf.Tensor。
 
         Returns:
-            tf.Tensor: 初始使用率，形状为 [batch_shape..., memory_size]
+            tf.Tensor: 初始使用率，形状为 [batch_size, memory_size]
         """
-        usage = tf.zeros(tf.concat([batch_shape, [self._memory_size]], axis=0), dtype=tf.float32)
+        usage = tf.zeros([batch_size, self._memory_size], dtype=tf.float32)
         return usage
 
     @property

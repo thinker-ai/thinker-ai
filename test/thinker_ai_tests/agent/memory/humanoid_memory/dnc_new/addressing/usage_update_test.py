@@ -274,9 +274,10 @@ class UsageUpdateTest(tf.test.TestCase):
         测试 get_initial_state 方法，确保返回正确的初始使用率。
         """
         batch_size = 4
-        initial_usage = self.usage_update_layer.get_initial_state([batch_size])  # [4,3]
+        batch_size_tensor = tf.constant(batch_size, dtype=tf.int32)  # 将 batch_size 转换为 tf.Tensor
+        initial_usage = self.usage_update_layer.get_initial_state(batch_size=batch_size_tensor)  # [4, 3]
 
-        expected_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [4,3]
+        expected_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [4, 3]
 
         self.assertAllClose(initial_usage.numpy(), expected_usage.numpy(), atol=1e-6)
 
