@@ -1,9 +1,7 @@
 import tensorflow as tf
-import numpy as np
 import os
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new import access
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.access import MemoryAccess, AccessState
+from thinker_ai.agent.memory.humanoid_memory.dnc_new.access import MemoryAccess
 
 from parameterized import parameterized
 
