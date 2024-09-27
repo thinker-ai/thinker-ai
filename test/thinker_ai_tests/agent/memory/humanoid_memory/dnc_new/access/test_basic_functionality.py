@@ -35,15 +35,10 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
         # 定义 write_content_weights_fn，使其依赖于 inputs
         def write_content_weights_fn(inputs):
             # 检查 inputs 中是否包含 'usage' 键，并根据 'usage' 的 batch size 推导出 batch_size
-            if 'usage' in inputs:
-                batch_size = tf.shape(inputs['usage'])[0]
+            if 'write_content_weights' in inputs:
+                return inputs['write_content_weights']
             else:
-                raise KeyError("The input 'usage' is missing in the inputs dictionary.")
-
-            # 根据输入 'usage' 大小生成 write_content_weights
-            logits = tf.ones([batch_size, NUM_WRITES, MEMORY_SIZE], dtype=tf.float32)
-            tf.print("Write Content Weights Shape:", tf.shape(logits))
-            return logits  # 移除 softmax
+                raise KeyError("The input 'write_content_weights' is missing in the inputs dictionary.")
 
         # 将函数赋值给类成员
         self.write_content_weights_fn = write_content_weights_fn

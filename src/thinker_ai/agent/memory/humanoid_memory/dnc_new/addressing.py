@@ -143,8 +143,8 @@ class WriteAllocation(tf.keras.layers.Layer):
             num_writes: int,
             epsilon: float = 1e-6,
             write_content_weights_fn: Optional[Callable[[dict], tf.Tensor]] = None,
-            allocation_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
-            write_gate_fn: Optional[Callable[[int, int], tf.Tensor]] = None,
+            allocation_gate_fn: Optional[Callable[[tf.Tensor, int], tf.Tensor]] = None,
+            write_gate_fn: Optional[Callable[[tf.Tensor, int], tf.Tensor]] = None,
             name: str = 'write_allocation'
     ):
         """
@@ -170,12 +170,12 @@ class WriteAllocation(tf.keras.layers.Layer):
         self.allocation_gate_fn = allocation_gate_fn or self.default_allocation_gate
         self.write_gate_fn = write_gate_fn or self.default_write_gate
 
-    def default_allocation_gate(self, batch_size: int, num_writes: int) -> tf.Tensor:
+    def default_allocation_gate(self, batch_size: tf.Tensor, num_writes: int) -> tf.Tensor:
         """
         默认的 allocation_gate 生成逻辑：返回全 1 矩阵。
 
         Args:
-            batch_size (int): 批量大小。
+            batch_size (tf.Tensor): 批量大小，类型为 tf.Tensor。
             num_writes (int): 写操作的数量。
 
         Returns:
@@ -183,12 +183,12 @@ class WriteAllocation(tf.keras.layers.Layer):
         """
         return tf.ones([batch_size, num_writes], dtype=tf.float32)
 
-    def default_write_gate(self, batch_size: int, num_writes: int) -> tf.Tensor:
+    def default_write_gate(self, batch_size: tf.Tensor, num_writes: int) -> tf.Tensor:
         """
         默认的 write_gate 生成逻辑：返回全 1 矩阵。
 
         Args:
-            batch_size (int): 批量大小。
+            batch_size (tf.Tensor): 批量大小，类型为 tf.Tensor。
             num_writes (int): 写操作的数量。
 
         Returns:
