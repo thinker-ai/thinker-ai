@@ -136,13 +136,17 @@ class CosineWeights(tf.keras.layers.Layer):
         return weights
 
 
+from typing import Optional, Callable, Dict
+import tensorflow as tf
+
+
 class WriteAllocation(tf.keras.layers.Layer):
     def __init__(
             self,
             memory_size: int,
             num_writes: int,
             epsilon: float = 1e-6,
-            write_content_weights_fn: Optional[Callable[[dict], tf.Tensor]] = None,
+            write_content_weights_fn: Optional[Callable[[dict, bool, Optional[int]], tf.Tensor]] = None,
             allocation_gate_fn: Optional[Callable[[tf.Tensor, int], tf.Tensor]] = None,
             write_gate_fn: Optional[Callable[[tf.Tensor, int], tf.Tensor]] = None,
             name: str = 'write_allocation'
@@ -154,7 +158,7 @@ class WriteAllocation(tf.keras.layers.Layer):
             memory_size (int): 存储器的大小。
             num_writes (int): 写操作的数量。
             epsilon (float, optional): 防止数值不稳定的小值。默认值为 1e-6。
-            write_content_weights_fn (Callable[[dict], tf.Tensor], optional):
+            write_content_weights_fn (Callable[[dict, bool, Optional[int]], tf.Tensor], optional):
                 用于生成 write_content_weights 的函数，返回值应为 [batch_size, num_writes, memory_size]。
             allocation_gate_fn (Callable[[int, int], tf.Tensor], optional):
                 用于生成 allocation_gate 的函数，返回值应为 [batch_size, num_writes]。
@@ -166,9 +170,28 @@ class WriteAllocation(tf.keras.layers.Layer):
         self.memory_size = memory_size
         self.num_writes = num_writes
         self.epsilon = epsilon
-        self.write_content_weights_fn = write_content_weights_fn
+        self.write_content_weights_fn = write_content_weights_fn or self.default_write_content_weights
         self.allocation_gate_fn = allocation_gate_fn or self.default_allocation_gate
         self.write_gate_fn = write_gate_fn or self.default_write_gate
+
+
+    def default_write_content_weights(self,
+            inputs: dict,
+            training: bool = False,
+            num_writes: Optional[int] = None) -> tf.Tensor:
+        """
+        默认的 write_content_weights 生成逻辑：从 inputs 中获取 'write_content_weights'。
+
+        Args:
+            inputs (dict): 包含 'write_content_weights' 的输入字典。
+            training (bool): 是否在训练模式。
+            num_writes (int, optional): 写操作的数量。
+
+        Returns:
+            tf.Tensor: 形状为 [batch_size, num_writes, memory_size] 的写内容权重张量。
+        """
+        write_content_weights = inputs['write_content_weights']  # [batch_size, num_writes, memory_size]
+        return write_content_weights
 
     def default_allocation_gate(self, batch_size: tf.Tensor, num_writes: int) -> tf.Tensor:
         """
@@ -240,10 +263,7 @@ class WriteAllocation(tf.keras.layers.Layer):
             num_writes = self.num_writes
 
         # 使用用户提供的函数生成 write_content_weights
-        if self.write_content_weights_fn is not None:
-            write_content_weights = self.write_content_weights_fn(inputs)  # [batch_size, num_writes, memory_size]
-        else:
-            raise ValueError("write_content_weights_fn must be provided.")
+        write_content_weights = self.write_content_weights_fn(inputs, training, num_writes)  # [batch_size, num_writes, memory_size]
 
         # 生成 allocation_gate 和 write_gate
         batch_size = tf.shape(write_content_weights)[0]
