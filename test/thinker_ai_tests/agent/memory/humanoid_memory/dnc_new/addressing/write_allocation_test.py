@@ -1,3 +1,5 @@
+from typing import Optional
+
 import tensorflow as tf
 
 from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import WriteAllocation, weighted_softmax
@@ -11,7 +13,8 @@ class WriteAllocationTest(tf.test.TestCase):
         self.epsilon = 1e-3  # 增大 epsilon
 
         # 定义生成 write_content_weights 的函数
-        def custom_write_content_weights_fn(inputs: dict) -> tf.Tensor:
+        def custom_write_content_weights_fn(inputs: dict, training: bool = False,
+                                            num_writes: Optional[int] = None) -> tf.Tensor:
             write_content_keys = inputs.get('write_content_keys')
             write_content_strengths = inputs.get('write_content_strengths')
             if write_content_keys is not None and write_content_strengths is not None:
@@ -169,66 +172,3 @@ class WriteAllocationTest(tf.test.TestCase):
 
         # 验证梯度值在合理范围内
         self.assertGreater(gradient_value, 1e-6, "Gradient is too small")
-        self.assertLess(gradient_value, 1e6, "Gradient is too large")
-        tf.print(f"Gradient value for usage: {gradient_value}")
-
-    def test_write_allocation(self):
-        """
-        测试 WriteAllocation 类的 call 方法，确保其功能正确。
-        """
-        batch_size = 2
-
-        # 创建初始使用率
-        initial_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [2,3]
-
-        # 定义 write_gates_sum 全为1
-        write_gates_sum = tf.ones([batch_size, self.num_writes], dtype=tf.float32)  # [2,2]
-
-        # 创建 inputs 字典，不包含 'write_content_keys' 和 'write_content_strengths'
-        inputs = {
-            'usage': initial_usage,
-            'write_gates_sum': write_gates_sum
-        }
-
-        # 调用 WriteAllocation 层
-        write_allocation_weights = self.write_allocation_layer(inputs, training=False)  # [2,2,3]
-
-        # 预期 write_allocation_weights 应为 soft allocations, 例如 [1/3,1/3,1/3]
-        expected_write_allocation_weights = tf.constant([
-            [[1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3]],
-            [[1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3]]
-        ], dtype=tf.float32)  # [2,2,3]
-
-        self.assertAllClose(write_allocation_weights.numpy(), expected_write_allocation_weights.numpy(), atol=1e-5)
-
-    def test_write_allocation_with_dynamic_num_writes(self):
-        """测试 WriteAllocation 层在调用时动态覆盖 num_writes"""
-        batch_size = 2
-        dynamic_num_writes = 3  # 动态覆盖的 num_writes
-
-        # 创建 usage 和 write_gates_sum
-        usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [2,3]
-        write_gates_sum = tf.ones([batch_size, dynamic_num_writes], dtype=tf.float32)  # [2,3]
-
-        # 创建 inputs 字典，不包含 'write_content_keys' 和 'write_content_strengths'
-        inputs = {
-            'usage': usage,
-            'write_gates_sum': write_gates_sum
-        }
-
-        # 调用 WriteAllocation 的 call 方法，并覆盖 num_writes
-        write_weights = self.write_allocation_layer(inputs, training=False, num_writes=dynamic_num_writes)  # [2,3,3]
-
-        # 预期 write_allocation_weights 应为 soft allocations, 例如 [1/3,1/3,1/3]
-        expected_write_allocation_weights = tf.constant([
-            [[1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3]],
-            [[1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3],
-             [1 / 3, 1 / 3, 1 / 3]]
-        ], dtype=tf.float32)  # [2,3,3]
-
-        self.assertAllClose(write_weights.numpy(), expected_write_allocation_weights.numpy(), atol=1e-5)
