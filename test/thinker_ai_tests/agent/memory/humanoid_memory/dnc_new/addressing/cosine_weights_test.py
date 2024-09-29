@@ -3,7 +3,9 @@
 import numpy as np
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import CosineWeights  # 假设您将 CosineWeights 类保存在 addressing.py 文件中
+from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import \
+    CosineWeights  # 假设您将 CosineWeights 类保存在 addressing.py 文件中
+
 
 class CosineWeightsTest(tf.test.TestCase):
     def test_cosine_weights_basic(self):
@@ -189,6 +191,7 @@ class CosineWeightsTest(tf.test.TestCase):
         # 由于 keys 是零向量，与所有 memory 无关，softmax 应均匀分配权重
         expected_weights = np.array([[[0.5, 0.5]]], dtype=np.float32)
         self.assertAllClose(weights.numpy(), expected_weights, atol=1e-6)
+
 
 if __name__ == '__main__':
     tf.test.main()
