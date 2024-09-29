@@ -1,7 +1,7 @@
 # component_interface.py
 import collections
 from abc import ABC, abstractmethod
-from typing import Dict
+from typing import Dict, Optional
 import tensorflow as tf
 
 # 定义 BatchAccessState
@@ -19,14 +19,14 @@ BatchAccessState = collections.namedtuple('BatchAccessState', [
 # 定义抽象类
 class WriteWeightCalculator(ABC):
     @abstractmethod
-    def compute_write_weights(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
+    def compute(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
                               write_gate: tf.Tensor, prev_usage: tf.Tensor, training: bool) -> tf.Tensor:
         pass
 
 
 class ReadWeightCalculator(ABC):
     @abstractmethod
-    def compute_read_weights(self, read_content_weights: tf.Tensor, prev_read_weights: tf.Tensor,
+    def compute(self, read_content_weights: tf.Tensor, prev_read_weights: tf.Tensor,
                              link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
         pass
 
@@ -41,14 +41,14 @@ class MemoryUpdater(ABC):
 class UsageUpdater(ABC):
     @abstractmethod
     def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
-                     prev_usage: tf.Tensor, training: bool) -> tf.Tensor:
+                     prev_usage: tf.Tensor, training: bool=False) -> tf.Tensor:
         pass
 
 
 class TemporalLinkageUpdater(ABC):
     @abstractmethod
     def update_linkage(self, write_weights: tf.Tensor, prev_linkage: Dict[str, tf.Tensor],
-                       training: bool) -> Dict[str, tf.Tensor]:
+                       training: bool=False) -> Dict[str, tf.Tensor]:
         pass
 
     @abstractmethod
