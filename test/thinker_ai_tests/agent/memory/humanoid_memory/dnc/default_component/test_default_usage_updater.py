@@ -1,7 +1,5 @@
 import tensorflow as tf
-import numpy as np
-
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import UsageUpdate  # 请根据实际文件名调整导入路径
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultUsageUpdater
 
 
 class UsageUpdateTest(tf.test.TestCase):
@@ -13,7 +11,7 @@ class UsageUpdateTest(tf.test.TestCase):
         self.epsilon = 1e-6  # 定义 epsilon
 
         # 初始化 UsageUpdate 实例
-        self.usage_update = UsageUpdate(
+        self.usage_update = DefaultUsageUpdater(
             memory_size=self.memory_size,
             num_writes=self.num_writes,
             num_reads=self.num_reads,

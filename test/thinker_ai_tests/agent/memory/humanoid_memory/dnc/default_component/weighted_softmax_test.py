@@ -1,7 +1,7 @@
 import numpy as np
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import weighted_softmax
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import weighted_softmax
 
 
 class WeightedSoftmaxTest(tf.test.TestCase):

@@ -1,8 +1,7 @@
 import tensorflow as tf
 import numpy as np
-from typing import Dict
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import TemporalLinkage
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultTemporalLinkageUpdater
 
 
 # 假设您将 TemporalLinkage 类保存在 temporal_linkage.py 文件中
@@ -13,7 +12,7 @@ class TemporalLinkageTest(tf.test.TestCase):
         super(TemporalLinkageTest, self).setUp()
         self.memory_size = 3
         self.num_writes = 2
-        self.temporal_linkage = TemporalLinkage(
+        self.temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=self.memory_size,
             num_writes=self.num_writes
         )
@@ -56,7 +55,7 @@ class TemporalLinkageTest(tf.test.TestCase):
         dynamic_num_writes = 3
 
         # 重新初始化 TemporalLinkage 实例
-        temporal_linkage = TemporalLinkage(memory_size=self.memory_size, num_writes=dynamic_num_writes)
+        temporal_linkage = DefaultTemporalLinkageUpdater(memory_size=self.memory_size, num_writes=dynamic_num_writes)
 
         # 定义 write_weights，形状与 batch_size 和 dynamic_num_writes 一致
         write_weights = tf.constant([
@@ -152,7 +151,7 @@ class TemporalLinkageTest(tf.test.TestCase):
         memory_size = 3
         num_writes = 1
 
-        temporal_linkage = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+        temporal_linkage = DefaultTemporalLinkageUpdater(memory_size=memory_size, num_writes=num_writes)
 
         # 初始化状态
         prev_linkage = {
@@ -211,7 +210,7 @@ class TemporalLinkageTest(tf.test.TestCase):
         memory_size = 3
         num_writes = 1
 
-        temporal_linkage = TemporalLinkage(memory_size=memory_size, num_writes=num_writes)
+        temporal_linkage = DefaultTemporalLinkageUpdater(memory_size=memory_size, num_writes=num_writes)
 
         # 初始化 prev_linkage
         prev_linkage = {
@@ -300,7 +299,7 @@ class TemporalLinkageTest(tf.test.TestCase):
         ], dtype=tf.float32)  # [1, 2, 3]
 
         # 初始化 TemporalLinkage 实例
-        temporal_linkage = TemporalLinkage(memory_size=self.memory_size, num_writes=self.num_writes)
+        temporal_linkage = DefaultTemporalLinkageUpdater(memory_size=self.memory_size, num_writes=self.num_writes)
 
         # 第一次写入
         prev_linkage = {

@@ -3,7 +3,7 @@
 import numpy as np
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.default_component import CosineWeightsCalculator
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultContentWeightCalculator
 
 
 class CosineWeightsTest(tf.test.TestCase):
@@ -17,7 +17,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 5
 
         # 创建 CosineWeights 实例，使用默认的 softmax 作为 strength_op
-        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
+        cosine_weights = DefaultContentWeightCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建随机的 memory、keys 和 strengths
         memory = tf.random.uniform([batch_size, memory_size, word_size], minval=-1.0, maxval=1.0)
@@ -50,7 +50,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 6
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
+        cosine_weights = DefaultContentWeightCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建随机的 memory、keys 和 strengths
         memory_shape = batch_dims + [memory_size, word_size]
@@ -87,7 +87,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
+        cosine_weights = DefaultContentWeightCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中 memory 包含零向量
         memory = tf.constant([[[0.0, 0.0, 0.0],
@@ -126,7 +126,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
+        cosine_weights = DefaultContentWeightCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中所有 memory 向量都是零向量
         memory = tf.constant([[[0.0, 0.0, 0.0],
@@ -164,7 +164,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
+        cosine_weights = DefaultContentWeightCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中 keys 向量为零向量
         memory = tf.constant([[[1.0, 1.0, 1.0],
