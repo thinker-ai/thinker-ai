@@ -185,105 +185,111 @@ class DefaultUsageUpdater(UsageUpdater):
         return usage_after_read  # [batch_size, memory_size]
 
 
-class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
-    def __init__(self, memory_size: int, num_writes: int, epsilon: float = 1e-6):
+
+class DefaultTemporalLinkageUpdater:
+    def __init__(self, memory_size: int, num_writes: int):
         """
-        初始化 TemporalLinkage 模块。
+        Initializes the TemporalLinkage module.
 
         Args:
-            memory_size (int): 内存的大小。
-            num_writes (int): 写入头的数量。
-            epsilon (float): 用于更新优先级权重的小常数。
+            memory_size (int): The size of the memory.
+            num_writes (int): The number of write heads.
         """
         self.memory_size = memory_size
         self.num_writes = num_writes
-        self.epsilon = epsilon
 
-    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: Dict[str, tf.Tensor], training: bool = False) \
-            -> Dict[str, tf.Tensor]:
+    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict, training: bool = False) -> dict:
         """
-        更新链路矩阵和优先级权重。
+        Updates the link matrices and precedence weights.
 
         Args:
-            write_weights (tf.Tensor): 写入权重，形状为 [batch_size, num_writes, memory_size]。
-            prev_linkage (Dict[str, tf.Tensor]): 上一时间步的链路矩阵和优先级权重。
+            write_weights (tf.Tensor): Write weights, shape [batch_size, num_writes, memory_size].
+            prev_linkage (dict): Previous linkage containing 'link' and 'precedence_weights'.
 
         Returns:
-            Dict[str, tf.Tensor]: 更新后的链路矩阵和优先级权重。
+            dict: Updated linkage containing 'link' and 'precedence_weights'.
         """
+        # Unpack previous linkage
         prev_link = prev_linkage['link']  # [batch_size, num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, num_writes, memory_size]
 
-        # 更新 precedence_weights，应用 epsilon
-        write_weights_sum = tf.reduce_sum(write_weights, axis=-1, keepdims=True)  # [batch_size, num_writes, 1]
-        reset_gate = 1 - write_weights_sum
-        updated_precedence_weights = reset_gate * prev_precedence_weights + write_weights * self.epsilon  # 应用 epsilon
+        # Compute the sum over memory locations for each write head
+        write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
 
-        # 计算 write_weights_i 和 prev_precedence_weights_j
-        write_weights_i = tf.expand_dims(write_weights, axis=-1)  # [batch_size, num_writes, memory_size, 1]
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
-                                                   axis=-2)  # [batch_size, num_writes, 1, memory_size]
+        # Update precedence weights
+        updated_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
 
-        # 计算 new_link
-        new_link = write_weights_i * prev_precedence_weights_j  # [batch_size, num_writes, memory_size, memory_size]
+        # Compute outer products for new link entries
+        write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
+        precedence_weights_j = tf.expand_dims(updated_precedence_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
 
-        # 计算链路缩放因子
-        write_weights_j = tf.expand_dims(write_weights, axis=-2)  # [batch_size, num_writes, 1, memory_size]
-        prev_link_scale = 1 - write_weights_i - write_weights_j  # [batch_size, num_writes, memory_size, memory_size]
-        prev_link_scale = tf.clip_by_value(prev_link_scale, 0.0, 1.0)
+        # Compute the new link matrix
+        new_link = write_weights_i * precedence_weights_j  # [batch_size, num_writes, memory_size, memory_size]
 
-        # 更新链路矩阵
-        updated_link = prev_link_scale * prev_link + new_link
+        # Remove self-links by zeroing the diagonal elements
+        identity = tf.eye(self.memory_size, batch_shape=[self.num_writes], dtype=tf.float32)  # [num_writes, memory_size, memory_size]
+        identity = tf.expand_dims(identity, axis=0)  # [1, num_writes, memory_size, memory_size]
+        new_link = new_link * (1 - identity)
 
-        # 避免自连接
-        mask = 1 - tf.eye(self.memory_size, batch_shape=[self.num_writes], dtype=tf.float32)
-        updated_link = updated_link * tf.expand_dims(mask, axis=0)
+        # Update the link matrices
+        updated_link = (1 - write_weights_i - tf.expand_dims(write_weights, axis=2)) * prev_link + new_link
+        updated_link = tf.clip_by_value(updated_link, 0.0, 1.0)
 
         return {
-            'link': updated_link,
-            'precedence_weights': updated_precedence_weights
+            'link': updated_link,  # [batch_size, num_writes, memory_size, memory_size]
+            'precedence_weights': updated_precedence_weights  # [batch_size, num_writes, memory_size]
         }
 
-    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor,
-                                 forward: bool = True) -> tf.Tensor:
+    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor, forward: bool = True) -> tf.Tensor:
         """
-        计算方向性读权重。
+        Computes the forward or backward read weights.
 
         Args:
-            link (tf.Tensor): 链路矩阵，形状为 [batch_size, num_writes, memory_size, memory_size]。
-            prev_read_weights (tf.Tensor): 上一时间步的读权重，形状为 [batch_size, num_reads, memory_size]。
-            forward (bool): 是否计算前向读权重。
+            link (tf.Tensor): Link matrices, shape [batch_size, num_writes, memory_size, memory_size].
+            prev_read_weights (tf.Tensor): Previous read weights, shape [batch_size, num_reads, memory_size].
+            forward (bool): Whether to compute forward weights.
 
         Returns:
-            tf.Tensor: 方向性读权重，形状为 [batch_size, num_reads, num_writes, memory_size]。
+            tf.Tensor: Directional read weights, shape [batch_size, num_reads, num_writes, memory_size].
         """
-        if not forward:
-            # 转置最后两个轴
-            link = tf.transpose(link, perm=[0, 1, 3, 2])
+        if forward:
+            link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
+        else:
+            link_transposed = tf.transpose(link, perm=[0, 1, -1, -2])  # Swap the last two dimensions
 
-        # 调整 link 的形状以匹配 einsum 公式
-        link_transposed = tf.transpose(link, perm=[0, 2, 3, 1])  # [batch_size, memory_size, memory_size, num_writes]
-        result = tf.einsum('brm,bmwn->brwn', prev_read_weights,
-                           link_transposed)  # [batch_size, num_reads, num_writes, memory_size]
+        # Compute the directional read weights
+        # For each write head, we compute the matrix product between prev_read_weights and link_transposed
+        directional_weights = []
+        for i in range(self.num_writes):
+            # Extract link matrix for the i-th write head
+            link_i = link_transposed[:, i, :, :]  # [batch_size, memory_size, memory_size]
 
-        # 应用 softmax 归一化
-        directional_weights = tf.nn.softmax(result, axis=-1)  # [batch_size, num_reads, num_writes, memory_size]
+            # Compute the directional weights
+            prev_read_weights_reshaped = tf.expand_dims(prev_read_weights, axis=2)  # [batch_size, num_reads, 1, memory_size]
+            link_i_expanded = tf.expand_dims(link_i, axis=1)  # [batch_size, 1, memory_size, memory_size]
 
-        return directional_weights
+            # Batch matrix multiplication
+            weight = tf.matmul(prev_read_weights_reshaped, link_i_expanded)  # [batch_size, num_reads, 1, memory_size]
+            weight = tf.squeeze(weight, axis=2)  # [batch_size, num_reads, memory_size]
 
-    def state_size(self) -> Dict[str, tf.TensorShape]:
+            directional_weights.append(weight)
+
+        # Stack the weights for all write heads
+        directional_weights = tf.stack(directional_weights, axis=2)  # [batch_size, num_reads, num_writes, memory_size]
+
+        return directional_weights  # [batch_size, num_reads, num_writes, memory_size]
+
+    def state_size(self) -> dict:
         """
-        返回状态的大小。
+        Returns the sizes of the state components.
 
         Returns:
-            Dict[str, tf.TensorShape]: 包含 'link' 和 'precedence_weights' 的张量形状。
+            dict: State sizes with keys 'link' and 'precedence_weights'.
         """
         return {
             'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
             'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
         }
-
-
 class DefaultMemoryUpdater(MemoryUpdater):
     def update_memory(self, memory: tf.Tensor, write_weights: tf.Tensor, erase_vectors: tf.Tensor,
                       write_vectors: tf.Tensor) -> tf.Tensor:
