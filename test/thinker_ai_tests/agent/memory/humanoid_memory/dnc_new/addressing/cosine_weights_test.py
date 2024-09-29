@@ -3,8 +3,7 @@
 import numpy as np
 import tensorflow as tf
 
-from thinker_ai.agent.memory.humanoid_memory.dnc_new.addressing import \
-    CosineWeights  # 假设您将 CosineWeights 类保存在 addressing.py 文件中
+from thinker_ai.agent.memory.humanoid_memory.dnc_new.default_component import CosineWeightsCalculator
 
 
 class CosineWeightsTest(tf.test.TestCase):
@@ -18,15 +17,15 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 5
 
         # 创建 CosineWeights 实例，使用默认的 softmax 作为 strength_op
-        cosine_weights = CosineWeights(num_heads=num_heads, word_size=word_size)
+        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建随机的 memory、keys 和 strengths
         memory = tf.random.uniform([batch_size, memory_size, word_size], minval=-1.0, maxval=1.0)
         keys = tf.random.uniform([batch_size, num_heads, word_size], minval=-1.0, maxval=1.0)
         strengths = tf.random.uniform([batch_size, num_heads], minval=0.1, maxval=2.0)
 
-        # 调用 compute_cosine_weights 方法
-        weights = cosine_weights.compute_cosine_weights(keys, strengths, memory)
+        # 调用 compute 方法
+        weights = cosine_weights.compute(keys, strengths, memory)
 
         # 检查输出形状
         expected_shape = [batch_size, num_heads, memory_size]
@@ -51,7 +50,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 6
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeights(num_heads=num_heads, word_size=word_size)
+        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建随机的 memory、keys 和 strengths
         memory_shape = batch_dims + [memory_size, word_size]
@@ -62,8 +61,8 @@ class CosineWeightsTest(tf.test.TestCase):
         keys = tf.random.uniform(keys_shape, minval=-1.0, maxval=1.0)
         strengths = tf.random.uniform(strengths_shape, minval=0.1, maxval=2.0)
 
-        # 调用 compute_cosine_weights 方法
-        weights = cosine_weights.compute_cosine_weights(keys, strengths, memory)
+        # 调用 compute 方法
+        weights = cosine_weights.compute(keys, strengths, memory)
 
         # 检查输出形状
         expected_shape = batch_dims + [num_heads, memory_size]
@@ -88,7 +87,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeights(num_heads=num_heads, word_size=word_size)
+        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中 memory 包含零向量
         memory = tf.constant([[[0.0, 0.0, 0.0],
@@ -96,8 +95,8 @@ class CosineWeightsTest(tf.test.TestCase):
         keys = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
         strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-        # 调用 compute_cosine_weights 方法
-        weights = cosine_weights.compute_cosine_weights(keys, strengths, memory)
+        # 调用 compute 方法
+        weights = cosine_weights.compute(keys, strengths, memory)
 
         # 检查输出形状
         expected_shape = [1, 1, 2]
@@ -127,7 +126,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeights(num_heads=num_heads, word_size=word_size)
+        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中所有 memory 向量都是零向量
         memory = tf.constant([[[0.0, 0.0, 0.0],
@@ -135,8 +134,8 @@ class CosineWeightsTest(tf.test.TestCase):
         keys = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
         strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-        # 调用 compute_cosine_weights 方法
-        weights = cosine_weights.compute_cosine_weights(keys, strengths, memory)
+        # 调用 compute 方法
+        weights = cosine_weights.compute(keys, strengths, memory)
 
         # 检查输出形状
         expected_shape = [1, 1, 2]
@@ -165,7 +164,7 @@ class CosineWeightsTest(tf.test.TestCase):
         word_size = 3
 
         # 创建 CosineWeights 实例
-        cosine_weights = CosineWeights(num_heads=num_heads, word_size=word_size)
+        cosine_weights = CosineWeightsCalculator(num_heads=num_heads, word_size=word_size)
 
         # 创建 memory、keys 和 strengths，其中 keys 向量为零向量
         memory = tf.constant([[[1.0, 1.0, 1.0],
@@ -173,8 +172,8 @@ class CosineWeightsTest(tf.test.TestCase):
         keys = tf.constant([[[0.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
         strengths = tf.constant([[1.0]], dtype=tf.float32)  # [1, 1]
 
-        # 调用 compute_cosine_weights 方法
-        weights = cosine_weights.compute_cosine_weights(keys, strengths, memory)
+        # 调用 compute 方法
+        weights = cosine_weights.compute(keys, strengths, memory)
 
         # 检查输出形状
         expected_shape = [1, 1, 2]

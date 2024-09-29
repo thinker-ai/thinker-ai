@@ -1,3 +1,4 @@
+# component_interface.py
 import collections
 from abc import ABC, abstractmethod
 from typing import Dict
@@ -14,19 +15,8 @@ BatchAccessState = collections.namedtuple('BatchAccessState', [
     'read_words'  # [batch_size, num_reads, word_size] 或 None
 ])
 
-# 定义 AccessState
-AccessState = collections.namedtuple('AccessState', [
-    'memory',  # [memory_size, word_size]
-    'read_weights',  # [time_steps, num_reads, memory_size]
-    'write_weights',  # [time_steps, num_writes, memory_size]
-    'linkage',  # {'link': [num_writes, memory_size, memory_size],
-    #  'precedence_weights': [num_writes, memory_size]}
-    'usage',  # [memory_size]
-    'read_words'  # [num_reads, word_size] 或 None
-])
 
-
-# 抽象类定义
+# 定义抽象类
 class WriteWeightCalculator(ABC):
     @abstractmethod
     def compute_write_weights(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
@@ -61,8 +51,12 @@ class TemporalLinkageUpdater(ABC):
                        training: bool) -> Dict[str, tf.Tensor]:
         pass
 
+    @abstractmethod
+    def state_size(self) -> tf.Tensor:
+        pass
+
 
 class ContentWeightCalculator(ABC):
     @abstractmethod
-    def compute_content_weights(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
+    def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
         pass
