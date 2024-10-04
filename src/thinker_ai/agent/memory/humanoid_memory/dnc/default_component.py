@@ -222,7 +222,7 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         return write_weights_normalized
 
 
-class DefaultTemporalLinkageUpdater:
+class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
     def __init__(self, memory_size: int, num_writes: int):
         """
         Initializes the TemporalLinkage module.
