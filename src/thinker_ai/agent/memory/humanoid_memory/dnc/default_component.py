@@ -394,3 +394,28 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
         )
 
         return read_weights  # [batch_size, num_reads, memory_size]
+
+
+class DefaultMemoryUpdater(MemoryUpdater):
+    def update_memory(self, memory: tf.Tensor, write_weights: tf.Tensor, erase_vectors: tf.Tensor,
+                      write_vectors: tf.Tensor) -> tf.Tensor:
+        """
+        更新内存。
+        """
+        # 计算擦除矩阵
+        write_weights_expanded = tf.expand_dims(write_weights, axis=-1)  # [batch_size, num_writes, memory_size, 1]
+        erase_vectors_expanded = tf.expand_dims(erase_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
+        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded,
+                                      axis=1)  # [batch_size, memory_size, word_size]
+
+        # 更新内存
+        memory_erased = memory * erase_matrix
+
+        # 计算添加矩阵
+        write_vectors_expanded = tf.expand_dims(write_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
+        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded,
+                                   axis=1)  # [batch_size, memory_size, word_size]
+
+        memory_updated = memory_erased + add_matrix
+        return memory_updated  # [batch_size, memory_size, word_size]
+
