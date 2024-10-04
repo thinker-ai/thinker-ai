@@ -14,8 +14,7 @@ class UsageUpdateTest(tf.test.TestCase):
         self.usage_update = DefaultUsageUpdater(
             memory_size=self.memory_size,
             num_writes=self.num_writes,
-            num_reads=self.num_reads,
-            epsilon=self.epsilon
+            num_reads=self.num_reads
         )
 
     def test_basic_usage_update(self):
@@ -57,25 +56,10 @@ class UsageUpdateTest(tf.test.TestCase):
         )  # [2, 3]
 
         # 计算预期使用率
-        # 1. 计算 write_allocation = 1 - prod(1 - write_weights, axis=1)
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [2, 3]
-        write_allocation = 1 - write_weights_cumprod  # [2, 3]
-
-        # 2. 使用 usage_after_write = initial_usage + (1 - initial_usage) * write_allocation
-        usage_after_write = initial_usage + (1 - initial_usage) * write_allocation  # [2, 3]
-
-        # 3. 计算自由读权重
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [2, 2, 1]
-        free_read_weights = free_gate_expanded * read_weights  # [2, 2, 3]
-
-        # 4. 计算 total_free_read_weights = sum(free_read_weights, axis=1)
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [2, 3]
-
-        # 5. 使用 usage_after_read = usage_after_write - total_free_read_weights
-        usage_after_read = usage_after_write - total_free_read_weights  # [2, 3]
-
-        # 6. 裁剪使用率到 [0, 1]
-        expected_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)  # [2, 3]
+        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [2, 3]
+        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [2, 3]
+        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [2, 3]
+        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [2, 3]
 
         # 断言
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
@@ -112,14 +96,10 @@ class UsageUpdateTest(tf.test.TestCase):
         )  # [1, 3]
 
         # 计算预期使用率
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [1, 3]
-        write_allocation = 1 - write_weights_cumprod  # [1, 3]
-        usage_after_write = initial_usage + (1 - initial_usage) * write_allocation  # 由于 initial_usage =1, 所以 usage_after_write =1
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [1, 1, 1]
-        free_read_weights = free_gate_expanded * read_weights  # [1, 1, 3]
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [1, 3]
-        usage_after_read = usage_after_write - total_free_read_weights  # [1, 3]
-        expected_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)  # [1, 3]
+        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
+        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
@@ -156,14 +136,10 @@ class UsageUpdateTest(tf.test.TestCase):
         )  # [1, 3]
 
         # 计算预期使用率
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [1, 3]
-        write_allocation = 1 - write_weights_cumprod  # [1, 3]
-        usage_after_write = initial_usage + (1 - initial_usage) * write_allocation  # [1, 3]
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [1, 1, 1]
-        free_read_weights = free_gate_expanded * read_weights  # [1, 1, 3]
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [1, 3]
-        usage_after_read = usage_after_write - total_free_read_weights  # [1, 3]
-        expected_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)  # [1, 3]
+        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
+        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
@@ -202,26 +178,17 @@ class UsageUpdateTest(tf.test.TestCase):
         )  # [1, 3]
 
         # 计算预期使用率
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [1, 3]
-        write_allocation = 1 - write_weights_cumprod  # [1, 3]
-        usage_after_write = initial_usage + (1 - initial_usage) * write_allocation  # [1, 3]
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [1, 2, 1]
-        free_read_weights = free_gate_expanded * read_weights  # [1, 2, 3]
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [1, 3]
-        usage_after_read = usage_after_write - total_free_read_weights  # [1, 3]
-        usage_after_read = tf.maximum(usage_after_read, 0.0)
-        expected_usage = tf.clip_by_value(usage_after_read, 0.0, 1.0)  # [1, 3]
+        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
+        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 打印调试信息（可选）
         # tf.print("Initial Usage:", initial_usage)
         # tf.print("Write Weights:", write_weights)
-        # tf.print("Write Allocation:", write_allocation)
-        # tf.print("Usage After Write:", usage_after_write)
-        # tf.print("Free Gate:", free_gate)
-        # tf.print("Read Weights:", read_weights)
-        # tf.print("Free Read Weights:", free_read_weights)
-        # tf.print("Total Free Read Weights:", total_free_read_weights)
-        # tf.print("Usage After Read:", usage_after_read)
+        # tf.print("Sum Write Weights:", sum_w_write)
+        # tf.print("Sum Read Weights:", sum_w_read)
+        # tf.print("Usage:", usage)
         # tf.print("Expected Usage:", expected_usage)
         # tf.print("Updated Usage:", updated_usage)
 

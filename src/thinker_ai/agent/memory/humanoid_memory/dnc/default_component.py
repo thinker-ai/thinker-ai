@@ -83,7 +83,7 @@ class DefaultUsageUpdater(UsageUpdater):
         self.num_reads = num_reads
 
     def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
-                     prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
+                    prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
         """
         更新内存使用率。
 
@@ -96,20 +96,19 @@ class DefaultUsageUpdater(UsageUpdater):
         Returns:
             tf.Tensor: 更新后的使用率 [batch_size, memory_size]
         """
-        # 计算保留向量 psi_t
-        free_gate = tf.expand_dims(free_gate, axis=-1)  # [batch_size, num_reads, 1]
-        free_read_weights = free_gate * read_weights  # [batch_size, num_reads, memory_size]
-        psi = tf.reduce_prod(1 - free_read_weights, axis=1)  # [batch_size, memory_size]
-
         # 计算写入权重的总和
         write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
 
+        # 计算自由读权重的总和
+        read_sum = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [batch_size, memory_size]
+
         # 更新使用率 u_t
-        usage = (prev_usage + write_weights_sum - prev_usage * write_weights_sum) * psi  # [batch_size, memory_size]
+        usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_sum  # [batch_size, memory_size]
+
+        # 裁剪使用率到 [0, 1]
         usage = tf.clip_by_value(usage, 0.0, 1.0)
 
         return usage
-
 
 # 已修改：调整内存的更新，符合 DNC 论文要求
 

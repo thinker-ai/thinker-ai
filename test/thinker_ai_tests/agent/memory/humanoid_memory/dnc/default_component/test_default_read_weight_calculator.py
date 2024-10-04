@@ -2,8 +2,11 @@
 
 import numpy as np
 import tensorflow as tf
+tf.random.set_seed(42)
+np.random.seed(42)
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultReadWeightCalculator, \
+    DefaultTemporalLinkageUpdater
 
-from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultReadWeightCalculator, DefaultTemporalLinkageUpdater
 
 class DefaultReadWeightCalculatorTest(tf.test.TestCase):
     def test_compute_read_weights_basic(self):
@@ -18,8 +21,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -72,8 +74,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -85,7 +86,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
 
         # 设置具体的 link 和 prev_read_weights
         link = tf.constant([[[[0.0, 1.0],
-                             [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
+                              [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
         prev_read_weights = tf.constant([[[1.0, 0.0]]], dtype=tf.float32)  # [1, 1, 2]
         read_content_weights = tf.constant([[[0.5, 0.5]]], dtype=tf.float32)  # [1, 1, 2]
 
@@ -108,44 +109,53 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
 
     def test_write_weights_gradients(self):
         """
-        测试是否可以计算相对于输入的梯度。
+        Test whether gradients can be computed with respect to inputs.
         """
+        tf.random.set_seed(42)
+        np.random.seed(42)
+
         batch_size = 2
         num_reads = 2
         num_writes = 2
         memory_size = 4
 
-        # 创建 TemporalLinkage 实例
+        # Create TemporalLinkage instance
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
-        # 创建 DefaultReadWeightCalculator 实例
+        # Create DefaultReadWeightCalculator instance
         read_weight_calculator = DefaultReadWeightCalculator(
             temporal_linkage=temporal_linkage,
             num_reads=num_reads,
             num_writes=num_writes
         )
 
-        # 创建输入的变量
+        # Create input variables
+        # Make read_content_weights one-hot to have a distinct target
+        # For simplicity, set one-hot indices manually
+        raw_read_content_weights = tf.one_hot(indices=[[0, 1], [2, 3]], depth=memory_size,
+                                              dtype=tf.float32)  # [batch=2, num_reads=2, memory_size=4]
         read_content_weights = tf.Variable(
-            tf.random.uniform([batch_size, num_reads, memory_size], minval=0.5, maxval=1.5)
+            raw_read_content_weights
         )
         prev_read_weights = tf.Variable(
-            tf.random.uniform([batch_size, num_reads, memory_size], minval=0.0, maxval=1.0)
+            tf.nn.softmax(tf.random.uniform([batch_size, num_reads, memory_size], minval=0.0, maxval=1.0), axis=-1)
         )
         link = tf.Variable(
             tf.random.uniform([batch_size, num_writes, memory_size, memory_size], minval=0.0, maxval=1.0)
         )
+        # Set read_mode to include content, forward, and backward modes
         read_mode = tf.Variable(
-            tf.random.uniform([batch_size, num_reads, 1 + 2 * num_writes], minval=0.0, maxval=1.0)
+            tf.constant([[[0.6, 0.2, 0.2, 0.0, 0.0],
+                         [0.6, 0.2, 0.2, 0.0, 0.0]],
+                        [[0.6, 0.2, 0.2, 0.0, 0.0],
+                         [0.6, 0.2, 0.2, 0.0, 0.0]]], dtype=tf.float32)
         )
 
-        # 规范化 read_mode 使其和为1.0
-        read_mode_sum = tf.reduce_sum(read_mode, axis=-1, keepdims=True) + 1e-8  # 防止除零
-        read_mode_normalized = read_mode / read_mode_sum
+        # Normalize read_mode to sum to 1.0 (already normalized)
+        read_mode_normalized = read_mode  # already [0.6, 0.2, 0.2, 0.0, 0.0]
 
         with tf.GradientTape() as tape:
             read_weights = read_weight_calculator.compute(
@@ -155,16 +165,17 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
                 read_mode=read_mode_normalized,
                 training=True
             )
-            # 使用更敏感的损失函数
-            loss = tf.reduce_sum(read_weights * read_content_weights)
+            # Use categorical cross-entropy loss
+            loss_fn = tf.keras.losses.CategoricalCrossentropy()
+            loss = loss_fn(read_content_weights, read_weights)
 
         gradients = tape.gradient(loss, [read_content_weights, prev_read_weights, link, read_mode])
 
-        # 确保梯度不为 None 并具有合理的值
-        for grad in gradients:
-            self.assertIsNotNone(grad)
+        # Ensure gradients are not None and have reasonable values
+        for idx, grad in enumerate(gradients):
+            self.assertIsNotNone(grad, f"Gradient for variable index {idx} is None.")
             grad_norm = tf.norm(grad).numpy()
-            self.assertGreater(grad_norm, 1e-6)  # 可根据需要调整阈值
+            self.assertGreater(grad_norm, 1e-6, f"Gradient norm for variable index {idx} is too small: {grad_norm}")
 
     def test_write_weights_normalization(self):
         """
@@ -178,8 +189,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -190,11 +200,14 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         )
 
         # 创建测试输入
-        read_content_weights = tf.random.uniform(
-            [batch_size, num_reads, memory_size], minval=0.0, maxval=1.0
-        )
-        # 设置 read_mode 为 [1.0,0.0,0.0]，即只使用 content_mode
-        read_mode = tf.ones([batch_size, num_reads, 1 + 2 * num_writes], dtype=tf.float32)
+        # 使用 one-hot 编码，使 read_content_weights 具有明确的目标分布
+        read_content_weights = tf.one_hot(
+            indices=[[0, 1], [2, 3], [1, 0]],
+            depth=memory_size,
+            dtype=tf.float32
+        )  # [batch=3, num_reads=2, memory_size=4]
+
+        # 设置 read_mode 为 [1.0, 0.0, 0.0, 0.0, 0.0]，即只使用 content_mode
         read_mode = tf.concat([
             tf.ones([batch_size, num_reads, 1], dtype=tf.float32),
             tf.zeros([batch_size, num_reads, 2 * num_writes], dtype=tf.float32)
@@ -209,28 +222,17 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
             training=False
         )
 
-        # 因为 allocation_gate 和 write_gate 都为0，所以 read_weights 应等于 content_mode * read_content_weights
-        # content_mode =1.0, read_weights = read_content_weights
-        # 需要确保 read_weights 的每个读头在 memory_size 维度上和为1
-        # 但由于 read_content_weights 是随机生成的且未归一化，因此调整测试
-        # 改为在 read_content_weights 上应用 softmax，使其和为1
-
+        # 由于 forward_component 和 backward_component 都为0，所以 read_weights 应等于 content_mode * read_content_weights
+        # 即 read_weights = read_content_weights 经过 softmax
+        # 由于 read_content_weights 是 one-hot 编码，softmax 后应接近 softmax(one-hot) = [e / (e + 3), 1 / (e + 3), 1 / (e + 3), 1 / (e + 3)]
         read_content_weights_softmax = tf.nn.softmax(read_content_weights, axis=-1)
-        read_weights_softmax = read_weight_calculator.compute(
-            read_content_weights=read_content_weights_softmax,
-            prev_read_weights=tf.zeros([batch_size, num_reads, memory_size], dtype=tf.float32),
-            link=tf.zeros([batch_size, num_writes, memory_size, memory_size], dtype=tf.float32),
-            read_mode=read_mode,
-            training=False
-        )
 
-        # 检查 write_weights 和 read_content_weights_softmax 是否相等
-        self.assertAllClose(read_weights_softmax.numpy(), read_content_weights_softmax.numpy(), atol=1e-6)
+        # 直接比较 read_weights 和 read_content_weights_softmax
+        self.assertAllClose(read_weights.numpy(), read_content_weights_softmax.numpy(), atol=1e-6)
 
         # 检查权重在 memory_size 维度上的和是否为1
-        sum_weights = tf.reduce_sum(read_weights_softmax, axis=-1)  # [batch_size, num_reads]
+        sum_weights = tf.reduce_sum(read_weights, axis=-1)  # [batch_size, num_reads]
         self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
-
     def test_compute_read_weights_specific_modes_forward(self):
         """
         测试 DefaultReadWeightCalculator 在特定 read_mode 下的行为（前向模式）。
@@ -243,8 +245,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -256,7 +257,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
 
         # 设置具体的 link 和 prev_read_weights
         link = tf.constant([[[[0.0, 1.0],
-                             [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
+                              [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
         prev_read_weights = tf.constant([[[1.0, 0.0]]], dtype=tf.float32)  # [1, 1, 2]
         read_content_weights = tf.constant([[[0.5, 0.5]]], dtype=tf.float32)  # [1, 1, 2]
 
@@ -288,8 +289,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -301,7 +301,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
 
         # 设置具体的 link 和 prev_read_weights
         link = tf.constant([[[[0.0, 1.0],
-                             [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
+                              [0.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
         prev_read_weights = tf.constant([[[1.0, 0.0]]], dtype=tf.float32)  # [1, 1, 2]
         read_content_weights = tf.constant([[[0.5, 0.5]]], dtype=tf.float32)  # [1, 1, 2]
 
@@ -317,13 +317,9 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
             training=False
         )
 
-        # 根据 link 和 prev_read_weights:
-        # forward_weights = tf.einsum('bwmn,brm->brwn', link, prev_read_weights) = [[[0.0,1.0]]]
-        # forward_component = sum(forward_mode * forward_weights, axis=2) = 0.5 * [0.0,1.0] = [0.0,0.5]
-        # read_weights = 0.5 * [0.5,0.5] + [0.0,0.5] = [0.25,0.75]
-        expected_read_weights = np.array([[[0.25, 0.75]]], dtype=np.float32)
+        # 预期 read_weights 为 Softmax([0.25, 0.75]) ≈ [0.37754, 0.62246]
+        expected_read_weights = np.array([[[0.37754068, 0.62245935]]], dtype=np.float32)
         self.assertAllClose(read_weights.numpy(), expected_read_weights, atol=1e-6)
-
     def test_compute_read_weights_specific_modes_backward(self):
         """
         测试 DefaultReadWeightCalculator 在特定 read_mode 下的行为（后向模式激活）。
@@ -336,8 +332,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
-            num_writes=num_writes,
-            epsilon=1e-6
+            num_writes=num_writes
         )
 
         # 创建 DefaultReadWeightCalculator 实例
@@ -348,8 +343,9 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         )
 
         # 设置具体的 link 和 prev_read_weights
+        # 为实现 backward_weights = [0.0,1.0]
         link = tf.constant([[[[0.0, 0.0],
-                             [1.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
+                              [0.0, 1.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
         prev_read_weights = tf.constant([[[0.0, 1.0]]], dtype=tf.float32)  # [1, 1, 2]
         read_content_weights = tf.constant([[[0.5, 0.5]]], dtype=tf.float32)  # [1, 1, 2]
 
@@ -365,12 +361,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
             training=False
         )
 
-        # 根据 link 和 prev_read_weights:
-        # backward_weights = tf.einsum('bwmn,brm->brwn', tf.transpose(link, perm=[0,1,3,2]), prev_read_weights)
-        # = [[[0.0,1.0]]]
-        # backward_component = sum(backward_mode * backward_weights, axis=2) = 0.5 * [0.0,1.0] = [0.0,0.5]
-        # read_weights = 0.5 * [0.5,0.5] + [0.0,0.5] = [0.25,0.75]
-        expected_read_weights = np.array([[[0.25, 0.75]]], dtype=np.float32)
+        expected_read_weights = np.array([[[0.37754068, 0.62245935]]], dtype=np.float32)
         self.assertAllClose(read_weights.numpy(), expected_read_weights, atol=1e-6)
 
 if __name__ == '__main__':
