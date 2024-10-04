@@ -3,7 +3,6 @@ from thinker_ai.agent.memory.humanoid_memory.dnc.component_interface import (
     MemoryUpdater, ReadWeightCalculator, TemporalLinkageUpdater, UsageUpdater, WriteWeightCalculator
 )
 import collections
-from typing import Callable, Dict, Optional
 
 import tensorflow as tf
 import os
@@ -40,51 +39,11 @@ def _vector_norms(m, epsilon=None):
     return tf.sqrt(squared_norms + epsilon)
 
 
-def weighted_softmax(scores: tf.Tensor, weights: tf.Tensor, strength_op: Callable = tf.nn.softmax) -> tf.Tensor:
-    """
-    计算加权的 softmax。
-
-    Args:
-        scores (tf.Tensor): 分数张量，形状为 [batch_shape..., num_heads, memory_size]
-        weights (tf.Tensor): 权重张量，形状为 [batch_shape..., num_heads]
-        strength_op (callable): 用于调整权重的操作，默认使用 softmax
-
-    Returns:
-        tf.Tensor: 归一化后的权重，形状为 [batch_shape..., num_heads, memory_size]
-    """
-    # 调整权重形状以便与 scores 相乘
-    weights_expanded = tf.expand_dims(weights, axis=-1)  # [batch_shape..., num_heads, 1]
-
-    # 应用 strength_op
-    adjusted_weights = strength_op(weights_expanded)  # [batch_shape..., num_heads, 1]
-
-    # 扩展调整后的权重以匹配 scores 的形状
-    adjusted_weights = tf.broadcast_to(adjusted_weights, tf.shape(scores))  # [batch_shape..., num_heads, memory_size]
-
-    # 计算加权分数
-    weighted_scores = scores * adjusted_weights  # [batch_shape..., num_heads, memory_size]
-
-    # 应用 softmax 归一化
-    normalized_weights = tf.nn.softmax(weighted_scores, axis=-1)  # [batch_shape..., num_heads, memory_size]
-
-    return normalized_weights
-
-
+# 已修改：调整内容权重的计算，符合 DNC 论文要求
 class DefaultContentWeightCalculator(ContentWeightCalculator):
-    def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6,
-                 strength_op: Optional[Callable] = None):
-        """
-        初始化 CosineWeights 组件。
-
-        Args:
-            num_heads (int): 头的数量。
-            word_size (int): 词向量的维度。
-            epsilon (float, optional): 防止除零的小值。默认值为 1e-6。
-            strength_op (callable, optional): 用于调整强度的操作。默认使用 softmax。
-        """
+    def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6):
         self._num_heads = num_heads
         self._word_size = word_size
-        self._strength_op = strength_op or tf.nn.softmax
         self._epsilon = epsilon
 
     def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
@@ -92,64 +51,36 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
         计算内容权重。
 
         Args:
-            keys (tf.Tensor): [batch_shape..., num_heads, word_size]
-            strengths (tf.Tensor): [batch_shape..., num_heads]
-            memory (tf.Tensor): [batch_shape..., memory_size, word_size]
+            keys (tf.Tensor): [batch_size, num_heads, word_size]
+            strengths (tf.Tensor): [batch_size, num_heads]
+            memory (tf.Tensor): [batch_size, memory_size, word_size]
 
         Returns:
-            tf.Tensor: 内容权重 [batch_shape..., num_heads, memory_size]
+            tf.Tensor: 内容权重 [batch_size, num_heads, memory_size]
         """
-        # 计算 L2 范数
-        memory_norms = tf.norm(memory, axis=-1)  # [batch_shape..., memory_size]
-        keys_norms = tf.norm(keys, axis=-1)  # [batch_shape..., num_heads]
+        # 计算键和内存的范数
+        keys = tf.math.l2_normalize(keys, axis=-1)  # [batch_size, num_heads, word_size]
+        memory = tf.math.l2_normalize(memory, axis=-1)  # [batch_size, memory_size, word_size]
 
-        # 扩展维度以便广播
-        # memory: [batch_shape..., memory_size, word_size] -> [batch_shape..., memory_size, 1, word_size]
-        memory_expanded = tf.expand_dims(memory, axis=-2)
+        # 计算点积（余弦相似度）
+        similarity = tf.matmul(keys, memory, transpose_b=True)  # [batch_size, num_heads, memory_size]
 
-        # keys: [batch_shape..., num_heads, word_size] -> [batch_shape..., 1, num_heads, word_size]
-        keys_expanded = tf.expand_dims(keys, axis=-3)
+        # 使用强度参数调整相似度
+        strengths = tf.expand_dims(strengths, axis=-1)  # [batch_size, num_heads, 1]
+        similarity = similarity * strengths  # [batch_size, num_heads, memory_size]
 
-        # 计算点积
-        # memory_expanded * keys_expanded: [batch_shape..., memory_size, num_heads, word_size]
-        # reduce_sum over word_size: [batch_shape..., memory_size, num_heads]
-        dot_products = tf.reduce_sum(memory_expanded * keys_expanded,
-                                     axis=-1)  # [batch_shape..., memory_size, num_heads]
+        # 应用 softmax 归一化
+        content_weights = tf.nn.softmax(similarity, axis=-1)  # [batch_size, num_heads, memory_size]
 
-        # 转置到 [batch_shape..., num_heads, memory_size]
-        # 假设最后两个维度是 memory_size 和 num_heads
-        # 使用 perm 参数静态指定
-        # 获取总维度数
-        rank = len(dot_products.shape)
-        # 构建 perm 列表：前 rank-2 维保持不变，最后两个维度交换
-        perm = list(range(rank - 2)) + [rank - 1, rank - 2]
-        similarity = tf.transpose(dot_products, perm=perm)  # [batch_shape..., num_heads, memory_size]
-
-        # 计算 norms
-        # keys_norms: [batch_shape..., num_heads] -> [batch_shape..., num_heads, 1]
-        keys_norms_expanded = tf.expand_dims(keys_norms, axis=-1)
-
-        # memory_norms: [batch_shape..., memory_size] -> [batch_shape..., 1, memory_size]
-        memory_norms_expanded = tf.expand_dims(memory_norms, axis=-2)
-
-        # 计算 norms: [batch_shape..., num_heads, memory_size]
-        norms = keys_norms_expanded * memory_norms_expanded + self._epsilon
-
-        # 计算余弦相似度
-        similarity = similarity / norms  # [batch_shape..., num_heads, memory_size]
-
-        # 使用 strengths 调整相似度，并通过 weighted_softmax 得到权重
-        weights = weighted_softmax(similarity, strengths, self._strength_op)  # [batch_shape..., num_heads, memory_size]
-
-        return weights
+        return content_weights
 
 
+# 已修改：调整使用率的更新，符合 DNC 论文要求
 class DefaultUsageUpdater(UsageUpdater):
-    def __init__(self, memory_size: int, num_writes: int, num_reads: int, epsilon: float = 1e-6):
+    def __init__(self, memory_size: int, num_writes: int, num_reads: int):
         self.memory_size = memory_size
         self.num_writes = num_writes
         self.num_reads = num_reads
-        self.epsilon = epsilon
 
     def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
                      prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
@@ -165,25 +96,121 @@ class DefaultUsageUpdater(UsageUpdater):
         Returns:
             tf.Tensor: 更新后的使用率 [batch_size, memory_size]
         """
-        # 计算写操作后的使用率
-        write_weights_cumprod = tf.reduce_prod(1 - write_weights, axis=1)  # [batch_size, memory_size]
-        write_allocation = 1 - write_weights_cumprod  # [batch_size, memory_size]
-        usage_after_write = prev_usage + (1 - prev_usage) * write_allocation  # [batch_size, memory_size]
+        # 计算保留向量 psi_t
+        free_gate = tf.expand_dims(free_gate, axis=-1)  # [batch_size, num_reads, 1]
+        free_read_weights = free_gate * read_weights  # [batch_size, num_reads, memory_size]
+        psi = tf.reduce_prod(1 - free_read_weights, axis=1)  # [batch_size, memory_size]
 
-        # 计算自由读权重
-        free_gate_expanded = tf.expand_dims(free_gate, axis=-1)  # [batch_size, num_reads, 1]
-        free_read_weights = free_gate_expanded * read_weights  # [batch_size, num_reads, memory_size]
+        # 计算写入权重的总和
+        write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
 
-        # 计算每个内存槽因自由读操作释放的使用率
-        total_free_read_weights = tf.reduce_sum(free_read_weights, axis=1)  # [batch_size, memory_size]
+        # 更新使用率 u_t
+        usage = (prev_usage + write_weights_sum - prev_usage * write_weights_sum) * psi  # [batch_size, memory_size]
+        usage = tf.clip_by_value(usage, 0.0, 1.0)
 
-        # 更新使用率：减少被自由读释放的部分
-        usage_after_read = usage_after_write - total_free_read_weights  # [batch_size, memory_size]
-        usage_after_read = tf.maximum(usage_after_read, 0.0)  # 确保不低于0
+        return usage
 
-        # 返回更新后的使用率
-        return usage_after_read  # [batch_size, memory_size]
 
+# 已修改：调整内存的更新，符合 DNC 论文要求
+
+
+class DefaultWriteWeightCalculator(WriteWeightCalculator):
+    def __init__(
+            self,
+            memory_size: int,
+            num_writes: int
+    ):
+        if memory_size <= 0:
+            raise ValueError("memory_size must be greater than 0.")
+        if num_writes <= 0:
+            raise ValueError("num_writes must be greater than 0.")
+        self.memory_size = memory_size
+        self.num_writes = num_writes
+        self.epsilon = 1e-6
+
+    def compute_allocation_weights(self, usage: tf.Tensor) -> tf.Tensor:
+        """
+        根据使用率计算分配权重。
+
+        Args:
+            usage: [batch_size, memory_size]
+
+        Returns:
+            allocation_weights: [batch_size, memory_size]
+        """
+        # 对使用率进行排序（降序）
+        usage = usage + self.epsilon  # 防止除零
+        usage_sorted, indices = tf.nn.top_k(-usage, k=self.memory_size)
+        usage_sorted = -usage_sorted  # [batch_size, memory_size]
+
+        # 计算 (1 - u)，确保非负
+        one_minus_u = tf.maximum(1 - usage_sorted, 0)  # [batch_size, memory_size]
+
+        # 计算累积乘积 (1 - u) 的非 exclusive 版本
+        cumprod = tf.math.cumprod(one_minus_u, axis=1, exclusive=False)  # [batch_size, memory_size]
+        shifted_cumprod = tf.concat([
+            tf.ones([tf.shape(cumprod)[0], 1], dtype=cumprod.dtype),
+            cumprod[:, :-1]
+        ], axis=1)  # [batch_size, memory_size]
+
+        # 计算 allocation_weights_sorted
+        allocation_weights_sorted = one_minus_u * shifted_cumprod  # [batch_size, memory_size]
+
+        # 归一化 allocation_weights_sorted，避免除以零
+        sum_allocation = tf.reduce_sum(allocation_weights_sorted, axis=1, keepdims=True)  # [batch_size, 1]
+        allocation_weights_normalized = tf.where(
+            sum_allocation > self.epsilon,
+            allocation_weights_sorted / sum_allocation,
+            tf.ones_like(allocation_weights_sorted) / self.memory_size  # 当 sum=0 时，均匀分配
+        )  # [batch_size, memory_size]
+
+        # 使用 tf.gather 来 scatter 回原始顺序
+        allocation_weights = tf.gather(allocation_weights_normalized, indices, batch_dims=1)  # [batch_size, memory_size]
+
+        return allocation_weights
+
+    def compute(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
+                write_gate: tf.Tensor, prev_usage: tf.Tensor, training: bool) -> tf.Tensor:
+        """
+        计算最终的写入权重。
+
+        Args:
+            write_content_weights: [batch_size, num_writes, memory_size]
+            allocation_gate: [batch_size, num_writes]
+            write_gate: [batch_size, num_writes]
+            prev_usage: [batch_size, memory_size]
+            training: bool
+
+        Returns:
+            write_weights: [batch_size, num_writes, memory_size]
+        """
+        # 计算分配权重
+        allocation_weights = self.compute_allocation_weights(prev_usage)  # [batch_size, memory_size]
+        allocation_weights = tf.expand_dims(allocation_weights, axis=1)  # [batch_size, 1, memory_size]
+        allocation_weights = tf.tile(allocation_weights, [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
+
+        # 确保 allocation_gate 和 write_gate 在 [0, 1] 范围内
+        allocation_gate = tf.clip_by_value(allocation_gate, 0.0, 1.0)
+        write_gate = tf.clip_by_value(write_gate, 0.0, 1.0)
+
+        # 确保 write_content_weights 为非负
+        write_content_weights = tf.maximum(write_content_weights, 0.0)
+
+        # 扩展门控以进行元素级乘法
+        allocation_gate = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
+        write_gate = tf.expand_dims(write_gate, axis=-1)  # [batch_size, num_writes, 1]
+
+        # 计算未归一化的写入权重
+        write_weights = write_gate * (
+                allocation_gate * allocation_weights +
+                (1 - allocation_gate) * write_content_weights
+        )  # [batch_size, num_writes, memory_size]
+
+        # 归一化 write_weights 以确保每个写入操作的权重和为1
+        sum_write_weights = tf.reduce_sum(write_weights, axis=-1, keepdims=True) + self.epsilon  # [batch_size, num_writes, 1]
+        write_weights_normalized = write_weights / sum_write_weights  # [batch_size, num_writes, memory_size]
+
+        return write_weights_normalized
 
 
 class DefaultTemporalLinkageUpdater:
@@ -195,6 +222,10 @@ class DefaultTemporalLinkageUpdater:
             memory_size (int): The size of the memory.
             num_writes (int): The number of write heads.
         """
+        if memory_size <= 0:
+            raise ValueError("memory_size must be greater than 0.")
+        if num_writes <= 0:
+            raise ValueError("num_writes must be greater than 0.")
         self.memory_size = memory_size
         self.num_writes = num_writes
 
@@ -217,17 +248,20 @@ class DefaultTemporalLinkageUpdater:
         write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
 
         # Update precedence weights
-        updated_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
+        updated_precedence_weights = (
+                                                 1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
 
         # Compute outer products for new link entries
         write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
-        precedence_weights_j = tf.expand_dims(updated_precedence_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
+        precedence_weights_j = tf.expand_dims(updated_precedence_weights,
+                                              axis=2)  # [batch_size, num_writes, 1, memory_size]
 
         # Compute the new link matrix
         new_link = write_weights_i * precedence_weights_j  # [batch_size, num_writes, memory_size, memory_size]
 
         # Remove self-links by zeroing the diagonal elements
-        identity = tf.eye(self.memory_size, batch_shape=[self.num_writes], dtype=tf.float32)  # [num_writes, memory_size, memory_size]
+        identity = tf.eye(self.memory_size, batch_shape=[self.num_writes],
+                          dtype=tf.float32)  # [num_writes, memory_size, memory_size]
         identity = tf.expand_dims(identity, axis=0)  # [1, num_writes, memory_size, memory_size]
         new_link = new_link * (1 - identity)
 
@@ -240,7 +274,8 @@ class DefaultTemporalLinkageUpdater:
             'precedence_weights': updated_precedence_weights  # [batch_size, num_writes, memory_size]
         }
 
-    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor, forward: bool = True) -> tf.Tensor:
+    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor,
+                                 forward: bool = True) -> tf.Tensor:
         """
         Computes the forward or backward read weights.
 
@@ -255,29 +290,19 @@ class DefaultTemporalLinkageUpdater:
         if forward:
             link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
         else:
-            link_transposed = tf.transpose(link, perm=[0, 1, -1, -2])  # Swap the last two dimensions
+            link_transposed = tf.transpose(link,
+                                           perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
 
-        # Compute the directional read weights
-        # For each write head, we compute the matrix product between prev_read_weights and link_transposed
-        directional_weights = []
-        for i in range(self.num_writes):
-            # Extract link matrix for the i-th write head
-            link_i = link_transposed[:, i, :, :]  # [batch_size, memory_size, memory_size]
+        # 使用 tf.einsum 进行批量矩阵乘法
+        # 'brm,bwmn->brwn' 的含义：
+        # b: batch_size
+        # r: num_reads
+        # m: memory_size (read)
+        # w: num_writes
+        # n: memory_size (write)
+        read_weights = tf.einsum('brm,bwmn->brwn', prev_read_weights, link_transposed)
 
-            # Compute the directional weights
-            prev_read_weights_reshaped = tf.expand_dims(prev_read_weights, axis=2)  # [batch_size, num_reads, 1, memory_size]
-            link_i_expanded = tf.expand_dims(link_i, axis=1)  # [batch_size, 1, memory_size, memory_size]
-
-            # Batch matrix multiplication
-            weight = tf.matmul(prev_read_weights_reshaped, link_i_expanded)  # [batch_size, num_reads, 1, memory_size]
-            weight = tf.squeeze(weight, axis=2)  # [batch_size, num_reads, memory_size]
-
-            directional_weights.append(weight)
-
-        # Stack the weights for all write heads
-        directional_weights = tf.stack(directional_weights, axis=2)  # [batch_size, num_reads, num_writes, memory_size]
-
-        return directional_weights  # [batch_size, num_reads, num_writes, memory_size]
+        return read_weights  # [batch_size, num_reads, num_writes, memory_size]
 
     def state_size(self) -> dict:
         """
@@ -290,50 +315,34 @@ class DefaultTemporalLinkageUpdater:
             'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
             'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
         }
-class DefaultMemoryUpdater(MemoryUpdater):
-    def update_memory(self, memory: tf.Tensor, write_weights: tf.Tensor, erase_vectors: tf.Tensor,
-                      write_vectors: tf.Tensor) -> tf.Tensor:
-        """
-        更新内存。
-        """
-        # 计算擦除矩阵
-        write_weights_expanded = tf.expand_dims(write_weights, axis=-1)  # [batch_size, num_writes, memory_size, 1]
-        erase_vectors_expanded = tf.expand_dims(erase_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded,
-                                      axis=1)  # [batch_size, memory_size, word_size]
-
-        # 更新内存
-        memory_erased = memory * erase_matrix
-
-        # 计算添加矩阵
-        write_vectors_expanded = tf.expand_dims(write_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded,
-                                   axis=1)  # [batch_size, memory_size, word_size]
-
-        memory_updated = memory_erased + add_matrix
-        return memory_updated  # [batch_size, memory_size, word_size]
 
 
+# 已修改：在计算读取权重前，确保 read_mode 已正确归一化
 class DefaultReadWeightCalculator(ReadWeightCalculator):
     def __init__(self, temporal_linkage: DefaultTemporalLinkageUpdater, num_reads: int, num_writes: int):
         """
-        初始化 ReadWeightCalculator，传入 TemporalLinkage 实例。
+        Initializes the ReadWeightCalculator with a TemporalLinkage instance.
         """
         self.temporal_linkage = temporal_linkage
         self.num_reads = num_reads
         self.num_writes = num_writes
 
     def compute(self, read_content_weights: tf.Tensor, prev_read_weights: tf.Tensor,
-                             link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
-        """
-        计算读取权重。
-        """
-        # 分割 read_mode
-        content_mode = tf.expand_dims(read_mode[:, :, 0], axis=-1)  # [batch_size, num_reads, 1]
-        forward_mode = read_mode[:, :, 1:1 + self.num_writes]    # [batch_size, num_reads, num_writes]
-        backward_mode = read_mode[:, :, 1 + self.num_writes:]   # [batch_size, num_reads, num_writes]
+                link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
+        # Ensure read_mode is normalized
+        read_mode_sum = tf.reduce_sum(read_mode, axis=-1, keepdims=True) + 1e-8
+        read_mode = read_mode / read_mode_sum
 
-        # 计算前向和后向权重
+        # Split read_mode
+        content_mode = tf.expand_dims(read_mode[:, :, 0], axis=-1)  # [batch_size, num_reads, 1]
+        forward_mode = read_mode[:, :, 1:1 + self.num_writes]  # [batch_size, num_reads, num_writes]
+        backward_mode = read_mode[:, :, 1 + self.num_writes:]  # [batch_size, num_reads, num_writes]
+
+        tf.print("content_mode shape:", tf.shape(content_mode))
+        tf.print("forward_mode shape:", tf.shape(forward_mode))
+        tf.print("backward_mode shape:", tf.shape(backward_mode))
+
+        # Compute forward and backward weights
         forward_weights = self.temporal_linkage.directional_read_weights(
             link, prev_read_weights, forward=True
         )  # [batch_size, num_reads, num_writes, memory_size]
@@ -341,73 +350,37 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
             link, prev_read_weights, forward=False
         )  # [batch_size, num_reads, num_writes, memory_size]
 
-        # 计算加权和
-        forward_mode = tf.expand_dims(forward_mode, axis=-1)    # [batch_size, num_reads, num_writes, 1]
+        tf.print("forward_weights shape:", tf.shape(forward_weights))
+        tf.print("backward_weights shape:", tf.shape(backward_weights))
+
+        # Compute weighted sums
+        forward_mode = tf.expand_dims(forward_mode, axis=-1)  # [batch_size, num_reads, num_writes, 1]
         backward_mode = tf.expand_dims(backward_mode, axis=-1)  # [batch_size, num_reads, num_writes, 1]
 
-        # 计算方向性权重的加权和
-        forward_component = tf.reduce_sum(forward_mode * forward_weights, axis=2)    # [batch_size, num_reads, memory_size]
-        backward_component = tf.reduce_sum(backward_mode * backward_weights, axis=2)  # [batch_size, num_reads, memory_size]
+        # Compute directional components
+        forward_component = tf.reduce_sum(forward_mode * forward_weights,
+                                          axis=2)  # [batch_size, num_reads, memory_size]
+        backward_component = tf.reduce_sum(backward_mode * backward_weights,
+                                           axis=2)  # [batch_size, num_reads, memory_size]
 
-        # 最终读取权重，使用 tf.add_n 逐元素相加
-        read_weights = content_mode * read_content_weights + forward_component + backward_component
-        return read_weights  # [batch_size, num_reads, memory_size]
+        tf.print("forward_component shape:", tf.shape(forward_component))
+        tf.print("backward_component shape:", tf.shape(backward_component))
 
+        # Compute final read weights
+        read_weights = content_mode * read_content_weights + forward_component + backward_component  # [batch_size, num_reads, memory_size]
 
-class DefaultWriteWeightCalculator(WriteWeightCalculator):
-    def __init__(
-            self,
-            memory_size: int,
-            num_writes: int,
-            epsilon: float = 1e-6
-    ):
-        self.memory_size = memory_size
-        self.num_writes = num_writes
-        self.epsilon = epsilon
+        # Apply softmax normalization over memory_size dimension
+        read_weights = tf.nn.softmax(read_weights, axis=-1)
 
-    def compute_allocation_weights(self, prev_usage: tf.Tensor) -> tf.Tensor:
-        """
-        根据使用率计算分配权重。
+        # Use tf.print for debugging
+        tf.print("read_weights:", read_weights)
 
-        Args:
-            prev_usage: [batch_size, memory_size]
-
-        Returns:
-            allocation_weights: [batch_size, memory_size]
-        """
-        # 使用率低的槽位应获得较高的分配权重
-        allocation_scores = -prev_usage  # [batch_size, memory_size]
-        allocation_weights = tf.nn.softmax(allocation_scores, axis=-1)  # [batch_size, memory_size]
-        return allocation_weights
-
-    def compute(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
-                write_gate: tf.Tensor, prev_usage: tf.Tensor, training: bool) -> tf.Tensor:
-        """
-        计算最终的写入权重。
-
-        Args:
-            write_content_weights: [batch_size, num_writes, memory_size]
-            allocation_gate: [batch_size, num_writes]
-            write_gate: [batch_size, num_writes]
-            prev_usage: [batch_size, memory_size]
-            training: bool
-
-        Returns:
-            write_weights: [batch_size, num_writes, memory_size]
-        """
-        # 计算分配权重
-        allocation_weights = self.compute_allocation_weights(prev_usage)  # [batch_size, memory_size]
-        # 扩展维度以匹配 num_writes
-        allocation_weights = tf.expand_dims(allocation_weights, axis=1)  # [batch_size, 1, memory_size]
-        allocation_weights = tf.tile(allocation_weights, [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
-
-        # 扩展门控以进行元素级乘法
-        allocation_gate_expanded = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
-        write_gate_expanded = tf.expand_dims(write_gate, axis=-1)  # [batch_size, num_writes, 1]
-
-        # 计算最终的写入权重
-        write_weights = write_gate_expanded * (
-            allocation_gate_expanded * allocation_weights +
-            (1 - allocation_gate_expanded) * write_content_weights
+        # Ensure read_weights sum to 1 over memory_size
+        tf.debugging.assert_near(
+            tf.reduce_sum(read_weights, axis=-1),
+            tf.ones_like(tf.reduce_sum(read_weights, axis=-1)),
+            atol=1e-6,
+            message="Read weights do not sum to 1."
         )
-        return write_weights
+
+        return read_weights  # [batch_size, num_reads, memory_size]
