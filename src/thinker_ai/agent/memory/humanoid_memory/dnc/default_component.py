@@ -164,8 +164,18 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
             tf.ones_like(allocation_weights_sorted) / self.memory_size  # 当 sum=0 时，均匀分配
         )  # [batch_size, memory_size]
 
-        # 使用 tf.gather 来 scatter 回原始顺序
-        allocation_weights = tf.gather(allocation_weights_normalized, indices, batch_dims=1)  # [batch_size, memory_size]
+        # 手动执行 scatter 回原始顺序
+        batch_size_dynamic = tf.shape(indices)[0]
+        memory_size_dynamic = self.memory_size
+
+        batch_indices = tf.range(batch_size_dynamic)[:, tf.newaxis]  # [B,1]
+        batch_indices = tf.tile(batch_indices, [1, memory_size_dynamic])  # [B,M]
+        scatter_indices = tf.stack([batch_indices, indices], axis=2)  # [B,M,2]
+        scatter_indices_flat = tf.reshape(scatter_indices, [-1, 2])  # [B*M,2]
+        allocation_weights_flat = tf.reshape(allocation_weights_normalized, [-1])  # [B*M]
+
+        allocation_weights = tf.scatter_nd(scatter_indices_flat, allocation_weights_flat,
+                                           [batch_size_dynamic, memory_size_dynamic])  # [B,M]
 
         return allocation_weights
 
