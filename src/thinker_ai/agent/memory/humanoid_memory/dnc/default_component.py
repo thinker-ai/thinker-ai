@@ -1,4 +1,6 @@
 # default_component.py
+from typing import Dict, Any
+
 from thinker_ai.agent.memory.humanoid_memory.dnc.component_interface import (
     MemoryUpdater, ReadWeightCalculator, TemporalLinkageUpdater, UsageUpdater, WriteWeightCalculator
 )
@@ -138,9 +140,11 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         Returns:
             allocation_weights: [batch_size, memory_size]
         """
+        # 防止除零
+        usage = usage + self.epsilon
+        # 动态获取当前 memory_size
+        k = tf.minimum(self.memory_size, tf.shape(usage)[1])
         # 对使用率进行排序（降序）
-        usage = usage + self.epsilon  # 防止除零
-        k = tf.minimum(self.memory_size, tf.shape(usage)[1])  # 确保 k 不超过 memory_size
         usage_sorted, indices = tf.nn.top_k(-usage, k=k)
         usage_sorted = -usage_sorted  # [batch_size, memory_size]
 
@@ -284,16 +288,6 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         self.num_writes = num_writes
 
     def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict, training: bool = False) -> dict:
-        """
-        Updates the link matrices and precedence weights.
-
-        Args:
-            write_weights (tf.Tensor): Write weights, shape [batch_size, num_writes, memory_size].
-            prev_linkage (dict): Previous linkage containing 'link' and 'precedence_weights'.
-
-        Returns:
-            dict: Updated linkage containing 'link' and 'precedence_weights'.
-        """
         # Unpack previous linkage
         prev_link = prev_linkage['link']  # [batch_size, num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, num_writes, memory_size]
@@ -303,7 +297,7 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
 
         # Update precedence weights
         updated_precedence_weights = (
-                                             1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
+                                                 1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
 
         # Compute outer products for new link entries
         write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
@@ -317,15 +311,14 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         identity = tf.eye(self.memory_size, batch_shape=[self.num_writes],
                           dtype=tf.float32)  # [num_writes, memory_size, memory_size]
         identity = tf.expand_dims(identity, axis=0)  # [1, num_writes, memory_size, memory_size]
-        new_link = new_link * (1 - identity)
+        identity = tf.tile(identity,
+                           [tf.shape(new_link)[0], 1, 1, 1])  # [batch_size, num_writes, memory_size, memory_size]
 
-        # Update the link matrices
-        updated_link = (1 - write_weights_i - tf.expand_dims(write_weights, axis=2)) * prev_link + new_link
-        updated_link = tf.clip_by_value(updated_link, 0.0, 1.0)
+        new_link = new_link * (1 - identity)  # [batch_size, num_writes, memory_size, memory_size]
 
         return {
-            'link': updated_link,  # [batch_size, num_writes, memory_size, memory_size]
-            'precedence_weights': updated_precedence_weights  # [batch_size, num_writes, memory_size]
+            'link': new_link,
+            'precedence_weights': updated_precedence_weights
         }
 
     def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor,
@@ -386,7 +379,7 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
         # Ensure read_mode is normalized
         read_mode_sum = tf.reduce_sum(read_mode, axis=-1, keepdims=True) + 1e-8
         read_mode = read_mode / read_mode_sum
-
+        # read_mode = tf.nn.softmax(read_mode, axis=-1) #4o推荐：softmax 更适合处理归一化问题，且可以确保分布在数值上的平滑性
         # Split read_mode
         content_mode = tf.expand_dims(read_mode[:, :, 0], axis=-1)  # [batch_size, num_reads, 1]
         forward_mode = read_mode[:, :, 1:1 + self.num_writes]  # [batch_size, num_reads, num_writes]
@@ -464,36 +457,37 @@ class DefaultMemoryUpdater(MemoryUpdater):
         return memory_updated  # [batch_size, memory_size, word_size]
 
 
-default_config = {
-    'WriteWeightCalculator': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',
-        'memory_size': 20,  # 内存大小，根据测试中的 MEMORY_SIZE 调整
-        'num_writes': 3      # 写入头的数量，根据测试中的 NUM_WRITES 调整
-    },
-    'ReadWeightCalculator': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultReadWeightCalculator',
-        'num_reads': 2,      # 读取头的数量，根据测试中的 NUM_READS 调整
-        'num_writes': 3      # 写入头的数量，需与 WriteWeightCalculator 一致
-    },
-    'ContentWeightCalculator': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator',
-        'num_heads': 3,      # 内容头的数量，与 num_writes 一致
-        'word_size': 6,      # 词向量的大小，根据测试中的 WORD_SIZE 调整
-        'epsilon': 1e-6      # 防止除零的小常数
-    },
-    'UsageUpdater': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultUsageUpdater',
-        'memory_size': 20,   # 内存大小，根据测试中的 MEMORY_SIZE 调整
-        'num_writes': 3,     # 写入头的数量，根据测试中的 NUM_WRITES 调整
-        'num_reads': 2       # 读取头的数量，根据测试中的 NUM_READS 调整
-    },
-    'TemporalLinkageUpdater': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultTemporalLinkageUpdater',
-        'memory_size': 20,   # 内存大小，根据测试中的 MEMORY_SIZE 调整
-        'num_writes': 3      # 写入头的数量，根据测试中的 NUM_WRITES 调整
-    },
-    'MemoryUpdater': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultMemoryUpdater'
-        # DefaultMemoryUpdater 不需要额外的初始化参数
+def get_default_config(memory_size: int, num_writes: int, num_reads: int, word_size: int) -> Dict[str, Any]:
+    return {
+        'WriteWeightCalculator': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',
+            'memory_size': memory_size,  # 动态设置
+            'num_writes': num_writes  # 动态设置
+        },
+        'ReadWeightCalculator': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultReadWeightCalculator',
+            'num_reads': num_reads,  # 动态设置
+            'num_writes': num_writes  # 动态设置
+        },
+        'ContentWeightCalculator': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator',
+            'num_heads': num_writes,  # 动态设置
+            'word_size': word_size,  # 动态设置
+            'epsilon': 1e-6  # 保持不变
+        },
+        'UsageUpdater': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultUsageUpdater',
+            'memory_size': memory_size,  # 动态设置
+            'num_writes': num_writes,  # 动态设置
+            'num_reads': num_reads  # 动态设置
+        },
+        'TemporalLinkageUpdater': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultTemporalLinkageUpdater',
+            'memory_size': memory_size,  # 动态设置
+            'num_writes': num_writes  # 动态设置
+        },
+        'MemoryUpdater': {
+            'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultMemoryUpdater'
+            # DefaultMemoryUpdater 不需要额外的初始化参数
+        }
     }
-}
