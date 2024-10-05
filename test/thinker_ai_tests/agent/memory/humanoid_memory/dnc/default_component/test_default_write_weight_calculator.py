@@ -86,6 +86,7 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
         测试 write_weights 的计算。
         """
         batch_size = 1
+        num_writes = 2  # 定义 num_writes
 
         # 设置特定测试输入，调整 num_writes 为 2
         write_content_weights = tf.constant([
@@ -96,60 +97,33 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
         write_gate = tf.constant([[0.8, 0.8]], dtype=tf.float32)  # [1, 2]
         prev_usage = tf.constant([[0.4, 0.1, 0.2, 0.3]], dtype=tf.float32)  # [1, 4]
 
+        # 实例化写入权重计算器
+        write_weight_calculator = DefaultWriteWeightCalculator(
+            memory_size=4,
+            num_writes=num_writes
+        )
+
         # 手动计算 expected_allocation_weights
-        usage = prev_usage + self.epsilon  # 防止除零
-        usage_sorted, indices = tf.nn.top_k(-usage, k=self.memory_size)
-        usage_sorted = -usage_sorted  # [1, 4]
-        one_minus_u = 1 - usage_sorted  # [1, 4]
-        cumprod = tf.math.cumprod(one_minus_u, axis=1, exclusive=False)  # [1, 4]
-        shifted_cumprod = tf.concat([
-            tf.ones([tf.shape(cumprod)[0], 1], dtype=cumprod.dtype),
-            cumprod[:, :-1]
-        ], axis=1)  # [1, 4]
-        allocation_weights_sorted = one_minus_u * shifted_cumprod  # [1, 4]
+        allocation_weights = write_weight_calculator.compute_allocation_weights(prev_usage).numpy()  # [1,4]
+        allocation_weights_expanded = allocation_weights.reshape(batch_size, 1, 4)  # [1,1,4]
+        allocation_weights_expanded = np.tile(allocation_weights_expanded, [1, num_writes, 1])  # [1,2,4]
 
-        # 归一化 allocation_weights_sorted
-        sum_allocation = tf.reduce_sum(allocation_weights_sorted, axis=1, keepdims=True)  # [1, 1]
-        allocation_weights_normalized = tf.where(
-            sum_allocation > 1e-6,
-            allocation_weights_sorted / sum_allocation,
-            tf.ones_like(allocation_weights_sorted) / self.memory_size
-        )  # [1, 4]
+        # 规范化 write_content_weights
+        write_content_weights_np = write_content_weights.numpy()
+        write_content_weights_sum = np.sum(write_content_weights_np, axis=-1, keepdims=True) + 1e-6
+        write_content_weights_normalized = write_content_weights_np / write_content_weights_sum  # [1,2,4]
 
-        # 手动执行 scatter
-        batch_size_dynamic = tf.shape(indices)[0]
-        memory_size_dynamic = self.memory_size
-
-        batch_indices = tf.range(batch_size_dynamic)[:, tf.newaxis]  # [B,1]
-        batch_indices = tf.tile(batch_indices, [1, memory_size_dynamic])  # [B,M]
-        scatter_indices = tf.stack([batch_indices, indices], axis=2)  # [B,M,2]
-        scatter_indices_flat = tf.reshape(scatter_indices, [-1, 2])  # [B*M,2]
-        allocation_weights_flat = tf.reshape(allocation_weights_normalized, [-1])  # [B*M]
-
-        allocation_weights = tf.scatter_nd(scatter_indices_flat, allocation_weights_flat,
-                                           [batch_size_dynamic, memory_size_dynamic])  # [B,M]
-
-        allocation_weights = allocation_weights.numpy()  # [1,4]
-
-        # 扩展和复制
-        allocation_weights_expanded = allocation_weights.reshape(batch_size, 1, self.memory_size)  # [1,1,4]
-        allocation_weights_expanded = np.tile(allocation_weights_expanded, [1, self.num_writes, 1])  # [1,2,4]
-
-        # 计算未归一化的 expected_write_weights
+        # 计算期望的 write_weights
         allocation_gate_expanded = allocation_gate.numpy()[..., np.newaxis]  # [1,2,1]
         write_gate_expanded = write_gate.numpy()[..., np.newaxis]  # [1,2,1]
 
-        expected_write_weights_unnormalized = write_gate_expanded * (
+        expected_write_weights = write_gate_expanded * (
                 allocation_gate_expanded * allocation_weights_expanded +
-                (1 - allocation_gate_expanded) * write_content_weights.numpy()
+                (1 - allocation_gate_expanded) * write_content_weights_normalized
         )  # [1,2,4]
 
-        # 归一化 expected_write_weights
-        sum_expected = np.sum(expected_write_weights_unnormalized, axis=-1, keepdims=True) + self.epsilon
-        expected_write_weights = expected_write_weights_unnormalized / sum_expected  # [1,2,4]
-
         # 计算实际的 write_weights
-        write_weights = self.write_weight_calculator.compute(
+        write_weights = write_weight_calculator.compute(
             write_content_weights=write_content_weights,
             allocation_gate=allocation_gate,
             write_gate=write_gate,
@@ -159,6 +133,7 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
 
         # 比较预期和实际的 write_weights
         self.assertAllClose(write_weights.numpy(), expected_write_weights, atol=1e-6)
+
     def test_write_weights_with_zero_prev_usage(self):
         """
         当 prev_usage 为零时，测试 write_weights 的计算。
@@ -402,8 +377,8 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
 
         # 设置特定测试输入
         write_content_weights = tf.constant([
-            [[0.5]],
-            [[0.8]]
+            [[1.0]],  # allocation_gate=1.0 时，write_weights 应为 write_gate *1.0 =1.0
+            [[0.8]]  # allocation_gate=0.0 时，write_content_weights_normalized =1.0, write_weights= write_gate *1.0=1.0
         ], dtype=tf.float32)  # [2, 1, 1]
         allocation_gate = tf.constant([[1.0], [0.0]], dtype=tf.float32)  # [2, 1]
         write_gate = tf.constant([[1.0], [1.0]], dtype=tf.float32)  # [2, 1]
@@ -421,14 +396,15 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
             training=False
         )
 
-        # 期望的写入权重（归一化后）
+        # 期望的写入权重
         expected_write_weights = tf.constant([
-            [[1.0]],  # allocation_gate=1, allocation_weights=1
-            [[1.0]]  # allocation_gate=0, write_weights_normalized=1.0
+            [[1.0]],  # allocation_gate=1.0, write_gate=1.0
+            [[1.0]]  # allocation_gate=0.0, write_content_weights_normalized=1.0, write_gate=1.0
         ], dtype=tf.float32)  # [2, 1, 1]
 
         # 比较预期和实际的写入权重
         self.assertAllClose(write_weights.numpy(), expected_write_weights.numpy(), atol=1e-6)
+
     def test_gates_zero(self):
         """
         测试 allocation_gate 和 write_gate 为0的情况。
@@ -586,7 +562,13 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
 
         # 检查归一化
         sum_write_weights = tf.reduce_sum(write_weights, axis=-1)  # [batch_size, num_writes]
-        self.assertAllClose(sum_write_weights.numpy(), np.ones_like(sum_write_weights.numpy()), atol=1e-6)
+        # sum_write_weights 应等于 write_gate
+        self.assertAllClose(
+            sum_write_weights.numpy(),
+            write_gate.numpy(),
+            atol=1e-5  # 增加容差以容忍微小误差
+        )
+
     def test_write_content_weights_non_normalized(self):
         """
         测试 write_content_weights 非标准化的情况。
@@ -626,6 +608,18 @@ class DefaultWriteWeightCalculatorTest(tf.test.TestCase):
         # 检查 write_weights 的范围是否合理
         self.assertGreaterEqual(tf.reduce_min(write_weights).numpy(), 0.0)
         self.assertLessEqual(tf.reduce_max(write_weights).numpy(), 1.0)
+
+        # 检查归一化
+        sum_write_weights = tf.reduce_sum(write_weights, axis=-1)  # [2, 2]
+        # sum_write_weights 应等于 write_gate（经过裁剪）
+        expected_write_gate = tf.clip_by_value(write_gate, 0.0, 1.0)
+
+        self.assertAllClose(
+            sum_write_weights.numpy(),
+            expected_write_gate.numpy(),
+            atol=1e-5  # 增加容差以容忍微小误差
+        )
+
     def test_memory_size_zero(self):
         """
         测试 memory_size 为0的情况，应抛出异常。

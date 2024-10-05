@@ -144,7 +144,7 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         usage_sorted = -usage_sorted  # [batch_size, memory_size]
 
         # 计算 (1 - u)，确保非负
-        one_minus_u = tf.maximum(1 - usage_sorted, 0)  # [batch_size, memory_size]
+        one_minus_u = tf.maximum(1 - usage_sorted, 0.0)  # [batch_size, memory_size]
 
         # 计算累积乘积 (1 - u) 的非 exclusive 版本
         cumprod = tf.math.cumprod(one_minus_u, axis=1, exclusive=False)  # [batch_size, memory_size]
@@ -177,6 +177,15 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         allocation_weights = tf.scatter_nd(scatter_indices_flat, allocation_weights_flat,
                                            [batch_size_dynamic, memory_size_dynamic])  # [B,M]
 
+        # 调试断言：确保 allocation_weights_sum 为1.0
+        sum_allocation_weights = tf.reduce_sum(allocation_weights, axis=1)  # [B]
+        tf.debugging.assert_near(
+            sum_allocation_weights,
+            tf.ones_like(sum_allocation_weights),
+            atol=1e-5,
+            message="Allocation weights do not sum to 1.0"
+        )
+
         return allocation_weights
 
     def compute(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
@@ -207,22 +216,64 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         # 确保 write_content_weights 为非负
         write_content_weights = tf.maximum(write_content_weights, 0.0)
 
-        # 扩展门控以进行元素级乘法
-        allocation_gate = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
-        write_gate = tf.expand_dims(write_gate, axis=-1)  # [batch_size, num_writes, 1]
+        # 对 write_content_weights 进行归一化
+        write_content_weights_sum = tf.reduce_sum(write_content_weights, axis=-1,
+                                                  keepdims=True)  # [batch_size, num_writes, 1]
+        write_content_weights_sum = tf.maximum(write_content_weights_sum, self.epsilon)  # 避免除零
+        write_content_weights_normalized = write_content_weights / write_content_weights_sum  # [batch_size, num_writes, memory_size]
 
-        # 计算未归一化的写入权重
-        write_weights = write_gate * (
-                allocation_gate * allocation_weights +
-                (1 - allocation_gate) * write_content_weights
+        # 仅在 (1 - allocation_gate) > 0 时断言 write_content_weights_normalized sum to 1.0
+        allocation_gate_expanded = tf.expand_dims(allocation_gate, axis=-1)  # [batch_size, num_writes, 1]
+        needs_normalization = tf.cast((1 - allocation_gate_expanded) > self.epsilon,
+                                      tf.float32)  # [batch_size, num_writes,1]
+        sum_write_content_weights = tf.reduce_sum(write_content_weights_normalized, axis=-1)  # [batch_size, num_writes]
+        expected_sum = tf.ones_like(sum_write_content_weights) * needs_normalization[:, :, 0]
+
+        # 调整 write_content_weights_normalized
+        write_content_weights_normalized = write_content_weights_normalized * needs_normalization
+
+        tf.debugging.assert_near(
+            sum_write_content_weights * needs_normalization[:, :, 0],
+            expected_sum,
+            atol=1e-5,
+            message="write_content_weights_normalized do not sum to 1.0 when (1 - allocation_gate) > 0"
+        )
+
+        # 扩展门控以进行元素级乘法
+        write_gate_expanded = tf.expand_dims(write_gate, axis=-1)  # [batch_size, num_writes, 1]
+
+        # 计算写入权重
+        write_weights = write_gate_expanded * (
+                allocation_gate_expanded * allocation_weights +
+                (1 - allocation_gate_expanded) * write_content_weights_normalized
         )  # [batch_size, num_writes, memory_size]
 
-        # 归一化 write_weights 以确保每个写入操作的权重和为1
-        sum_write_weights = tf.reduce_sum(write_weights, axis=-1,
-                                          keepdims=True) + self.epsilon  # [batch_size, num_writes, 1]
-        write_weights_normalized = write_weights / sum_write_weights  # [batch_size, num_writes, memory_size]
+        # 调试断言：确保 write_weights <= write_gate 并且 >=0
+        tf.debugging.assert_less_equal(
+            tf.reduce_max(write_weights),
+            tf.reduce_max(write_gate_expanded),
+            message="write_weights exceed write_gate"
+        )
+        tf.debugging.assert_greater_equal(
+            tf.reduce_min(write_weights),
+            0.0,
+            message="write_weights have negative values"
+        )
 
-        return write_weights_normalized
+        # 调试断言：确保 sum_write_weights == write_gate
+        sum_write_weights = tf.reduce_sum(write_weights, axis=-1)  # [batch_size, num_writes]
+        tf.debugging.assert_near(
+            sum_write_weights,
+            write_gate,
+            atol=1e-5,
+            message="Sum of write_weights does not equal write_gate"
+        )
+
+        # 调试输出
+        tf.print("Allocation Weights:", allocation_weights)
+        tf.print("Write Content Weights Normalized:", write_content_weights_normalized)
+        tf.print("Write Weights:", write_weights)
+        return write_weights
 
 
 class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
