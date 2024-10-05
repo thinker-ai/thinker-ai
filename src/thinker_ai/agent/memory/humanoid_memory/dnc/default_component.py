@@ -83,7 +83,7 @@ class DefaultUsageUpdater(UsageUpdater):
         self.num_reads = num_reads
 
     def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
-                    prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
+                     prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
         """
         更新内存使用率。
 
@@ -109,6 +109,7 @@ class DefaultUsageUpdater(UsageUpdater):
         usage = tf.clip_by_value(usage, 0.0, 1.0)
 
         return usage
+
 
 # 已修改：调整内存的更新，符合 DNC 论文要求
 
@@ -196,7 +197,8 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         # 计算分配权重
         allocation_weights = self.compute_allocation_weights(prev_usage)  # [batch_size, memory_size]
         allocation_weights = tf.expand_dims(allocation_weights, axis=1)  # [batch_size, 1, memory_size]
-        allocation_weights = tf.tile(allocation_weights, [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
+        allocation_weights = tf.tile(allocation_weights,
+                                     [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
 
         # 确保 allocation_gate 和 write_gate 在 [0, 1] 范围内
         allocation_gate = tf.clip_by_value(allocation_gate, 0.0, 1.0)
@@ -216,7 +218,8 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         )  # [batch_size, num_writes, memory_size]
 
         # 归一化 write_weights 以确保每个写入操作的权重和为1
-        sum_write_weights = tf.reduce_sum(write_weights, axis=-1, keepdims=True) + self.epsilon  # [batch_size, num_writes, 1]
+        sum_write_weights = tf.reduce_sum(write_weights, axis=-1,
+                                          keepdims=True) + self.epsilon  # [batch_size, num_writes, 1]
         write_weights_normalized = write_weights / sum_write_weights  # [batch_size, num_writes, memory_size]
 
         return write_weights_normalized
@@ -258,7 +261,7 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
 
         # Update precedence weights
         updated_precedence_weights = (
-                                                 1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
+                                             1 - write_sum) * prev_precedence_weights + write_weights  # [batch_size, num_writes, memory_size]
 
         # Compute outer products for new link entries
         write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
@@ -418,3 +421,37 @@ class DefaultMemoryUpdater(MemoryUpdater):
         memory_updated = memory_erased + add_matrix
         return memory_updated  # [batch_size, memory_size, word_size]
 
+
+default_config = {
+    'WriteWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',
+        'memory_size': 20,  # 内存大小，根据测试中的 MEMORY_SIZE 调整
+        'num_writes': 3      # 写入头的数量，根据测试中的 NUM_WRITES 调整
+    },
+    'ReadWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultReadWeightCalculator',
+        'num_reads': 2,      # 读取头的数量，根据测试中的 NUM_READS 调整
+        'num_writes': 3      # 写入头的数量，需与 WriteWeightCalculator 一致
+    },
+    'ContentWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator',
+        'num_heads': 3,      # 内容头的数量，与 num_writes 一致
+        'word_size': 6,      # 词向量的大小，根据测试中的 WORD_SIZE 调整
+        'epsilon': 1e-6      # 防止除零的小常数
+    },
+    'UsageUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultUsageUpdater',
+        'memory_size': 20,   # 内存大小，根据测试中的 MEMORY_SIZE 调整
+        'num_writes': 3,     # 写入头的数量，根据测试中的 NUM_WRITES 调整
+        'num_reads': 2       # 读取头的数量，根据测试中的 NUM_READS 调整
+    },
+    'TemporalLinkageUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultTemporalLinkageUpdater',
+        'memory_size': 20,   # 内存大小，根据测试中的 MEMORY_SIZE 调整
+        'num_writes': 3      # 写入头的数量，根据测试中的 NUM_WRITES 调整
+    },
+    'MemoryUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultMemoryUpdater'
+        # DefaultMemoryUpdater 不需要额外的初始化参数
+    }
+}

@@ -1,7 +1,7 @@
 # component_interface.py
 import collections
 from abc import ABC, abstractmethod
-from typing import Dict, Optional
+from typing import Dict
 import tensorflow as tf
 
 # 定义 BatchAccessState
