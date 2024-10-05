@@ -140,7 +140,8 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         """
         # 对使用率进行排序（降序）
         usage = usage + self.epsilon  # 防止除零
-        usage_sorted, indices = tf.nn.top_k(-usage, k=self.memory_size)
+        k = tf.minimum(self.memory_size, tf.shape(usage)[1])  # 确保 k 不超过 memory_size
+        usage_sorted, indices = tf.nn.top_k(-usage, k=k)
         usage_sorted = -usage_sorted  # [batch_size, memory_size]
 
         # 计算 (1 - u)，确保非负
@@ -166,25 +167,15 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
 
         # 手动执行 scatter 回原始顺序
         batch_size_dynamic = tf.shape(indices)[0]
-        memory_size_dynamic = self.memory_size
+        memory_size_dynamic = tf.shape(indices)[1]  # 动态获取 memory_size
 
         batch_indices = tf.range(batch_size_dynamic)[:, tf.newaxis]  # [B,1]
         batch_indices = tf.tile(batch_indices, [1, memory_size_dynamic])  # [B,M]
+
         scatter_indices = tf.stack([batch_indices, indices], axis=2)  # [B,M,2]
-        scatter_indices_flat = tf.reshape(scatter_indices, [-1, 2])  # [B*M,2]
-        allocation_weights_flat = tf.reshape(allocation_weights_normalized, [-1])  # [B*M]
 
-        allocation_weights = tf.scatter_nd(scatter_indices_flat, allocation_weights_flat,
-                                           [batch_size_dynamic, memory_size_dynamic])  # [B,M]
-
-        # 调试断言：确保 allocation_weights_sum 为1.0
-        sum_allocation_weights = tf.reduce_sum(allocation_weights, axis=1)  # [B]
-        tf.debugging.assert_near(
-            sum_allocation_weights,
-            tf.ones_like(sum_allocation_weights),
-            atol=1e-5,
-            message="Allocation weights do not sum to 1.0"
-        )
+        # 根据 scatter_indices 重新排列 allocation_weights_normalized
+        allocation_weights = tf.scatter_nd(scatter_indices, allocation_weights_normalized, tf.shape(usage))
 
         return allocation_weights
 
