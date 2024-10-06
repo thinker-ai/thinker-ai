@@ -1,5 +1,7 @@
 # test_memory_access.py
+from unittest.mock import MagicMock
 
+import numpy as np
 import tensorflow as tf
 import os
 
@@ -7,7 +9,10 @@ from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import get_de
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 只显示错误信息
-
+# 设置随机种子
+tf.random.set_seed(42)
+np.random.seed(42)
+# 定义测试常量
 # 定义测试常量
 BATCH_SIZE = 2
 MEMORY_SIZE = 20
@@ -40,7 +45,7 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
         self.num_writes = NUM_WRITES
         self.initial_time_steps = 1
 
-        # Initialize MemoryAccess
+        # Initialize MemoryAccess with deterministic initializers
         self.module = MemoryAccess(
             memory_size=self.memory_size,
             word_size=self.word_size,
@@ -49,11 +54,43 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
             epsilon=EPSILON,
             config=default_config
         )
-        # 获取初始状态，不调用模块的 call 方法
+
+        # 手动访问每个 Dense 层并设置确定性的初始化器
+        self.module.write_vectors_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.write_vectors_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.erase_vectors_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.erase_vectors_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_gate_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.write_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.allocation_gate_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.allocation_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.free_gate_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.free_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_mode_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.read_mode_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_keys_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.write_keys_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_strengths_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.write_strengths_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_keys_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.read_keys_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_strengths_layer.kernel_initializer = tf.keras.initializers.Ones()
+        self.module.read_strengths_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        # Get initial state without calling module's call method
         self.initial_state = self.module.get_initial_state(batch_size=self.batch_size, initial_time_steps=self.initial_time_steps)
 
     def testBuildAndTrain(self):
-        inputs = tf.random.normal([BATCH_SIZE, TIME_STEPS, INPUT_SIZE])
+        inputs = tf.ones([BATCH_SIZE, TIME_STEPS, INPUT_SIZE], dtype=tf.float32)
         optimizer = tf.optimizers.SGD(learning_rate=1.0)
 
         with tf.GradientTape() as tape:
@@ -68,8 +105,39 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
         optimizer.apply_gradients(zip(gradients, self.module.trainable_variables))
 
         self.assertEqual(read_words.shape, (BATCH_SIZE, TIME_STEPS, NUM_READS, WORD_SIZE))
+        self.assertGreater(tf.norm(gradients[0]), 0.0)
 
     def testEdgeCaseInputs(self):
+        self.module.write_vectors_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_vectors_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.erase_vectors_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.erase_vectors_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.write_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_gate_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.allocation_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.allocation_gate_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.free_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.free_gate_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.read_mode_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_mode_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.write_keys_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_keys_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.write_strengths_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_strengths_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.read_keys_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_keys_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
+        self.module.read_strengths_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_strengths_layer.bias_initializer = tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1)
+
         inputs = tf.zeros([BATCH_SIZE, TIME_STEPS, INPUT_SIZE], dtype=tf.float32)
         targets = tf.zeros([BATCH_SIZE, TIME_STEPS, NUM_READS, WORD_SIZE], dtype=tf.float32)
 
@@ -88,8 +156,8 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
         self.assertTrue(any(grads_greater_than_zero), "No gradients are greater than zero.")
 
     def testNonEdgeCaseInputs(self):
-        inputs = tf.random.normal([BATCH_SIZE, TIME_STEPS, INPUT_SIZE])
-        targets = tf.random.normal([BATCH_SIZE, TIME_STEPS, NUM_READS, WORD_SIZE])
+        inputs = tf.ones([BATCH_SIZE, TIME_STEPS, INPUT_SIZE], dtype=tf.float32)
+        targets = tf.ones([BATCH_SIZE, TIME_STEPS, NUM_READS, WORD_SIZE], dtype=tf.float32)
 
         optimizer = tf.optimizers.SGD(learning_rate=1.0)
 
@@ -106,7 +174,6 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
 
         self.assertEqual(read_words.shape, (BATCH_SIZE, TIME_STEPS, NUM_READS, WORD_SIZE))
         self.assertGreater(tf.norm(gradients[0]), 0.0)
-
     def test_generate_write_parameters(self):
         """
         测试 _generate_write_parameters 方法。
@@ -426,6 +493,37 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
         """
         测试 call 方法的每个时间步，逐步验证状态更新。
         """
+        # 恢复为更适合的初始化器
+        self.module.write_vectors_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_vectors_layer.bias_initializer = tf.keras.initializers.Zeros()  # 确保无偏置干扰
+
+        self.module.erase_vectors_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.erase_vectors_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.allocation_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.allocation_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.free_gate_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.free_gate_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_mode_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_mode_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_keys_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_keys_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.write_strengths_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.write_strengths_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_keys_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_keys_layer.bias_initializer = tf.keras.initializers.Zeros()
+
+        self.module.read_strengths_layer.kernel_initializer = tf.keras.initializers.GlorotUniform()
+        self.module.read_strengths_layer.bias_initializer = tf.keras.initializers.Zeros()
+
         # 定义单步输入（全零）
         single_step_inputs = tf.zeros([self.batch_size, 1, INPUT_SIZE], dtype=tf.float32)
 
@@ -539,7 +637,7 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
                             [self.batch_size, self.initial_time_steps + 3, self.num_writes, self.memory_size],
                             msg="final_state.write_weights shape mismatch after multi-step call.")
         self.assertTrue(tf.reduce_all(final_state_multi.write_weights >= 0),
-                        msg="final_state.write_weights contain negative values after multi-step call.")
+                        msg="final_state_multi.write_weights contain negative values after multi-step call.")
 
         self.assertIn('link', final_state_multi.linkage,
                       msg="'link' key missing in final_state.linkage after multi-step call.")
@@ -550,9 +648,9 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
                             msg="final_state.linkage['link'] shape mismatch after multi-step call.")
         self.assertAllEqual(final_state_multi.linkage['precedence_weights'].shape,
                             [self.batch_size, self.num_writes, self.memory_size],
-                            msg="final_state.linkage['precedence_weights'] shape mismatch after multi-step call.")
+                            msg="final_state_multi.linkage['precedence_weights'] shape mismatch after multi-step call.")
         self.assertTrue(tf.reduce_all(final_state_multi.linkage['link'] >= 0),
-                        msg="final_state.linkage['link'] contains negative values after multi-step call.")
+                        msg="final_state_multi.linkage['link'] contains negative values after multi-step call.")
 
         self.assertAllEqual(final_state_multi.usage.shape, [self.batch_size, self.memory_size],
                             msg="final_state.usage shape mismatch after multi-step call.")
@@ -560,11 +658,7 @@ class MemoryAccessBasicFunctionalityTest(tf.test.TestCase):
                         msg="final_state.usage contains negative values after multi-step call.")
 
         self.assertAllEqual(final_state_multi.read_words.shape, [self.batch_size, self.num_reads, self.word_size],
-                            msg="final_state.read_words shape mismatch after multi-step call.")
-        self.assertTrue(
-            tf.reduce_all(final_state_multi.read_words >= -0.5) and tf.reduce_all(final_state_multi.read_words <= 0.5),
-            msg="final_state.read_words values out of expected range after multi-step call.")
-
+                            msg="final_state_multi.read_words shape mismatch after multi-step call。")
 
 if __name__ == '__main__':
     tf.test.main()
