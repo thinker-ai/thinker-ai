@@ -36,13 +36,13 @@ class MemoryAccess(tf.keras.layers.Layer):
         self.usage_updater = components['usage_updater']
         self.memory_updater = components['memory_updater']
 
-        # 定义子层（保持 use_bias=True 和随机偏置初始化）
+        # 定义子层，调整偏置初始化
         self.write_vectors_layer = tf.keras.layers.Dense(
             units=self.num_writes * self.word_size,
             activation=None,
             name='write_vectors',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.erase_vectors_layer = tf.keras.layers.Dense(
@@ -50,7 +50,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='sigmoid',
             name='erase_vectors',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.write_gate_layer = tf.keras.layers.Dense(
@@ -58,7 +58,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='sigmoid',
             name='write_gate',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer=tf.keras.initializers.Constant(-1.0),
             use_bias=True
         )
         self.allocation_gate_layer = tf.keras.layers.Dense(
@@ -66,7 +66,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='sigmoid',
             name='allocation_gate',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer=tf.keras.initializers.Constant(-1.0),
             use_bias=True
         )
         self.free_gate_layer = tf.keras.layers.Dense(
@@ -74,7 +74,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='sigmoid',
             name='free_gate',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer=tf.keras.initializers.Constant(-1.0),
             use_bias=True
         )
         self.read_mode_layer = tf.keras.layers.Dense(
@@ -82,7 +82,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation=None,
             name='read_mode',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.write_keys_layer = tf.keras.layers.Dense(
@@ -90,7 +90,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation=None,
             name='write_keys',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.write_strengths_layer = tf.keras.layers.Dense(
@@ -98,7 +98,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='softplus',
             name='write_strengths',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.read_keys_layer = tf.keras.layers.Dense(
@@ -106,7 +106,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation=None,
             name='read_keys',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
         self.read_strengths_layer = tf.keras.layers.Dense(
@@ -114,7 +114,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='softplus',
             name='read_strengths',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
+            bias_initializer='zeros',
             use_bias=True
         )
     def call(self, inputs: Dict[str, tf.Tensor], training: bool = False) -> Dict[str, tf.Tensor]:
@@ -470,29 +470,21 @@ class MemoryAccess(tf.keras.layers.Layer):
         """
         return tf.matmul(read_weights, memory_updated)  # [batch_size, num_reads, word_size]
 
-    def get_initial_state(self, batch_size: int, initial_time_steps: int = 0) -> BatchAccessState:
-        """
-        返回 MemoryAccess 模块的初始状态。
-
-        Args:
-            batch_size (int): 批次大小。
-            initial_time_steps (int, optional): 初始时间步数。默认值为 0。
-
-        Returns:
-            BatchAccessState: 初始状态
-        """
+    def get_initial_state(self, batch_size: tf.Tensor, initial_time_steps: int = 1) -> BatchAccessState:
         memory = tf.zeros([batch_size, self.memory_size, self.word_size], dtype=tf.float32)
-        read_weights = tf.zeros([batch_size, initial_time_steps, self.num_reads, self.memory_size], dtype=tf.float32)
+        usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)
+
+        # 初始化 read_weights 为均匀分布
+        initial_read_weights = tf.fill([batch_size, initial_time_steps, self.num_reads, self.memory_size],
+                                       1.0 / tf.cast(self.memory_size, tf.float32))
+        read_weights = initial_read_weights
+
         write_weights = tf.zeros([batch_size, initial_time_steps, self.num_writes, self.memory_size], dtype=tf.float32)
 
-        # 初始化链接
-        linkage = {
-            'link': tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32),
-            'precedence_weights': tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
-        }
-
-        # 初始化使用率
-        usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)
+        # 初始化 linkage
+        link = tf.zeros([batch_size, self.num_writes, self.memory_size, self.memory_size], dtype=tf.float32)
+        precedence_weights = tf.zeros([batch_size, self.num_writes, self.memory_size], dtype=tf.float32)
+        linkage = {'link': link, 'precedence_weights': precedence_weights}
 
         read_words = tf.zeros([batch_size, self.num_reads, self.word_size], dtype=tf.float32)
 
@@ -502,9 +494,8 @@ class MemoryAccess(tf.keras.layers.Layer):
             write_weights=write_weights,
             linkage=linkage,
             usage=usage,
-            read_words=read_words,
+            read_words=read_words
         )
-
     def state_size(self):
         return BatchAccessState(
             memory=tf.TensorShape([self.memory_size, self.word_size]),

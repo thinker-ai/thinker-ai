@@ -48,31 +48,13 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
         self._epsilon = epsilon
 
     def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
-        """
-        计算内容权重。
-
-        Args:
-            keys (tf.Tensor): [batch_size, num_heads, word_size]
-            strengths (tf.Tensor): [batch_size, num_heads]
-            memory (tf.Tensor): [batch_size, memory_size, word_size]
-
-        Returns:
-            tf.Tensor: 内容权重 [batch_size, num_heads, memory_size]
-        """
-        # 计算键和内存的范数
-        keys = tf.math.l2_normalize(keys, axis=-1)  # [batch_size, num_heads, word_size]
-        memory = tf.math.l2_normalize(memory, axis=-1)  # [batch_size, memory_size, word_size]
-
-        # 计算点积（余弦相似度）
-        similarity = tf.matmul(keys, memory, transpose_b=True)  # [batch_size, num_heads, memory_size]
-
-        # 使用强度参数调整相似度
-        strengths = tf.expand_dims(strengths, axis=-1)  # [batch_size, num_heads, 1]
-        similarity = similarity * strengths  # [batch_size, num_heads, memory_size]
-
-        # 应用 softmax 归一化
-        content_weights = tf.nn.softmax(similarity, axis=-1)  # [batch_size, num_heads, memory_size]
-
+        # 计算内容权重，不依赖于固定的头数量
+        keys = tf.math.l2_normalize(keys, axis=-1)
+        memory = tf.math.l2_normalize(memory, axis=-1)
+        similarity = tf.einsum('bhw,bmw->bhm', keys, memory)
+        strengths = tf.expand_dims(strengths, axis=-1)
+        similarity *= strengths
+        content_weights = tf.nn.softmax(similarity, axis=-1)
         return content_weights
 
 
@@ -276,7 +258,7 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         self.num_writes = num_writes
 
     def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict,
-                       training: bool=False) -> dict:
+                       training: bool = False) -> dict:
         batch_size = tf.shape(write_weights)[0]
         prev_link = prev_linkage['link']  # [batch_size, num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, num_writes, memory_size]
@@ -285,7 +267,8 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         write_weights_j = tf.expand_dims(write_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
 
         # 计算新的链接矩阵
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   axis=2)  # [batch_size, num_writes, 1, memory_size]
         new_link = (1 - write_weights_i - write_weights_j) * prev_link + write_weights_i * prev_precedence_weights_j
 
         # 移除自连接
@@ -309,7 +292,8 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         if forward:
             link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
         else:
-            link_transposed = tf.transpose(link, perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
+            link_transposed = tf.transpose(link,
+                                           perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
 
         # 初始化方向性读取权重
         directional_weights = tf.zeros([batch_size, num_reads, self.memory_size], dtype=tf.float32)
@@ -318,8 +302,10 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         for i in range(self.num_writes):
             link_i = link_transposed[:, i, :, :]  # [batch_size, memory_size, memory_size]
             link_i = tf.expand_dims(link_i, axis=1)  # [batch_size, 1, memory_size, memory_size]
-            prev_read_weights_expanded = tf.expand_dims(prev_read_weights, axis=2)  # [batch_size, num_reads, 1, memory_size]
-            directional_weight_i = tf.matmul(prev_read_weights_expanded, link_i)  # [batch_size, num_reads, 1, memory_size]
+            prev_read_weights_expanded = tf.expand_dims(prev_read_weights,
+                                                        axis=2)  # [batch_size, num_reads, 1, memory_size]
+            directional_weight_i = tf.matmul(prev_read_weights_expanded,
+                                             link_i)  # [batch_size, num_reads, 1, memory_size]
             directional_weight_i = tf.squeeze(directional_weight_i, axis=2)  # [batch_size, num_reads, memory_size]
             directional_weights += directional_weight_i
 
@@ -330,7 +316,6 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
             'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
             'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
         }
-
 
 
 class DefaultReadWeightCalculator(ReadWeightCalculator):
@@ -409,7 +394,6 @@ def get_default_config(memory_size: int, num_writes: int, num_reads: int, word_s
         },
         'ContentWeightCalculator': {
             'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator',
-            'num_heads': num_writes,  # 动态设置
             'word_size': word_size,  # 动态设置
             'epsilon': 1e-6  # 保持不变
         },

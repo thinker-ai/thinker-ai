@@ -691,7 +691,7 @@ class MemoryAccessCallMethodTest(tf.test.TestCase):
 
     def test_multi_step_call_state(self):
         """
-        测试多步调用后状态的更新情况。
+         测试多步调用后状态的更新情况。
         """
         # 定义多步输入（全零）
         multi_step_inputs = tf.zeros([self.batch_size, 3, INPUT_SIZE], dtype=tf.float32)
