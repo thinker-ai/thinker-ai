@@ -50,7 +50,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             activation='sigmoid',
             name='erase_vectors',
             kernel_initializer=tf.keras.initializers.GlorotUniform(),
-            bias_initializer='zeros',
+            bias_initializer=tf.keras.initializers.Constant(-1.0),  # 调整偏置初始化
             use_bias=True
         )
         self.write_gate_layer = tf.keras.layers.Dense(

@@ -1,0 +1,38 @@
+# default_config.py
+
+dnc_config = {
+    'WriteWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',
+        'memory_size': 128,  # 内存大小
+        'num_writes': 10     # 写入头的数量
+    },
+    'ReadWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultReadWeightCalculator',
+        # 'temporal_linkage' 将由工厂自动注入，不在配置中显式指定
+        'num_reads': 5,      # 读取头的数量
+        'num_writes': 10     # 写入头的数量
+    },
+    'ContentWeightCalculator': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator',
+        'word_size': 64,     # 词向量大小
+        'epsilon': 1e-6      # 防止除零的小常数
+    },
+    'UsageUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultUsageUpdater',
+        'memory_size': 128,  # 内存大小
+        'num_writes': 10,    # 写入头的数量
+        'num_reads': 5,      # 读取头的数量
+        'epsilon': 1e-6      # 防止除零的小常数
+    },
+    'TemporalLinkageUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultTemporalLinkageUpdater',
+        'memory_size': 128,  # 内存大小
+        'num_writes': 10,    # 写入头的数量
+        'epsilon': 1e-6      # 防止除零的小常数
+    },
+    'MemoryUpdater': {
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component
+.DefaultMemoryUpdater'
+        # DefaultMemoryUpdater 不需要额外的初始化参数
+    }
+}
