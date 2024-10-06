@@ -9,30 +9,24 @@ np.random.seed(42)
 
 class DefaultReadWeightCalculatorTest(tf.test.TestCase):
     def test_compute_read_weights_basic(self):
-        """
-        测试 DefaultReadWeightCalculator 的基本功能，包括输出形状、权重范围和归一化。
-        """
         batch_size = 2
         num_reads = 3
         num_writes = 2
         memory_size = 4
 
-        # 创建 TemporalLinkage 实例
         temporal_linkage = DefaultTemporalLinkageUpdater(
             memory_size=memory_size,
             num_writes=num_writes
         )
 
-        # 创建 DefaultReadWeightCalculator 实例
         read_weight_calculator = DefaultReadWeightCalculator(
             temporal_linkage=temporal_linkage,
             num_reads=num_reads,
             num_writes=num_writes
         )
 
-        # 创建随机的输入张量
         read_content_weights = tf.random.uniform([batch_size, num_reads, memory_size], minval=0.0, maxval=1.0)
-        prev_read_weights = tf.random.uniform([batch_size, num_reads, memory_size], minval=0.0, maxval=1.0)
+        prev_read_weights = tf.nn.softmax(tf.random.uniform([batch_size, num_reads, memory_size]), axis=-1)
         link = tf.random.uniform([batch_size, num_writes, memory_size, memory_size], minval=0.0, maxval=1.0)
         read_mode = tf.random.uniform([batch_size, num_reads, 3], minval=0.0, maxval=1.0)
 
@@ -44,7 +38,7 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
             read_content_weights=read_content_weights_normalized,
             prev_read_weights=prev_read_weights,
             link=link,
-            read_mode=read_mode,  # 在 compute 方法中进行 softmax 归一化
+            read_mode=read_mode,
             training=True
         )
 
@@ -59,6 +53,80 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 检查权重在 memory_size 维度上的和为1
         sum_weights = tf.reduce_sum(read_weights, axis=-1)  # [batch_size, num_reads]
         self.assertAllClose(sum_weights.numpy(), np.ones_like(sum_weights.numpy()), atol=1e-6)
+
+    def test_compute_read_weights_mixed_modes(self):
+        """
+        测试 DefaultReadWeightCalculator 在混合 read_mode 下的行为。
+        """
+        batch_size = 1
+        num_reads = 1
+        num_writes = 1
+        memory_size = 2
+
+        # 创建 TemporalLinkage 实例
+        temporal_linkage = DefaultTemporalLinkageUpdater(
+            memory_size=memory_size,
+            num_writes=num_writes
+        )
+
+        # 创建 DefaultReadWeightCalculator 实例
+        read_weight_calculator = DefaultReadWeightCalculator(
+            temporal_linkage=temporal_linkage,
+            num_reads=num_reads,
+            num_writes=num_writes
+        )
+
+        # 设置具体的 link 和 prev_read_weights
+        link = tf.constant([[[[0.0, 1.0],
+                              [1.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
+        prev_read_weights = tf.constant([[[0.6, 0.4]]], dtype=tf.float32)  # [1, 1, 2]
+        read_content_weights = tf.constant([[[1.0, 2.0]]], dtype=tf.float32)  # [1, 1, 2]
+
+        # 对 read_content_weights 进行归一化
+        read_content_weights_normalized = tf.nn.softmax(read_content_weights, axis=-1)
+
+        # 设置 read_mode，未归一化，让 compute 方法处理
+        read_mode = tf.constant([[[0.5, 0.3, 0.2]]], dtype=tf.float32)  # [1,1,3]
+
+        # 计算读取权重
+        read_weights = read_weight_calculator.compute(
+            read_content_weights=read_content_weights_normalized,
+            prev_read_weights=prev_read_weights,
+            link=link,
+            read_mode=read_mode,  # 在 compute 方法中进行 softmax 归一化
+            training=False
+        )
+
+        # 手动计算归一化后的 read_mode
+        read_mode_normalized = tf.nn.softmax(read_mode, axis=-1).numpy()[0, 0]
+
+        # 计算各模式的权重
+        content_mode_weight = read_mode_normalized[0]
+        forward_mode_weight = read_mode_normalized[1]
+        backward_mode_weight = read_mode_normalized[2]
+
+        # 计算内容权重
+        content_weights = content_mode_weight * read_content_weights_normalized.numpy()[0, 0, :]
+
+        # 计算前向权重
+        forward_weights = forward_mode_weight * np.matmul(
+            prev_read_weights.numpy()[0, 0, :], link.numpy()[0, 0, :, :]
+        )
+
+        # 计算后向权重
+        backward_weights = backward_mode_weight * np.matmul(
+            prev_read_weights.numpy()[0, 0, :], link.numpy()[0, 0, :, :].T
+        )
+
+        # 组合并归一化
+        expected_read_weights = content_weights + forward_weights + backward_weights
+        expected_read_weights = expected_read_weights / (np.sum(expected_read_weights) + 1e-8)
+        expected_read_weights = expected_read_weights.reshape(1, 1, -1)
+
+        self.assertAllClose(
+            read_weights.numpy(),
+            expected_read_weights,
+            atol=1e-6)
 
     def test_compute_read_weights_specific_modes(self):
         """
@@ -199,83 +267,6 @@ class DefaultReadWeightCalculatorTest(tf.test.TestCase):
         # 预期读取权重应该等于后向权重
         expected_read_weights = np.array([[[1.0, 0.0]]], dtype=np.float32)
         self.assertAllClose(read_weights.numpy(), expected_read_weights, atol=1e-6)
-
-    def test_compute_read_weights_mixed_modes(self):
-        """
-        测试 DefaultReadWeightCalculator 在混合 read_mode 下的行为。
-        """
-        batch_size = 1
-        num_reads = 1
-        num_writes = 1
-        memory_size = 2
-
-        # 创建 TemporalLinkage 实例
-        temporal_linkage = DefaultTemporalLinkageUpdater(
-            memory_size=memory_size,
-            num_writes=num_writes
-        )
-
-        # 创建 DefaultReadWeightCalculator 实例
-        read_weight_calculator = DefaultReadWeightCalculator(
-            temporal_linkage=temporal_linkage,
-            num_reads=num_reads,
-            num_writes=num_writes
-        )
-
-        # 设置具体的 link 和 prev_read_weights
-        link = tf.constant([[[[0.0, 1.0],
-                              [1.0, 0.0]]]], dtype=tf.float32)  # [1, 1, 2, 2]
-        prev_read_weights = tf.constant([[[0.6, 0.4]]], dtype=tf.float32)  # [1, 1, 2]
-        read_content_weights = tf.constant([[[1.0, 2.0]]], dtype=tf.float32)  # [1, 1, 2]
-
-        # 对 read_content_weights 进行归一化
-        read_content_weights_normalized = tf.nn.softmax(read_content_weights, axis=-1)
-
-        # 设置 read_mode，未归一化，让 compute 方法处理
-        read_mode = tf.constant([[[0.5, 0.3, 0.2]]], dtype=tf.float32)  # [1,1,3]
-
-        # 计算读取权重
-        read_weights = read_weight_calculator.compute(
-            read_content_weights=read_content_weights_normalized,
-            prev_read_weights=prev_read_weights,
-            link=link,
-            read_mode=read_mode,  # 在 compute 方法中进行 softmax 归一化
-            training=False
-        )
-
-        # 手动计算归一化后的 read_mode
-        read_mode_normalized = tf.nn.softmax(read_mode, axis=-1).numpy()[0, 0]
-
-        # 计算各模式的权重
-        content_mode_weight = read_mode_normalized[0]
-        forward_mode_weight = read_mode_normalized[1]
-        backward_mode_weight = read_mode_normalized[2]
-
-        # 计算内容权重
-        content_weights = content_mode_weight * read_content_weights_normalized.numpy()[0, 0, :]
-
-        # 计算前向权重
-        # 计算综合的链接矩阵
-        link_matrix_combined = np.sum(link.numpy(), axis=1)[0]  # [memory_size, memory_size]
-        forward_weights = forward_mode_weight * np.dot(
-            prev_read_weights.numpy()[0, 0, :], link_matrix_combined
-        )
-
-        # 计算后向权重
-        backward_link_matrix_combined = np.sum(link.numpy(), axis=1)[0].T  # [memory_size, memory_size]
-        backward_weights = backward_mode_weight * np.dot(
-            prev_read_weights.numpy()[0, 0, :], backward_link_matrix_combined
-        )
-
-        # 组合并归一化
-        expected_read_weights = content_weights + forward_weights + backward_weights
-        expected_read_weights = expected_read_weights / (
-            np.sum(expected_read_weights) + 1e-8)
-
-        self.assertAllClose(
-            read_weights.numpy(),
-            expected_read_weights[np.newaxis, np.newaxis, :],
-            atol=1e-6)
 
     def test_gradients_exist(self):
         """

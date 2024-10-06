@@ -47,8 +47,7 @@ class UsageUpdater(ABC):
 
 class TemporalLinkageUpdater(ABC):
     @abstractmethod
-    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: Dict[str, tf.Tensor],
-                       training: bool=False) -> Dict[str, tf.Tensor]:
+    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: Dict[str, tf.Tensor]) -> Dict[str, tf.Tensor]:
         pass
 
     @abstractmethod

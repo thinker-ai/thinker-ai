@@ -16,6 +16,40 @@ class TemporalLinkageTest(tf.test.TestCase):
             num_writes=self.num_writes
         )
 
+    def test_directional_read_weights(self):
+        batch_size = 1
+        num_reads = 1
+
+        link = tf.constant([[
+            [[0.0, 0.1, 0.2],
+             [0.3, 0.0, 0.4],
+             [0.5, 0.6, 0.0]],
+            [[0.0, 0.2, 0.1],
+             [0.1, 0.0, 0.5],
+             [0.4, 0.2, 0.0]]
+        ]], dtype=tf.float32)  # [1, 2, 3, 3]
+
+        prev_read_weights = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
+
+        # 计算前向方向性读取权重
+        directional_weights = self.temporal_linkage.directional_read_weights(
+            link, prev_read_weights, forward=True
+        )  # [1, 1, 3]
+
+        # 手动计算期望的方向性读取权重
+        # 对每个写头进行计算并累加
+        link_0 = link[0, 0, :, :].numpy()  # [3, 3]
+        link_1 = link[0, 1, :, :].numpy()  # [3, 3]
+        prev_rw = prev_read_weights[0, 0, :].numpy()  # [3]
+
+        directional_weight_0 = np.dot(prev_rw, link_0)  # [3]
+        directional_weight_1 = np.dot(prev_rw, link_1)  # [3]
+        expected_weights = directional_weight_0 + directional_weight_1  # [3]
+        expected_weights = expected_weights.reshape(1, 1, -1)  # [1, 1, 3]
+
+        self.assertAllClose(directional_weights.numpy(), expected_weights, atol=1e-6)
+
+
     def test_directional_read_weights_normalization(self):
         """
         测试方向性读取权重的归一化。
@@ -37,38 +71,6 @@ class TemporalLinkageTest(tf.test.TestCase):
         self.assertFalse(tf.math.reduce_any(tf.math.is_inf(directional_weights_forward)))
         self.assertFalse(tf.math.reduce_any(tf.math.is_nan(directional_weights_backward)))
         self.assertFalse(tf.math.reduce_any(tf.math.is_inf(directional_weights_backward)))
-
-    def test_directional_read_weights(self):
-        """
-        测试方向性读取权重的计算。
-        """
-        batch_size = 1
-        num_reads = 1
-
-        link = tf.constant([[
-            [[0.0, 0.1, 0.2],
-             [0.3, 0.0, 0.4],
-             [0.5, 0.6, 0.0]],
-            [[0.0, 0.2, 0.1],
-             [0.1, 0.0, 0.5],
-             [0.4, 0.2, 0.0]]
-        ]], dtype=tf.float32)  # [1, 2, 3, 3]
-
-        prev_read_weights = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
-
-        # 计算前向方向性读取权重
-        directional_weights = self.temporal_linkage.directional_read_weights(
-            link, prev_read_weights, forward=True
-        )
-
-        # 手动计算综合的链接矩阵
-        combined_link = tf.reduce_sum(link, axis=1)  # [1, 3, 3]
-
-        # 手动计算预期的方向性读取权重
-        expected_directional_weights = tf.matmul(prev_read_weights, combined_link)  # [1, 1, 3]
-
-        # 断言实际值和预期值相等
-        self.assertAllClose(directional_weights, expected_directional_weights, atol=1e-6)
 
     def test_precedence_weights_update(self):
         """
@@ -110,13 +112,13 @@ class TemporalLinkageTest(tf.test.TestCase):
         updated_linkage = self.temporal_linkage.update_linkage(write_weights, prev_linkage)
 
         # 手动计算更新的链接矩阵
-        write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)
-        updated_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights
-
         write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
-        precedence_weights_j = tf.expand_dims(updated_precedence_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
+        write_weights_j = tf.expand_dims(write_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
 
-        new_link = write_weights_i * precedence_weights_j  # [batch_size, num_writes, memory_size, memory_size]
+        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
+                                                   axis=2)  # [batch_size, num_writes, 1, memory_size]
+
+        new_link = (1 - write_weights_i - write_weights_j) * prev_link + write_weights_i * prev_precedence_weights_j
 
         # 移除自连接
         identity = tf.eye(self.memory_size, batch_shape=[self.num_writes], dtype=tf.float32)
