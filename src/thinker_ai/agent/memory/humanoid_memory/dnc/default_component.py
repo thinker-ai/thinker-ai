@@ -43,8 +43,7 @@ def _vector_norms(m, epsilon=None):
 
 # 已修改：调整内容权重的计算，符合 DNC 论文要求
 class DefaultContentWeightCalculator(ContentWeightCalculator):
-    def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6):
-        self._num_heads = num_heads
+    def __init__(self, word_size: int, epsilon: float = 1e-6):
         self._word_size = word_size
         self._epsilon = epsilon
 
@@ -276,7 +275,8 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         self.memory_size = memory_size
         self.num_writes = num_writes
 
-    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict) -> dict:
+    def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict,
+                       training: bool=False) -> dict:
         batch_size = tf.shape(write_weights)[0]
         prev_link = prev_linkage['link']  # [batch_size, num_writes, memory_size, memory_size]
         prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, num_writes, memory_size]
