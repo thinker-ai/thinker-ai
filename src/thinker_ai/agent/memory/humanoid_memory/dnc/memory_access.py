@@ -16,7 +16,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             num_writes: int,
             epsilon: float = 1e-6,
             name: str = 'memory_access',
-            config: Optional[Dict[str, Any]] = None  # 添加配置参数
+            config: Optional[Dict[str, Any]] = None
     ):
         super(MemoryAccess, self).__init__(name=name)
         self.memory_size = memory_size
@@ -36,7 +36,7 @@ class MemoryAccess(tf.keras.layers.Layer):
         self.usage_updater = components['usage_updater']
         self.memory_updater = components['memory_updater']
 
-        # 定义子层（具有可训练参数的层）
+        # 定义子层（保持 use_bias=True 和随机偏置初始化）
         self.write_vectors_layer = tf.keras.layers.Dense(
             units=self.num_writes * self.word_size,
             activation=None,
@@ -117,7 +117,6 @@ class MemoryAccess(tf.keras.layers.Layer):
             bias_initializer=tf.keras.initializers.RandomNormal(mean=0.0, stddev=0.1),
             use_bias=True
         )
-
     def call(self, inputs: Dict[str, tf.Tensor], training: bool = False) -> Dict[str, tf.Tensor]:
         """
         处理输入并执行 MemoryAccess 操作。
@@ -136,100 +135,137 @@ class MemoryAccess(tf.keras.layers.Layer):
 
         batch_size = tf.shape(controller_output)[0]
         sequence_length = tf.shape(controller_output)[1]
+        input_size = tf.shape(controller_output)[2]
 
+        # 初始化下一状态
         next_state = prev_state
         read_words_all = []
 
         for t in range(sequence_length):
             controller_output_t = controller_output[:, t, :]  # [batch_size, input_size]
+            next_state = self._process_time_step(controller_output_t, next_state, training)
+            read_words_all.append(next_state.read_words)  # [batch_size, num_reads, word_size]
 
-            # 1. Generate write-related parameters
-            write_vectors, erase_vectors, write_gate, allocation_gate, free_gate = self._generate_write_parameters(controller_output_t)
-
-            # 2. Generate read mode
-            read_mode = self._generate_read_mode(controller_output_t)
-
-            # 3. Generate write keys and strengths
-            write_keys, write_strengths = self._generate_write_keys_strengths(controller_output_t)
-
-            # 4. Generate read keys and strengths
-            read_keys, read_strengths = self._generate_read_keys_strengths(controller_output_t)
-
-            # 5. Compute content weights
-            write_content_weights = self.content_weight_calculator.compute(
-                keys=write_keys,
-                strengths=write_strengths,
-                memory=next_state.memory
-            )  # [batch_size, num_writes, memory_size]
-
-            read_content_weights = self.content_weight_calculator.compute(
-                keys=read_keys,
-                strengths=read_strengths,
-                memory=next_state.memory
-            )  # [batch_size, num_reads, memory_size]
-
-            # 6. Compute write weights
-            final_write_weights = self.write_weight_calculator.compute(
-                write_content_weights=write_content_weights,
-                allocation_gate=allocation_gate,
-                write_gate=write_gate,
-                prev_usage=next_state.usage,
-                training=training
-            )  # [batch_size, num_writes, memory_size]
-
-            # 7. Update memory
-            memory_updated = self.memory_updater.update_memory(
-                memory=next_state.memory,
-                write_weights=final_write_weights,
-                erase_vectors=erase_vectors,
-                write_vectors=write_vectors
-            )  # [batch_size, memory_size, word_size]
-
-            # 8. Update linkage
-            linkage_updated = self.temporal_linkage_updater.update_linkage(
-                write_weights=final_write_weights,
-                prev_linkage=next_state.linkage,
-                training=training
-            )
-
-            # 9. Update usage
-            read_weights_prev = next_state.read_weights[:, -1] if next_state.read_weights.shape[1] > 0 else tf.zeros_like(write_content_weights)
-            usage_updated = self.usage_updater.update_usage(
-                write_weights=final_write_weights,
-                free_gate=free_gate,
-                read_weights=read_weights_prev,
-                prev_usage=next_state.usage,
-                training=training
-            )
-
-            # 10. Compute read weights
-            read_weights = self.read_weight_calculator.compute(
-                read_content_weights=read_content_weights,
-                prev_read_weights=read_weights_prev,
-                link=linkage_updated['link'],
-                read_mode=read_mode,
-                training=training
-            )  # [batch_size, num_reads, memory_size]
-
-            # 11. Read words
-            read_words = self._read_words(read_weights, memory_updated)
-
-            # Update state
-            next_state = BatchAccessState(
-                memory=memory_updated,
-                read_weights=tf.concat([next_state.read_weights, tf.expand_dims(read_weights, axis=1)], axis=1),
-                write_weights=tf.concat([next_state.write_weights, tf.expand_dims(final_write_weights, axis=1)], axis=1),
-                linkage=linkage_updated,
-                usage=usage_updated,
-                read_words=read_words
-            )
-
-            read_words_all.append(read_words)  # [batch_size, num_reads, word_size]
-
-        # Stack read_words over time steps
+        # 拼接所有时间步的 read_words
         read_words = tf.stack(read_words_all, axis=1)  # [batch_size, sequence_length, num_reads, word_size]
 
         return {'read_words': read_words, 'final_state': next_state}
+
+    def _process_time_step(self, controller_output_t: tf.Tensor, prev_state: BatchAccessState,
+                           training: bool) -> BatchAccessState:
+        """
+        处理单个时间步的输入和状态更新。
+
+        Args:
+            controller_output_t (tf.Tensor): 当前时间步的控制器输出，[batch_size, input_size]
+            prev_state (BatchAccessState): 前一个时间步的状态
+            training (bool): 是否在训练模式
+
+        Returns:
+            BatchAccessState: 更新后的状态
+        """
+        batch_size = tf.shape(controller_output_t)[0]
+
+        # 生成写入相关参数
+        write_vectors = self.write_vectors_layer(controller_output_t)  # [batch_size, num_writes * word_size]
+        write_vectors = tf.reshape(write_vectors,
+                                   [batch_size, self.num_writes, self.word_size])  # [batch_size, num_writes, word_size]
+
+        erase_vectors = self.erase_vectors_layer(controller_output_t)  # [batch_size, num_writes * word_size]
+        erase_vectors = tf.reshape(erase_vectors,
+                                   [batch_size, self.num_writes, self.word_size])  # [batch_size, num_writes, word_size]
+
+        write_gate = self.write_gate_layer(controller_output_t)  # [batch_size, num_writes]
+        allocation_gate = self.allocation_gate_layer(controller_output_t)  # [batch_size, num_writes]
+        free_gate = self.free_gate_layer(controller_output_t)  # [batch_size, num_reads]
+
+        read_mode = self.read_mode_layer(controller_output_t)  # [batch_size, num_reads * (1 + 2*num_writes)]
+        read_mode = tf.reshape(read_mode, [batch_size, self.num_reads,
+                                           1 + 2 * self.num_writes])  # [batch_size, num_reads, 1 + 2*num_writes]
+
+        write_keys = self.write_keys_layer(controller_output_t)  # [batch_size, num_writes * word_size]
+        write_keys = tf.reshape(write_keys,
+                                [batch_size, self.num_writes, self.word_size])  # [batch_size, num_writes, word_size]
+
+        write_strengths = self.write_strengths_layer(controller_output_t)  # [batch_size, num_writes]
+
+        read_keys = self.read_keys_layer(controller_output_t)  # [batch_size, num_reads * word_size]
+        read_keys = tf.reshape(read_keys,
+                               [batch_size, self.num_reads, self.word_size])  # [batch_size, num_reads, word_size]
+
+        read_strengths = self.read_strengths_layer(controller_output_t)  # [batch_size, num_reads]
+
+        # 计算内容权重
+        write_content_weights = self.content_weight_calculator.compute(
+            keys=write_keys,
+            strengths=write_strengths,
+            memory=prev_state.memory
+        )  # [batch_size, num_writes, memory_size]
+
+        read_content_weights = self.content_weight_calculator.compute(
+            keys=read_keys,
+            strengths=read_strengths,
+            memory=prev_state.memory
+        )  # [batch_size, num_reads, memory_size]
+
+        # 计算写入权重
+        final_write_weights = self.write_weight_calculator.compute(
+            write_content_weights=write_content_weights,
+            allocation_gate=allocation_gate,
+            write_gate=write_gate,
+            prev_usage=prev_state.usage,
+            training=training
+        )  # [batch_size, num_writes, memory_size]
+
+        # 更新内存
+        memory_updated = self.memory_updater.update_memory(
+            memory=prev_state.memory,
+            write_weights=final_write_weights,
+            erase_vectors=erase_vectors,
+            write_vectors=write_vectors
+        )  # [batch_size, memory_size, word_size]
+
+        # 更新链接
+        linkage_updated = self.temporal_linkage_updater.update_linkage(
+            write_weights=final_write_weights,
+            prev_linkage=prev_state.linkage,
+            training=training
+        )
+
+        # 更新使用率
+        read_weights_prev = prev_state.read_weights[:, -1] if prev_state.read_weights.shape[1] > 0 else tf.zeros_like(
+            write_content_weights)
+        usage_updated = self.usage_updater.update_usage(
+            write_weights=final_write_weights,
+            free_gate=free_gate,
+            read_weights=read_weights_prev,
+            prev_usage=prev_state.usage,
+            training=training
+        )
+
+        # 计算读取权重
+        read_weights = self.read_weight_calculator.compute(
+            read_content_weights=read_content_weights,
+            prev_read_weights=read_weights_prev,
+            link=linkage_updated['link'],
+            read_mode=read_mode,
+            training=training
+        )  # [batch_size, num_reads, memory_size]
+
+        # 读取词向量
+        read_words = tf.matmul(read_weights, memory_updated)  # [batch_size, num_reads, word_size]
+
+        # 更新状态
+        next_state = BatchAccessState(
+            memory=memory_updated,
+            read_weights=tf.concat([prev_state.read_weights, tf.expand_dims(read_weights, axis=1)], axis=1),
+            write_weights=tf.concat([prev_state.write_weights, tf.expand_dims(final_write_weights, axis=1)], axis=1),
+            linkage=linkage_updated,
+            usage=usage_updated,
+            read_words=read_words
+        )
+
+        return next_state
 
     def _generate_write_parameters(self, controller_output_t: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         """
