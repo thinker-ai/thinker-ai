@@ -18,35 +18,29 @@ class TemporalLinkageTest(tf.test.TestCase):
 
     def test_directional_read_weights_normalization(self):
         """
-        Test that directional read weights are properly normalized.
+        测试方向性读取权重的归一化。
         """
         batch_size = 2
         num_reads = 2
 
-        # Create random link matrices
+        # 创建随机链接矩阵
         link = tf.random.uniform([batch_size, self.num_writes, self.memory_size, self.memory_size], minval=0.0, maxval=1.0)
 
-        # Create random previous read weights, ensure they are normalized
+        # 创建归一化的先前读取权重
         prev_read_weights = tf.nn.softmax(tf.random.uniform([batch_size, num_reads, self.memory_size], minval=0.0, maxval=1.0), axis=-1)
 
         directional_weights_forward = self.temporal_linkage.directional_read_weights(link, prev_read_weights, forward=True)
         directional_weights_backward = self.temporal_linkage.directional_read_weights(link, prev_read_weights, forward=False)
 
-        # Check that directional_weights sum to 1 over memory_size
-        sum_forward = tf.reduce_sum(directional_weights_forward, axis=-1)
-        sum_backward = tf.reduce_sum(directional_weights_backward, axis=-1)
-
-        # Since we removed softmax, the sums may not be 1
-        # So we adjust the test to allow for non-normalized weights
-        # We can check that the sums are not NaN or Inf
-        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(sum_forward)))
-        self.assertFalse(tf.math.reduce_any(tf.math.is_inf(sum_forward)))
-        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(sum_backward)))
-        self.assertFalse(tf.math.reduce_any(tf.math.is_inf(sum_backward)))
+        # 检查方向性读取权重的值是否合理（非 NaN 或 Inf）
+        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(directional_weights_forward)))
+        self.assertFalse(tf.math.reduce_any(tf.math.is_inf(directional_weights_forward)))
+        self.assertFalse(tf.math.reduce_any(tf.math.is_nan(directional_weights_backward)))
+        self.assertFalse(tf.math.reduce_any(tf.math.is_inf(directional_weights_backward)))
 
     def test_directional_read_weights(self):
         """
-        Test the computation of directional read weights.
+        测试方向性读取权重的计算。
         """
         batch_size = 1
         num_reads = 1
@@ -62,29 +56,23 @@ class TemporalLinkageTest(tf.test.TestCase):
 
         prev_read_weights = tf.constant([[[1.0, 0.0, 0.0]]], dtype=tf.float32)  # [1, 1, 3]
 
-        # Compute forward directional weights
+        # 计算前向方向性读取权重
         directional_weights = self.temporal_linkage.directional_read_weights(
             link, prev_read_weights, forward=True
         )
 
-        # Manually compute expected directional weights without softmax
-        expected_directional_weights = []
-        for i in range(self.num_writes):
-            link_i = link[:, i, :, :]  # [1, 3, 3]
-            prev_read_weights_reshaped = tf.expand_dims(prev_read_weights, axis=2)  # [1, 1, 1, 3]
-            link_i_expanded = tf.expand_dims(link_i, axis=1)  # [1, 1, 3, 3]
-            weight = tf.matmul(prev_read_weights_reshaped, link_i_expanded)  # [1, 1, 1, 3]
-            weight = tf.squeeze(weight, axis=2)  # [1, 1, 3]
-            expected_directional_weights.append(weight)
+        # 手动计算综合的链接矩阵
+        combined_link = tf.reduce_sum(link, axis=1)  # [1, 3, 3]
 
-        expected_directional_weights = tf.stack(expected_directional_weights, axis=2)  # [1, 1, 2, 3]
+        # 手动计算预期的方向性读取权重
+        expected_directional_weights = tf.matmul(prev_read_weights, combined_link)  # [1, 1, 3]
 
-        # Do not apply softmax manually
-
+        # 断言实际值和预期值相等
         self.assertAllClose(directional_weights, expected_directional_weights, atol=1e-6)
+
     def test_precedence_weights_update(self):
         """
-        Test that precedence weights are updated correctly without epsilon.
+        测试先行权重的更新是否正确。
         """
         batch_size = 1
         write_weights = tf.constant([[[0.1, 0.2, 0.3],
@@ -105,7 +93,7 @@ class TemporalLinkageTest(tf.test.TestCase):
 
     def test_link_matrix_update(self):
         """
-        Test that the link matrices are updated correctly.
+        测试链接矩阵的更新是否正确。
         """
         batch_size = 1
         write_weights = tf.constant([[[0.2, 0.5, 0.3],
@@ -121,7 +109,7 @@ class TemporalLinkageTest(tf.test.TestCase):
 
         updated_linkage = self.temporal_linkage.update_linkage(write_weights, prev_linkage)
 
-        # Manually compute expected link
+        # 手动计算更新的链接矩阵
         write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)
         updated_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights
 
@@ -130,20 +118,18 @@ class TemporalLinkageTest(tf.test.TestCase):
 
         new_link = write_weights_i * precedence_weights_j  # [batch_size, num_writes, memory_size, memory_size]
 
-        # Remove self-links
+        # 移除自连接
         identity = tf.eye(self.memory_size, batch_shape=[self.num_writes], dtype=tf.float32)
         identity = tf.expand_dims(identity, axis=0)
         new_link = new_link * (1 - identity)
 
-        expected_link = (1 - write_weights_i - tf.expand_dims(write_weights, axis=2)) * prev_link + new_link
-        expected_link = tf.clip_by_value(expected_link, 0.0, 1.0)
+        expected_link = new_link  # 因为 prev_link 为零，所以直接使用 new_link
 
         self.assertAllClose(updated_linkage['link'], expected_link, atol=1e-6)
 
-
     def test_state_size(self):
         """
-        Test the state_size method.
+        测试 state_size 方法。
         """
         expected_state_size = {
             'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
@@ -153,7 +139,7 @@ class TemporalLinkageTest(tf.test.TestCase):
 
     def test_no_self_links(self):
         """
-        Test that the link matrices have zeros on the diagonal (no self-links).
+        测试链接矩阵的对角线元素是否为零（无自连接）。
         """
         batch_size = 1
         write_weights = tf.constant([[[0.3, 0.6, 0.1],
@@ -166,15 +152,15 @@ class TemporalLinkageTest(tf.test.TestCase):
 
         link_matrices = updated_linkage['link'].numpy()
         for i in range(self.num_writes):
-            # Extract the link matrix for write head i
+            # 提取第 i 个写头的链接矩阵
             link_matrix = link_matrices[0, i, :, :]
-            # Check that the diagonal is zero
+            # 检查对角线是否为零
             diagonal = np.diag(link_matrix)
             self.assertAllClose(diagonal, np.zeros(self.memory_size), atol=1e-6)
 
     def test_gradient_flow(self):
         """
-        Test that gradients flow correctly through the update_linkage method.
+        测试梯度是否能正确地通过 update_linkage 方法传播。
         """
         batch_size = 1
         write_weights = tf.Variable([[[0.5, 0.3, 0.2],

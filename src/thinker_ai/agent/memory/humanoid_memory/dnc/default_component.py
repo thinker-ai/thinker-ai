@@ -321,6 +321,36 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
             'precedence_weights': updated_precedence_weights
         }
 
+    # def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor,
+    #                              forward: bool = True) -> tf.Tensor:
+    #     """
+    #     Computes the forward or backward read weights.
+    #
+    #     Args:
+    #         link (tf.Tensor): Link matrices, shape [batch_size, num_writes, memory_size, memory_size].
+    #         prev_read_weights (tf.Tensor): Previous read weights, shape [batch_size, num_reads, memory_size].
+    #         forward (bool): Whether to compute forward weights.
+    #
+    #     Returns:
+    #         tf.Tensor: Directional read weights, shape [batch_size, num_reads, num_writes, memory_size].
+    #     """
+    #     if forward:
+    #         link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
+    #     else:
+    #         link_transposed = tf.transpose(link,
+    #                                        perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
+    #
+    #     # 使用 tf.einsum 进行批量矩阵乘法
+    #     # 'brm,bwmn->brwn' 的含义：
+    #     # b: batch_size
+    #     # r: num_reads
+    #     # m: memory_size (read)
+    #     # w: num_writes
+    #     # n: memory_size (write)
+    #     read_weights = tf.einsum('brm,bwmn->brwn', prev_read_weights, link_transposed)
+    #
+    #     return read_weights  # [batch_size, num_reads, num_writes, memory_size]
+
     def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor,
                                  forward: bool = True) -> tf.Tensor:
         """
@@ -332,24 +362,20 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
             forward (bool): Whether to compute forward weights.
 
         Returns:
-            tf.Tensor: Directional read weights, shape [batch_size, num_reads, num_writes, memory_size].
+            tf.Tensor: Directional read weights, shape [batch_size, num_reads, memory_size].
         """
         if forward:
-            link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
+            link_matrix = link  # [batch_size, num_writes, memory_size, memory_size]
         else:
-            link_transposed = tf.transpose(link,
-                                           perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
+            link_matrix = tf.transpose(link, perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
 
-        # 使用 tf.einsum 进行批量矩阵乘法
-        # 'brm,bwmn->brwn' 的含义：
-        # b: batch_size
-        # r: num_reads
-        # m: memory_size (read)
-        # w: num_writes
-        # n: memory_size (write)
-        read_weights = tf.einsum('brm,bwmn->brwn', prev_read_weights, link_transposed)
+        # 在写头维度上求和，得到综合的链接矩阵
+        link_matrix_combined = tf.reduce_sum(link_matrix, axis=1)  # [batch_size, memory_size, memory_size]
 
-        return read_weights  # [batch_size, num_reads, num_writes, memory_size]
+        # 计算方向性读取权重
+        directional_weights = tf.matmul(prev_read_weights, link_matrix_combined)  # [batch_size, num_reads, memory_size]
+
+        return directional_weights  # [batch_size, num_reads, memory_size]
 
     def state_size(self) -> dict:
         """
@@ -367,46 +393,39 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
 # 已修改：在计算读取权重前，确保 read_mode 已正确归一化
 class DefaultReadWeightCalculator(ReadWeightCalculator):
     def __init__(self, temporal_linkage: DefaultTemporalLinkageUpdater, num_reads: int, num_writes: int):
-        """
-        Initializes the ReadWeightCalculator with a TemporalLinkage instance.
-        """
         self.temporal_linkage = temporal_linkage
         self.num_reads = num_reads
         self.num_writes = num_writes
-        self.epsilon = 1e-6
+        self.epsilon = 1e-8
 
     def compute(self, read_content_weights: tf.Tensor, prev_read_weights: tf.Tensor,
                 link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
-        # 正确归一化 read_mode，确保内容、前向、后向权重的合适分布
-        read_mode_sum = tf.reduce_sum(read_mode, axis=-1, keepdims=True) + 1e-8
-        read_mode = read_mode / read_mode_sum
+        # 对 read_mode 进行 softmax 归一化
+        read_mode = tf.nn.softmax(read_mode, axis=-1)  # [batch_size, num_reads, 3]
 
-        # 分离 content_mode, forward_mode, backward_mode
+        # 拆分 read_mode
         content_mode = tf.expand_dims(read_mode[:, :, 0], axis=-1)  # [batch_size, num_reads, 1]
-        forward_mode = read_mode[:, :, 1:1 + self.num_writes]  # [batch_size, num_reads, num_writes]
-        backward_mode = read_mode[:, :, 1 + self.num_writes:]  # [batch_size, num_reads, num_writes]
+        forward_mode = tf.expand_dims(read_mode[:, :, 1], axis=-1)  # [batch_size, num_reads, 1]
+        backward_mode = tf.expand_dims(read_mode[:, :, 2], axis=-1)  # [batch_size, num_reads, 1]
 
         # 计算前向和后向权重
-        forward_weights = self.temporal_linkage.directional_read_weights(link, prev_read_weights, forward=True)
-        backward_weights = self.temporal_linkage.directional_read_weights(link, prev_read_weights, forward=False)
+        forward_weights = self.temporal_linkage.directional_read_weights(
+            link, prev_read_weights, forward=True
+        )  # [batch_size, num_reads, memory_size]
+        backward_weights = self.temporal_linkage.directional_read_weights(
+            link, prev_read_weights, forward=False
+        )  # [batch_size, num_reads, memory_size]
 
-        # 前向与后向权重的加权求和
-        forward_mode_exp = tf.expand_dims(forward_mode, axis=-1)
-        backward_mode_exp = tf.expand_dims(backward_mode, axis=-1)
+        # 计算最终的读取权重
+        read_weights = content_mode * read_content_weights + \
+                       forward_mode * forward_weights + \
+                       backward_mode * backward_weights  # [batch_size, num_reads, memory_size]
 
-        forward_component = tf.reduce_sum(forward_mode_exp * forward_weights, axis=2)
-        backward_component = tf.reduce_sum(backward_mode_exp * backward_weights, axis=2)
+        # 对读取权重进行归一化
+        read_weights_sum = tf.reduce_sum(read_weights, axis=-1, keepdims=True) + self.epsilon
+        read_weights = read_weights / read_weights_sum
 
-        # 计算最终读取权重
-        read_weights = content_mode * read_content_weights + forward_component + backward_component
-
-        # 对 memory_size 维度执行 Softmax 归一化，确保读取权重的和为 1
-        read_weights = tf.nn.softmax(read_weights, axis=-1)
-
-        # 调试输出
-        tf.print("read_weights:", read_weights)
-
-        # 确保归一化后的权重和为 1
+        # 调试断言
         tf.debugging.assert_near(
             tf.reduce_sum(read_weights, axis=-1),
             tf.ones_like(tf.reduce_sum(read_weights, axis=-1)),
