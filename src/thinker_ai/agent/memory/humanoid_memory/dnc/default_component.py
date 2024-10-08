@@ -42,21 +42,47 @@ def _vector_norms(m, epsilon=None):
 
 
 # 已修改：调整内容权重的计算，符合 DNC 论文要求
+# default_component.py
 class DefaultContentWeightCalculator(ContentWeightCalculator):
     def __init__(self, word_size: int, epsilon: float = 1e-6):
         self._word_size = word_size
         self._epsilon = epsilon
 
     def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
-        # 计算内容权重，不依赖于固定的头数量
-        keys = tf.math.l2_normalize(keys, axis=-1)
-        memory = tf.math.l2_normalize(memory, axis=-1)
-        similarity = tf.einsum('bhw,bmw->bhm', keys, memory)
-        strengths = tf.expand_dims(strengths, axis=-1)
-        similarity *= strengths
-        content_weights = tf.nn.softmax(similarity, axis=-1)
-        return content_weights
+        """
+        计算内容权重。
 
+        Args:
+            keys (tf.Tensor): 形状为 [batch_dims..., num_heads, word_size]
+            strengths (tf.Tensor): 形状为 [batch_dims..., num_heads]
+            memory (tf.Tensor): 形状为 [batch_dims..., memory_size, word_size]
+
+        Returns:
+            tf.Tensor: 内容权重，形状为 [batch_dims..., num_heads, memory_size]
+        """
+        # 计算内容权重
+        keys = tf.math.l2_normalize(keys, axis=-1)  # [batch_dims..., num_heads, word_size]
+        memory = tf.math.l2_normalize(memory, axis=-1)  # [batch_dims..., memory_size, word_size]
+
+        # 计算相似度
+        similarity = tf.einsum('...hw,...mw->...hm', keys, memory)  # [batch_dims..., num_heads, memory_size]
+
+        # 应用强度
+        strengths = tf.expand_dims(strengths, axis=-1)  # [batch_dims..., num_heads, 1]
+        similarity *= strengths  # [batch_dims..., num_heads, memory_size]
+
+        # 调试输出
+        tf.print("Keys Sample:", keys[..., :1, :])  # 打印部分 keys
+        tf.print("Memory Sample:", memory[..., :1, :])  # 打印部分 memory
+        tf.print("Similarity Sample:", similarity[..., :1, :])  # 打印部分 similarity
+
+        # 计算内容权重
+        content_weights = tf.nn.softmax(similarity, axis=-1)  # [batch_dims..., num_heads, memory_size]
+
+        # 调试输出
+        tf.print("Content Weights Sample:", content_weights[..., :1, :])  # 打印部分 content_weights
+
+        return content_weights
 
 # 已修改：调整使用率的更新，符合 DNC 论文要求
 class DefaultUsageUpdater(UsageUpdater):
@@ -277,6 +303,9 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         # 更新先行权重
         write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
         new_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights
+        # 添加调试输出
+        tf.print("New Link Sample:", new_link[:, :1, :1, :1])  # 打印部分 new_link
+        tf.print("New Precedence Weights Sample:", new_precedence_weights[:, :1, :1])  # 打印部分 new_precedence_weights
 
         return {
             'link': new_link,
@@ -328,6 +357,7 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
                 link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
         # 对 read_mode 进行 softmax 归一化
         read_mode = tf.nn.softmax(read_mode, axis=-1)  # [batch_size, num_reads, 3]
+        tf.print("Read Mode Sample:", read_mode[:, :1, :])  # 打印部分 read_mode
 
         # 提取各个模式的权重
         content_mode = read_mode[:, :, 0:1]  # [batch_size, num_reads, 1]
@@ -338,7 +368,6 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
         forward_weights = self.temporal_linkage.directional_read_weights(
             link, prev_read_weights, forward=True
         )  # [batch_size, num_reads, memory_size]
-
         backward_weights = self.temporal_linkage.directional_read_weights(
             link, prev_read_weights, forward=False
         )
@@ -351,6 +380,7 @@ class DefaultReadWeightCalculator(ReadWeightCalculator):
         # 对读取权重在 memory_size 维度上进行归一化
         read_weights_sum = tf.reduce_sum(read_weights, axis=-1, keepdims=True) + self.epsilon
         read_weights = read_weights / read_weights_sum
+        tf.print("Read Weights Sample:", read_weights[:, :1, :])  # 打印部分 read_weights
 
         return read_weights  # [batch_size, num_reads, memory_size]
 
@@ -364,18 +394,20 @@ class DefaultMemoryUpdater(MemoryUpdater):
         # 计算擦除矩阵
         write_weights_expanded = tf.expand_dims(write_weights, axis=-1)  # [batch_size, num_writes, memory_size, 1]
         erase_vectors_expanded = tf.expand_dims(erase_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded,
-                                      axis=1)  # [batch_size, memory_size, word_size]
+        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded, axis=1)  # [batch_size, memory_size, word_size]
+        tf.print("Erase Matrix Sample:", erase_matrix[:, :1, :1])  # 打印部分 erase_matrix
 
         # 更新内存
         memory_erased = memory * erase_matrix
+        tf.print("Memory Erased Sample:", tf.reduce_sum(memory_erased[:, :1, :], axis=-1))  # 打印部分 memory_erased
 
         # 计算添加矩阵
         write_vectors_expanded = tf.expand_dims(write_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded,
-                                   axis=1)  # [batch_size, memory_size, word_size]
+        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded, axis=1)  # [batch_size, memory_size, word_size]
+        tf.print("Add Matrix Sample:", tf.reduce_sum(add_matrix[:, :1, :], axis=-1))  # 打印部分 add_matrix
 
         memory_updated = memory_erased + add_matrix
+        tf.print("Memory Updated Sample:", tf.reduce_sum(memory_updated[:, :1, :], axis=-1))  # 打印部分 memory_updated
         return memory_updated  # [batch_size, memory_size, word_size]
 
 
