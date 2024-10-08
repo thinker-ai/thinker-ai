@@ -17,6 +17,43 @@ class UsageUpdateTest(tf.test.TestCase):
             num_reads=self.num_reads
         )
 
+    def test_partial_write_and_read(self):
+        """
+        测试部分内存槽被写入和部分内存槽被读出的情况。
+        """
+        batch_size = 1
+
+        # 创建初始使用率
+        initial_usage = tf.constant([[0.2, 0.5, 0.3]], dtype=tf.float32)  # [1, 3]
+
+        # 定义 write_weights
+        write_weights = tf.constant([
+            [[0.1, 0.2, 0.3],
+             [0.4, 0.1, 0.2]]
+        ], dtype=tf.float32)  # [1, 2, 3]
+
+        # 定义 read_weights
+        read_weights = tf.constant([
+            [[0.3, 0.4, 0.3],
+             [0.2, 0.5, 0.3]]
+        ], dtype=tf.float32)  # [1, 2, 3]
+
+        # 调用 update_usage 方法
+        updated_usage = self.usage_update.update_usage(
+            write_weights=write_weights,
+            read_weights=read_weights,
+            prev_usage=initial_usage
+        )  # [1, 3]
+
+        # 计算预期使用率基于新的 update_usage 实现
+        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(read_weights, axis=1)    # [1, 3]
+        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
+
+        # 断言
+        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
+
     def test_basic_usage_update(self):
         """
         基本测试：验证写操作和读操作对使用率的影响。
@@ -34,12 +71,7 @@ class UsageUpdateTest(tf.test.TestCase):
              [1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [2, 2, 3]
 
-        # 定义 free_gate 和 read_weights
-        free_gate = tf.constant([
-            [1.0, 0.0],
-            [1.0, 1.0]
-        ], dtype=tf.float32)  # [2, 2]
-
+        # 定义 read_weights
         read_weights = tf.constant([
             [[0.5, 0.5, 0.0],
              [0.0, 0.5, 0.5]],
@@ -50,14 +82,13 @@ class UsageUpdateTest(tf.test.TestCase):
         # 调用 update_usage 方法
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            free_gate=free_gate,
             read_weights=read_weights,
             prev_usage=initial_usage
         )  # [2, 3]
 
-        # 计算预期使用率
+        # 计算预期使用率基于新的 update_usage 实现
         sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [2, 3]
-        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [2, 3]
+        sum_w_read = tf.reduce_sum(read_weights, axis=1)    # [2, 3]
         usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [2, 3]
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [2, 3]
 
@@ -78,26 +109,21 @@ class UsageUpdateTest(tf.test.TestCase):
             [[1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 定义 free_gate 和 read_weights（全读）
-        free_gate = tf.constant([
-            [1.0]
-        ], dtype=tf.float32)  # [1, 1]
-
+        # 定义 read_weights（全读）
         read_weights = tf.constant([
             [[1.0, 1.0, 1.0]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 调用 update_usage 方法
+        # 调用 update_usage 方法，不再传递 free_gate
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            free_gate=free_gate,
             read_weights=read_weights,
             prev_usage=initial_usage
         )  # [1, 3]
 
-        # 计算预期使用率
+        # 计算预期使用率基于新的 update_usage 实现
         sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(read_weights, axis=1)  # [1, 3]
         usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
@@ -118,98 +144,26 @@ class UsageUpdateTest(tf.test.TestCase):
             [[1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 定义 free_gate 和 read_weights（全零）
-        free_gate = tf.constant([
-            [0.0]
-        ], dtype=tf.float32)  # [1, 1]
-
+        # 定义 read_weights（所有读权重为零）
         read_weights = tf.constant([
             [[0.0, 0.0, 0.0]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 调用 update_usage 方法
+        # 调用 update_usage 方法，不再传递 free_gate
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            free_gate=free_gate,
             read_weights=read_weights,
             prev_usage=initial_usage
         )  # [1, 3]
 
-        # 计算预期使用率
+        # 计算预期使用率基于新的 update_usage 实现
         sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
+        sum_w_read = tf.reduce_sum(read_weights, axis=1)  # [1, 3]
         usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
         self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-
-    def test_partial_write_and_read(self):
-        """
-        测试部分内存槽被写入和部分内存槽被读出的情况。
-        """
-        batch_size = 1
-
-        # 创建初始使用率
-        initial_usage = tf.constant([[0.2, 0.5, 0.3]], dtype=tf.float32)  # [1, 3]
-
-        # 定义 write_weights
-        write_weights = tf.constant([
-            [[0.1, 0.2, 0.3],
-             [0.4, 0.1, 0.2]]
-        ], dtype=tf.float32)  # [1, 2, 3]
-
-        # 定义 free_gate 和 read_weights
-        free_gate = tf.constant([
-            [0.5, 0.5]
-        ], dtype=tf.float32)  # [1, 2]
-
-        read_weights = tf.constant([
-            [[0.3, 0.4, 0.3],
-             [0.2, 0.5, 0.3]]
-        ], dtype=tf.float32)  # [1, 2, 3]
-
-        # 调用 update_usage 方法
-        updated_usage = self.usage_update.update_usage(
-            write_weights=write_weights,
-            free_gate=free_gate,
-            read_weights=read_weights,
-            prev_usage=initial_usage
-        )  # [1, 3]
-
-        # 计算预期使用率
-        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [1, 3]
-        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
-        expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
-
-        # 打印调试信息（可选）
-        # tf.print("Initial Usage:", initial_usage)
-        # tf.print("Write Weights:", write_weights)
-        # tf.print("Sum Write Weights:", sum_w_write)
-        # tf.print("Sum Read Weights:", sum_w_read)
-        # tf.print("Usage:", usage)
-        # tf.print("Expected Usage:", expected_usage)
-        # tf.print("Updated Usage:", updated_usage)
-
-        # 断言
-        self.assertAllClose(updated_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-
-    # 如果新的 UsageUpdate 类没有 get_initial_state 和 state_size 方法，可以删除以下测试
-    # def test_initial_state(self):
-    #     """
-    #     测试 get_initial_state 方法，确保返回正确的初始使用率。
-    #     """
-    #     batch_size = 4
-    #     initial_usage = self.usage_update.get_initial_state(batch_size=batch_size)  # [4, 3]
-    #     expected_usage = tf.zeros([batch_size, self.memory_size], dtype=tf.float32)  # [4, 3]
-    #     self.assertAllClose(initial_usage.numpy(), expected_usage.numpy(), atol=1e-6)
-    #
-    # def test_state_size(self):
-    #     """
-    #     测试 state_size 属性，确保返回正确的形状。
-    #     """
-    #     self.assertEqual(self.usage_update.state_size(), tf.TensorShape([self.memory_size]))
 
 
 if __name__ == '__main__':

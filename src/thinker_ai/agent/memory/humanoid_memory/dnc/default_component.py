@@ -65,14 +65,12 @@ class DefaultUsageUpdater(UsageUpdater):
         self.num_writes = num_writes
         self.num_reads = num_reads
 
-    def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
-                     prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
+    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor,prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
         """
         更新内存使用率。
 
         Args:
             write_weights (tf.Tensor): [batch_size, num_writes, memory_size]
-            free_gate (tf.Tensor): [batch_size, num_reads]
             read_weights (tf.Tensor): [batch_size, num_reads, memory_size]
             prev_usage (tf.Tensor): [batch_size, memory_size]
 
@@ -82,16 +80,17 @@ class DefaultUsageUpdater(UsageUpdater):
         # 计算写入权重的总和
         write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
 
-        # 计算自由读权重的总和
-        read_sum = tf.reduce_sum(free_gate[:, :, tf.newaxis] * read_weights, axis=1)  # [batch_size, memory_size]
+        # 计算读权重的总和
+        read_weights_sum = tf.reduce_sum(read_weights, axis=1)    # [batch_size, memory_size]
 
-        # 更新使用率 u_t
-        usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_sum  # [batch_size, memory_size]
+        # 更新使用率 u(t) = u(t-1) + w(t) - u(t-1)*w(t) - r(t)
+        usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_weights_sum  # [batch_size, memory_size]
 
         # 裁剪使用率到 [0, 1]
         usage = tf.clip_by_value(usage, 0.0, 1.0)
 
         return usage
+
 
 
 # 已修改：调整内存的更新，符合 DNC 论文要求
@@ -380,7 +379,7 @@ class DefaultMemoryUpdater(MemoryUpdater):
         return memory_updated  # [batch_size, memory_size, word_size]
 
 
-def get_default_config(memory_size: int, num_writes: int, num_reads: int, word_size: int) -> Dict[str, Any]:
+def get_default_config(memory_size, num_writes, num_reads, word_size) -> Dict[str, Any]:
     return {
         'WriteWeightCalculator': {
             'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',

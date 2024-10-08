@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from typing import Dict
 import tensorflow as tf
 
-# 定义 BatchAccessState
+# # 定义 BatchAccessState
 BatchAccessState = collections.namedtuple('BatchAccessState', [
     'memory',  # [batch_size, memory_size, word_size]
     'read_weights',  # [batch_size, time_steps, num_reads, memory_size]
@@ -14,7 +14,6 @@ BatchAccessState = collections.namedtuple('BatchAccessState', [
     'usage',  # [batch_size, memory_size]
     'read_words'  # [batch_size, num_reads, word_size] 或 None
 ])
-
 
 # 定义抽象类
 class WriteWeightCalculator(ABC):
@@ -40,7 +39,7 @@ class MemoryUpdater(ABC):
 
 class UsageUpdater(ABC):
     @abstractmethod
-    def update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
+    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor,
                      prev_usage: tf.Tensor, training: bool=False) -> tf.Tensor:
         pass
 
