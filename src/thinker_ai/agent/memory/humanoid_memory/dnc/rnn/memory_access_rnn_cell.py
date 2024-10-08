@@ -122,8 +122,8 @@ class MemoryAccessRNNCell(AbstractRNNCell):
             use_bias=True
         )
 
-        # Define controller (e.g., LSTM)
-        self.controller = LSTMCell(self.controller_size, name='controller')
+        # Initialize LSTM controller
+        self.controller_cell = LSTMCell(controller_size)
 
     @property
     def state_size(self):
@@ -142,7 +142,8 @@ class MemoryAccessRNNCell(AbstractRNNCell):
     def output_size(self):
         return tf.TensorShape([self.num_reads, self.word_size])
 
-    def call(self, inputs: tf.Tensor, states: List[tf.Tensor], training: bool = False) -> Tuple[tf.Tensor, List[tf.Tensor]]:
+    def call(self, inputs: tf.Tensor, states: List[tf.Tensor], training: bool = False) -> Tuple[
+        tf.Tensor, List[tf.Tensor]]:
         """
         Process a single time step's input and update the state.
 
@@ -157,11 +158,19 @@ class MemoryAccessRNNCell(AbstractRNNCell):
         # Unpack the state
         memory, read_weights, write_weights, link, precedence_weights, usage, controller_hidden, controller_cell = states
 
-        # Pass inputs and controller states through the controller (LSTM)
-        controller_output, (controller_hidden_new, controller_cell_new) = self.controller(inputs, [controller_hidden, controller_cell])
+        # Flatten memory for controller input
+        memory_flat = tf.reshape(memory, [tf.shape(memory)[0], -1])  # [batch_size, memory_size * word_size]
+
+        # Controller forward pass with concatenated inputs and memory
+        controller_input = tf.concat([inputs, memory_flat],
+                                     axis=-1)  # [batch_size, input_size + memory_size * word_size]
+        controller_output, [controller_hidden_new, controller_cell_new] = self.controller_cell(controller_input,
+                                                                                               [controller_hidden,
+                                                                                                controller_cell])
 
         # Generate write-related parameters
-        write_vectors, erase_vectors, write_gate, allocation_gate, free_gate = self._generate_write_parameters(controller_output)
+        write_vectors, erase_vectors, write_gate, allocation_gate, free_gate = self._generate_write_parameters(
+            controller_output)
         read_mode = self._generate_read_mode(controller_output)
         write_keys, write_strengths = self._generate_write_keys_strengths(controller_output)
         read_keys, read_strengths = self._generate_read_keys_strengths(controller_output)
@@ -171,19 +180,22 @@ class MemoryAccessRNNCell(AbstractRNNCell):
         read_content_weights = self._compute_content_weights(read_keys, read_strengths, memory)
 
         # Compute write weights
-        final_write_weights = self._compute_write_weights(write_content_weights, allocation_gate, write_gate, usage, training)
+        final_write_weights = self._compute_write_weights(write_content_weights, allocation_gate, write_gate, usage,
+                                                          training)
 
         # Update memory
         memory_updated = self._update_memory(memory, final_write_weights, erase_vectors, write_vectors)
 
         # Update linkage
-        linkage_updated = self._update_linkage(final_write_weights, {'link': link, 'precedence_weights': precedence_weights}, training)
+        linkage_updated = self._update_linkage(final_write_weights,
+                                               {'link': link, 'precedence_weights': precedence_weights}, training)
 
         # Update usage
         usage_updated = self._update_usage(final_write_weights, free_gate, read_weights, usage, training)
 
         # Compute read weights
-        read_weights_updated = self._compute_read_weights(read_content_weights, read_weights, linkage_updated['link'], read_mode, training)
+        read_weights_updated = self._compute_read_weights(read_content_weights, read_weights, linkage_updated['link'],
+                                                          read_mode, training)
 
         # Read words
         read_words = self._read_words(read_weights_updated, memory_updated)
@@ -202,7 +214,7 @@ class MemoryAccessRNNCell(AbstractRNNCell):
 
         return read_words, new_state
 
-    # Implement helper methods (dummy implementations; replace with actual logic)
+    # Implement helper methods (proper implementations as per DNC)
     def _generate_write_parameters(self, controller_output_t: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor, tf.Tensor]:
         write_vectors = self.write_vectors_layer(controller_output_t)  # [batch_size, num_writes * word_size]
         write_vectors = tf.reshape(write_vectors, [tf.shape(write_vectors)[0], self.num_writes, self.word_size])  # [batch_size, num_writes, word_size]
@@ -248,7 +260,7 @@ class MemoryAccessRNNCell(AbstractRNNCell):
             write_content_weights=write_content_weights,
             allocation_gate=allocation_gate,
             write_gate=write_gate,
-            prev_usage=usage,
+            usage=usage,
             training=training
         )
 
@@ -268,12 +280,12 @@ class MemoryAccessRNNCell(AbstractRNNCell):
             training=training
         )
 
-    def _update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights_prev: tf.Tensor,
+    def _update_usage(self, write_weights: tf.Tensor, free_gate: tf.Tensor, read_weights: tf.Tensor,
                       usage: tf.Tensor, training: bool) -> tf.Tensor:
         return self.usage_updater.update_usage(
             write_weights=write_weights,
             free_gate=free_gate,
-            read_weights=read_weights_prev,
+            read_weights=read_weights,
             prev_usage=usage,
             training=training
         )
