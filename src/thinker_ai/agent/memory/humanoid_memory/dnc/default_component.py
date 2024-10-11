@@ -84,6 +84,7 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
 
         return content_weights
 
+
 # 已修改：调整使用率的更新，符合 DNC 论文要求
 class DefaultUsageUpdater(UsageUpdater):
     def __init__(self, memory_size: int, num_writes: int, num_reads: int):
@@ -91,7 +92,8 @@ class DefaultUsageUpdater(UsageUpdater):
         self.num_writes = num_writes
         self.num_reads = num_reads
 
-    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor,prev_usage: tf.Tensor, training: bool = False) -> tf.Tensor:
+    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor, prev_usage: tf.Tensor,
+                     training: bool = False) -> tf.Tensor:
         """
         更新内存使用率。
 
@@ -107,7 +109,7 @@ class DefaultUsageUpdater(UsageUpdater):
         write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
 
         # 计算读权重的总和
-        read_weights_sum = tf.reduce_sum(read_weights, axis=1)    # [batch_size, memory_size]
+        read_weights_sum = tf.reduce_sum(read_weights, axis=1)  # [batch_size, memory_size]
 
         # 更新使用率 u(t) = u(t-1) + w(t) - u(t-1)*w(t) - r(t)
         usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_weights_sum  # [batch_size, memory_size]
@@ -116,7 +118,6 @@ class DefaultUsageUpdater(UsageUpdater):
         usage = tf.clip_by_value(usage, 0.0, 1.0)
 
         return usage
-
 
 
 # 已修改：调整内存的更新，符合 DNC 论文要求
@@ -394,7 +395,8 @@ class DefaultMemoryUpdater(MemoryUpdater):
         # 计算擦除矩阵
         write_weights_expanded = tf.expand_dims(write_weights, axis=-1)  # [batch_size, num_writes, memory_size, 1]
         erase_vectors_expanded = tf.expand_dims(erase_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded, axis=1)  # [batch_size, memory_size, word_size]
+        erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded,
+                                      axis=1)  # [batch_size, memory_size, word_size]
         tf.print("Erase Matrix Sample:", erase_matrix[:, :1, :1])  # 打印部分 erase_matrix
 
         # 更新内存
@@ -403,7 +405,8 @@ class DefaultMemoryUpdater(MemoryUpdater):
 
         # 计算添加矩阵
         write_vectors_expanded = tf.expand_dims(write_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
-        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded, axis=1)  # [batch_size, memory_size, word_size]
+        add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded,
+                                   axis=1)  # [batch_size, memory_size, word_size]
         tf.print("Add Matrix Sample:", tf.reduce_sum(add_matrix[:, :1, :], axis=-1))  # 打印部分 add_matrix
 
         memory_updated = memory_erased + add_matrix
