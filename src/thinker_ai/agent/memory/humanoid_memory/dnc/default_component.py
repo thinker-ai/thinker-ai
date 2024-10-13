@@ -107,18 +107,28 @@ class DefaultUsageUpdater(UsageUpdater):
         """
         # 计算写入权重的总和
         write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
+        tf.print("write_weights_sum shape:", tf.shape(write_weights_sum))
+        tf.print("write_weights_sum:", write_weights_sum)
 
         # 计算读权重的总和
         read_weights_sum = tf.reduce_sum(read_weights, axis=1)  # [batch_size, memory_size]
+        tf.print("read_weights_sum shape:", tf.shape(read_weights_sum))
+        tf.print("read_weights_sum:", read_weights_sum)
+
+        # 确认 prev_usage 的形状
+        tf.print("prev_usage shape:", tf.shape(prev_usage))
+        tf.print("prev_usage:", prev_usage)
 
         # 更新使用率 u(t) = u(t-1) + w(t) - u(t-1)*w(t) - r(t)
         usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_weights_sum  # [batch_size, memory_size]
+        tf.print("usage shape:", tf.shape(usage))
+        tf.print("usage:", usage)
 
         # 裁剪使用率到 [0, 1]
         usage = tf.clip_by_value(usage, 0.0, 1.0)
+        tf.print("clipped usage:", usage)
 
         return usage
-
 
 class DefaultWriteWeightCalculator(WriteWeightCalculator):
     def __init__(
@@ -199,111 +209,114 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
 
 
 class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
-    def __init__(self, memory_size: int, num_writes: int):
+    def __init__(self, memory_size: int):
         self.memory_size = memory_size
-        self.num_writes = num_writes
 
     def update_linkage(self, write_weights: tf.Tensor, prev_linkage: dict,
                        training: bool = False) -> dict:
-        batch_size = tf.shape(write_weights)[0]
-        prev_link = prev_linkage['link']  # [batch_size, num_writes, memory_size, memory_size]
-        prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, num_writes, memory_size]
+        """
+        更新链接矩阵和先行权重。
 
-        write_weights_i = tf.expand_dims(write_weights, axis=3)  # [batch_size, num_writes, memory_size, 1]
-        write_weights_j = tf.expand_dims(write_weights, axis=2)  # [batch_size, num_writes, 1, memory_size]
+        Args:
+            write_weights (tf.Tensor): [batch_size, memory_size]
+            prev_linkage (dict): 包含 'link' 和 'precedence_weights'
+            training (bool): 是否在训练模式
 
-        # 计算新的链接矩阵
-        prev_precedence_weights_j = tf.expand_dims(prev_precedence_weights,
-                                                   axis=2)  # [batch_size, num_writes, 1, memory_size]
-        new_link = (1 - write_weights_i - write_weights_j) * prev_link + write_weights_i * prev_precedence_weights_j
+        Returns:
+            dict: 更新后的 'link' 和 'precedence_weights'
+        """
+        prev_link = prev_linkage['link']  # [batch_size, memory_size, memory_size]
+        prev_precedence_weights = prev_linkage['precedence_weights']  # [batch_size, memory_size]
+
+        write_weights_i = tf.expand_dims(write_weights, axis=2)  # [batch_size, memory_size, 1]
+        write_weights_j = tf.expand_dims(write_weights, axis=1)  # [batch_size, 1, memory_size]
+
+        # 更新链接矩阵
+        new_link = (1 - write_weights_i - write_weights_j) * prev_link + \
+                   write_weights_i * prev_precedence_weights[:, tf.newaxis, :]
 
         # 移除自连接
-        identity = tf.eye(self.memory_size, batch_shape=[batch_size, self.num_writes], dtype=tf.float32)
-        new_link = new_link * (1 - identity)
+        new_link = new_link * (1 - tf.eye(self.memory_size, batch_shape=[tf.shape(write_weights)[0]]))
 
         # 更新先行权重
-        write_sum = tf.reduce_sum(write_weights, axis=2, keepdims=True)  # [batch_size, num_writes, 1]
-        new_precedence_weights = (1 - write_sum) * prev_precedence_weights + write_weights
-        # 添加调试输出
-        tf.print("New Link Sample:", new_link[:, :1, :1, :1])  # 打印部分 new_link
-        tf.print("New Precedence Weights Sample:", new_precedence_weights[:, :1, :1])  # 打印部分 new_precedence_weights
+        new_precedence_weights = (1 - tf.reduce_sum(write_weights, axis=1, keepdims=True)) * prev_precedence_weights + write_weights
 
         return {
             'link': new_link,
             'precedence_weights': new_precedence_weights
         }
 
-    def directional_read_weights(self, link: tf.Tensor, prev_read_weights: tf.Tensor, forward: bool) -> tf.Tensor:
-        batch_size = tf.shape(prev_read_weights)[0]
-        num_reads = tf.shape(prev_read_weights)[1]
+    def directional_read_weights(self, link: tf.Tensor, read_weights: tf.Tensor, forward: bool) -> tf.Tensor:
+        """
+        计算方向性读取权重。
 
-        # 转置链接矩阵以适应方向
+        Args:
+            link (tf.Tensor): [batch_size, memory_size, memory_size]
+            read_weights (tf.Tensor): [batch_size, num_reads, memory_size]
+            forward (bool): 是否为前向遍历
+
+        Returns:
+            tf.Tensor: 方向性读取权重，[batch_size, num_reads, memory_size]
+        """
         if forward:
-            link_transposed = link  # [batch_size, num_writes, memory_size, memory_size]
+            weights = tf.matmul(read_weights, link)
         else:
-            link_transposed = tf.transpose(link,
-                                           perm=[0, 1, 3, 2])  # [batch_size, num_writes, memory_size, memory_size]
-
-        # 初始化方向性读取权重
-        directional_weights = tf.zeros([batch_size, num_reads, self.memory_size], dtype=tf.float32)
-
-        # 对每个写头进行计算
-        for i in range(self.num_writes):
-            link_i = link_transposed[:, i, :, :]  # [batch_size, memory_size, memory_size]
-            link_i = tf.expand_dims(link_i, axis=1)  # [batch_size, 1, memory_size, memory_size]
-            prev_read_weights_expanded = tf.expand_dims(prev_read_weights,
-                                                        axis=2)  # [batch_size, num_reads, 1, memory_size]
-            directional_weight_i = tf.matmul(prev_read_weights_expanded,
-                                             link_i)  # [batch_size, num_reads, 1, memory_size]
-            directional_weight_i = tf.squeeze(directional_weight_i, axis=2)  # [batch_size, num_reads, memory_size]
-            directional_weights += directional_weight_i
-
-        return directional_weights  # [batch_size, num_reads, memory_size]
+            weights = tf.matmul(read_weights, tf.transpose(link, perm=[0, 2, 1]))
+        return weights
 
     def state_size(self) -> Dict[str, tf.TensorShape]:
         return {
-            'link': tf.TensorShape([self.num_writes, self.memory_size, self.memory_size]),
-            'precedence_weights': tf.TensorShape([self.num_writes, self.memory_size])
+            'link': tf.TensorShape([self.memory_size, self.memory_size]),
+            'precedence_weights': tf.TensorShape([self.memory_size])
         }
 
 
 class DefaultReadWeightCalculator(ReadWeightCalculator):
-    def __init__(self, temporal_linkage: DefaultTemporalLinkageUpdater, num_reads: int, num_writes: int):
-        self.temporal_linkage = temporal_linkage
+    def __init__(self, num_reads: int):
         self.num_reads = num_reads
-        self.num_writes = num_writes
         self.epsilon = 1e-8
 
     def compute(self, read_content_weights: tf.Tensor, prev_read_weights: tf.Tensor,
                 link: tf.Tensor, read_mode: tf.Tensor, training: bool) -> tf.Tensor:
-        # 对 read_mode 进行 softmax 归一化
-        read_mode = tf.nn.softmax(read_mode, axis=-1)  # [batch_size, num_reads, 3]
-        tf.print("Read Mode Sample:", read_mode[:, :1, :])  # 打印部分 read_mode
+        """
+        计算读取权重。
 
-        # 提取各个模式的权重
-        content_mode = read_mode[:, :, 0:1]  # [batch_size, num_reads, 1]
-        forward_mode = read_mode[:, :, 1:2]
-        backward_mode = read_mode[:, :, 2:3]
+        Args:
+            read_content_weights (tf.Tensor): [batch_size, num_reads, memory_size]
+            prev_read_weights (tf.Tensor): [batch_size, num_reads, memory_size]
+            link (tf.Tensor): [batch_size, memory_size, memory_size]
+            read_mode (tf.Tensor): [batch_size, num_reads, 3]
+            training (bool): 是否在训练模式
+
+        Returns:
+            tf.Tensor: 读取权重，[batch_size, num_reads, memory_size]
+        """
+        read_mode = tf.nn.softmax(read_mode, axis=-1)  # [batch_size, num_reads, 3]
+
+        # 获取各个模式的权重
+        forward_mode = read_mode[:, :, 0:1]
+        backward_mode = read_mode[:, :, 1:2]
+        content_mode = read_mode[:, :, 2:3]
 
         # 计算方向性读取权重
-        forward_weights = self.temporal_linkage.directional_read_weights(
-            link, prev_read_weights, forward=True
-        )  # [batch_size, num_reads, memory_size]
-        backward_weights = self.temporal_linkage.directional_read_weights(
-            link, prev_read_weights, forward=False
-        )
+        forward_weights = self.directional_read_weights(link, prev_read_weights, forward=True)
+        backward_weights = self.directional_read_weights(link, prev_read_weights, forward=False)
 
-        # 组合权重
-        read_weights = content_mode * read_content_weights \
-                       + forward_mode * forward_weights \
-                       + backward_mode * backward_weights
+        # 组合读取权重
+        read_weights = forward_mode * forward_weights + \
+                       backward_mode * backward_weights + \
+                       content_mode * read_content_weights
 
-        # 对读取权重在 memory_size 维度上进行归一化
-        read_weights_sum = tf.reduce_sum(read_weights, axis=-1, keepdims=True) + self.epsilon
-        read_weights = read_weights / read_weights_sum
-        tf.print("Read Weights Sample:", read_weights[:, :1, :])  # 打印部分 read_weights
-
+        # 归一化读取权重
+        read_weights = read_weights / (tf.reduce_sum(read_weights, axis=-1, keepdims=True) + self.epsilon)
         return read_weights  # [batch_size, num_reads, memory_size]
+
+    def directional_read_weights(self, link: tf.Tensor, read_weights: tf.Tensor, forward: bool) -> tf.Tensor:
+        if forward:
+            weights = tf.matmul(read_weights, link)
+        else:
+            weights = tf.matmul(read_weights, tf.transpose(link, perm=[0, 2, 1]))
+        return weights
 
 
 class DefaultMemoryUpdater(MemoryUpdater):
