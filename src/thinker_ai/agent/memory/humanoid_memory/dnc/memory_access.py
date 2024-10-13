@@ -2,6 +2,7 @@ import tensorflow as tf
 from typing import Optional, Dict, Any, Tuple
 from collections import namedtuple
 
+from thinker_ai.agent.memory.humanoid_memory.dnc.cache_manager import CacheManager
 # Define the state namedtuple for easier state management
 BatchAccessState = namedtuple('BatchAccessState', ('memory', 'read_weights', 'write_weights',
                                                    'linkage', 'usage', 'read_words'))
@@ -15,6 +16,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             num_reads: int,
             num_writes: int,
             controller_output_size: int,
+            cache_manager: CacheManager = None,
             name: str = 'memory_access',
             config: Optional[Dict[str, Any]] = None
     ):
@@ -23,7 +25,8 @@ class MemoryAccess(tf.keras.layers.Layer):
         self.word_size = word_size
         self.num_reads = num_reads
         self.num_writes = num_writes
-        self.controller_output_size = controller_output_size  # Fixed controller output size
+        self.controller_output_size = controller_output_size
+        self.cache_manager = cache_manager or CacheManager(max_cache_size=memory_size)
 
         # Define the number of read modes (as per DNC paper)
         self.num_read_modes = 3
@@ -106,7 +109,11 @@ class MemoryAccess(tf.keras.layers.Layer):
         controller_output = inputs['inputs']
         prev_state = inputs['prev_state']
 
-        # Ensure that the controller_output has the expected fixed size
+        # 检查缓存中是否有持久化的内存状态
+        cached_memory_state = self.cache_manager.read_from_cache('memory_state')
+        if cached_memory_state is not None:
+            prev_state = cached_memory_state
+
         tf.debugging.assert_equal(
             tf.shape(controller_output)[-1],
             self.controller_output_size,
@@ -132,6 +139,9 @@ class MemoryAccess(tf.keras.layers.Layer):
             interface_vector = self.interface_layer(controller_output)
             interfaces = self._parse_interface_vector(interface_vector)
             read_words, final_state = self._process_time_step(prev_state, interfaces, training)
+
+        # 更新后的内存状态持久化到缓存
+        self.cache_manager.write_to_cache('memory_state', final_state)
 
         return {'read_words': read_words, 'final_state': final_state}
 

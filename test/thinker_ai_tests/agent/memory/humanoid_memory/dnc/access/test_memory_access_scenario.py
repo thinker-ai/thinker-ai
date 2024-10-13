@@ -1,3 +1,5 @@
+from unittest import mock
+
 import tensorflow as tf
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
 from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import get_default_config
@@ -14,20 +16,18 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         self.batch_size = 2  # 两个用户
         self.controller_output_size = 64  # 固定的控制器输出尺寸
 
+        self.cache_manager_mock = mock.Mock()
+        self.cache_manager_mock.read_from_cache.return_value = None  # Mock to always return None
+
+        # Initialize MemoryAccess with the mocked CacheManager
         self.memory_access = MemoryAccess(
             memory_size=self.memory_size,
             word_size=self.word_size,
             num_reads=self.num_reads,
             num_writes=self.num_writes,
             controller_output_size=self.controller_output_size,
-            config=get_default_config(
-                memory_size=self.memory_size,
-                num_writes=self.num_writes,
-                num_reads=self.num_reads,
-                word_size=self.word_size
-            )
+            cache_manager=self.cache_manager_mock  # Inject the mocked cache manager
         )
-
         self.initial_state = self.memory_access.get_initial_state(self.batch_size)
 
     def test_user_memory_isolation(self):

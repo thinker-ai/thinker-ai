@@ -1,6 +1,6 @@
 import tensorflow as tf
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
-
+from unittest import mock
 
 class MemoryAccessInitializationTest(tf.test.TestCase):
     def test_initialization(self):
@@ -8,28 +8,35 @@ class MemoryAccessInitializationTest(tf.test.TestCase):
         word_size = 64
         num_reads = 4
         num_writes = 1
-        self.controller_output_size = 128
-        memory_access = MemoryAccess(
+        controller_output_size = 128
+        # Mock CacheManager to avoid interference between tests
+        cache_manager_mock = mock.Mock()
+        cache_manager_mock.read_from_cache.return_value = None  # Mock to always return None
+
+        # Initialize MemoryAccess with the mocked CacheManager
+        self.memory_access = MemoryAccess(
             memory_size=memory_size,
             word_size=word_size,
             num_reads=num_reads,
             num_writes=num_writes,
-            controller_output_size=self.controller_output_size
+            controller_output_size=controller_output_size,
+            cache_manager=cache_manager_mock  # Inject the mocked cache manager
         )
 
-        self.assertEqual(memory_access.memory_size, memory_size)
-        self.assertEqual(memory_access.word_size, word_size)
-        self.assertEqual(memory_access.num_reads, num_reads)
-        self.assertEqual(memory_access.num_writes, num_writes)
-        self.assertIsNotNone(memory_access.content_weight_calculator)
-        self.assertIsNotNone(memory_access.write_weight_calculator)
-        self.assertIsNotNone(memory_access.temporal_linkage_updater)
-        self.assertIsNotNone(memory_access.read_weight_calculator)
-        self.assertIsNotNone(memory_access.usage_updater)
-        self.assertIsNotNone(memory_access.memory_updater)
+        self.assertEqual(self.memory_access.memory_size, memory_size)
+        self.assertEqual(self.memory_access.word_size, word_size)
+        self.assertEqual(self.memory_access.num_reads, num_reads)
+        self.assertEqual(self.memory_access.num_writes, num_writes)
+        self.assertIsNotNone(self.memory_access.content_weight_calculator)
+        self.assertIsNotNone(self.memory_access.write_weight_calculator)
+        self.assertIsNotNone(self.memory_access.temporal_linkage_updater)
+        self.assertIsNotNone(self.memory_access.read_weight_calculator)
+        self.assertIsNotNone(self.memory_access.usage_updater)
+        self.assertIsNotNone(self.memory_access.memory_updater)
 
 
 class MemoryAccessSingleStepTest(tf.test.TestCase):
+
     def setUp(self):
         super(MemoryAccessSingleStepTest, self).setUp()
         self.memory_size = 16
@@ -38,12 +45,17 @@ class MemoryAccessSingleStepTest(tf.test.TestCase):
         self.num_writes = 1
         self.batch_size = 1
         self.controller_output_size = 64
+        # Mock CacheManager to avoid interference between tests
+        cache_manager_mock = mock.Mock()
+        cache_manager_mock.read_from_cache.return_value = None  # Mock to always return None
+
         self.memory_access = MemoryAccess(
             memory_size=self.memory_size,
             word_size=self.word_size,
             num_reads=self.num_reads,
             num_writes=self.num_writes,
-            controller_output_size=self.controller_output_size
+            controller_output_size=self.controller_output_size,
+            cache_manager=cache_manager_mock  # Inject the mocked cache manager
         )
 
         self.initial_state = self.memory_access.get_initial_state(self.batch_size)

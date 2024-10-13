@@ -1,3 +1,5 @@
+from unittest import mock
+
 import tensorflow as tf
 import numpy as np
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
@@ -42,12 +44,17 @@ class MemoryAccessGradientTest(tf.test.TestCase):
         self.num_reads = 1
         self.num_writes = 1
 
+        self.cache_manager_mock = mock.Mock()
+        self.cache_manager_mock.read_from_cache.return_value = None  # Mock to always return None
+
+        # Initialize MemoryAccess with the mocked CacheManager
         self.memory_access = MemoryAccess(
             memory_size=self.memory_size,
             word_size=self.word_size,
             num_reads=self.num_reads,
             num_writes=self.num_writes,
-            controller_output_size=self.controller_output_size
+            controller_output_size=self.controller_output_size,
+            cache_manager=self.cache_manager_mock  # Inject the mocked cache manager
         )
 
         self.model = TestModel(self.controller_output_size, self.memory_access)

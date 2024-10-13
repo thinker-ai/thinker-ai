@@ -1,4 +1,6 @@
 import time
+from unittest import mock
+
 import tensorflow as tf
 
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
@@ -14,12 +16,17 @@ class MemoryAccessLongSequenceTest(tf.test.TestCase):
         controller_output_size = 256  # 固定的控制器输出尺寸
         sequence_length = 1000  # 长序列
 
+        cache_manager_mock = mock.Mock()
+        cache_manager_mock.read_from_cache.return_value = None  # Mock to always return None
+
+        # Initialize MemoryAccess with the mocked CacheManager
         memory_access = MemoryAccess(
             memory_size=memory_size,
             word_size=word_size,
             num_reads=num_reads,
             num_writes=num_writes,
-            controller_output_size=controller_output_size
+            controller_output_size=controller_output_size,
+            cache_manager=cache_manager_mock  # Inject the mocked cache manager
         )
 
         initial_state = memory_access.get_initial_state(batch_size)
