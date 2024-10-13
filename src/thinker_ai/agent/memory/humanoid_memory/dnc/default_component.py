@@ -87,19 +87,15 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
 
 # 已修改：调整使用率的更新，符合 DNC 论文要求
 class DefaultUsageUpdater(UsageUpdater):
-    def __init__(self, memory_size: int, num_writes: int, num_reads: int):
-        self.memory_size = memory_size
-        self.num_writes = num_writes
-        self.num_reads = num_reads
 
-    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor, prev_usage: tf.Tensor,
-                     training: bool = False) -> tf.Tensor:
+    def update_usage(self, write_weights, free_gates, prev_read_weights, prev_usage, training):
         """
         更新内存使用率。
 
         Args:
             write_weights (tf.Tensor): [batch_size, num_writes, memory_size]
-            read_weights (tf.Tensor): [batch_size, num_reads, memory_size]
+            free_gates (tf.Tensor): [batch_size, num_reads]
+            prev_read_weights (tf.Tensor): [batch_size, num_reads, memory_size]
             prev_usage (tf.Tensor): [batch_size, memory_size]
 
         Returns:
@@ -107,28 +103,19 @@ class DefaultUsageUpdater(UsageUpdater):
         """
         # 计算写入权重的总和
         write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [batch_size, memory_size]
-        tf.print("write_weights_sum shape:", tf.shape(write_weights_sum))
-        tf.print("write_weights_sum:", write_weights_sum)
 
-        # 计算读权重的总和
-        read_weights_sum = tf.reduce_sum(read_weights, axis=1)  # [batch_size, memory_size]
-        tf.print("read_weights_sum shape:", tf.shape(read_weights_sum))
-        tf.print("read_weights_sum:", read_weights_sum)
+        # 计算记忆保留向量 ψ_t
+        free_gates = tf.expand_dims(free_gates, axis=-1)  # [batch_size, num_reads, 1]
+        retention = tf.reduce_prod(1 - free_gates * prev_read_weights, axis=1)  # [batch_size, memory_size]
 
-        # 确认 prev_usage 的形状
-        tf.print("prev_usage shape:", tf.shape(prev_usage))
-        tf.print("prev_usage:", prev_usage)
-
-        # 更新使用率 u(t) = u(t-1) + w(t) - u(t-1)*w(t) - r(t)
-        usage = prev_usage + write_weights_sum - prev_usage * write_weights_sum - read_weights_sum  # [batch_size, memory_size]
-        tf.print("usage shape:", tf.shape(usage))
-        tf.print("usage:", usage)
+        # 更新使用率
+        usage = (prev_usage + write_weights_sum - prev_usage * write_weights_sum) * retention
 
         # 裁剪使用率到 [0, 1]
         usage = tf.clip_by_value(usage, 0.0, 1.0)
-        tf.print("clipped usage:", usage)
 
         return usage
+
 
 class DefaultWriteWeightCalculator(WriteWeightCalculator):
     def __init__(
@@ -239,7 +226,8 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         new_link = new_link * (1 - tf.eye(self.memory_size, batch_shape=[tf.shape(write_weights)[0]]))
 
         # 更新先行权重
-        new_precedence_weights = (1 - tf.reduce_sum(write_weights, axis=1, keepdims=True)) * prev_precedence_weights + write_weights
+        new_precedence_weights = (1 - tf.reduce_sum(write_weights, axis=1,
+                                                    keepdims=True)) * prev_precedence_weights + write_weights
 
         return {
             'link': new_link,

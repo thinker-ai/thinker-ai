@@ -31,8 +31,7 @@ dnc_config = {
         'epsilon': 1e-6      # 防止除零的小常数
     },
     'MemoryUpdater': {
-        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component
-.DefaultMemoryUpdater'
+        'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultMemoryUpdater'
         # DefaultMemoryUpdater 不需要额外的初始化参数
     }
 }

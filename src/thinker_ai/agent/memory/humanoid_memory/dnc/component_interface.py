@@ -39,8 +39,7 @@ class MemoryUpdater(ABC):
 
 class UsageUpdater(ABC):
     @abstractmethod
-    def update_usage(self, write_weights: tf.Tensor, read_weights: tf.Tensor,
-                     prev_usage: tf.Tensor, training: bool=False) -> tf.Tensor:
+    def update_usage(self, write_weights, free_gates, prev_read_weights, prev_usage, training):
         pass
 
 
