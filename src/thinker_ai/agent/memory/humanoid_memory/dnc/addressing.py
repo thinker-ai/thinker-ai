@@ -63,6 +63,7 @@ def weighted_softmax(scores: tf.Tensor, weights: tf.Tensor, strength_op: Callabl
 
     return normalized_weights
 
+
 class CosineWeights:
     def __init__(self, num_heads: int, word_size: int, epsilon: float = 1e-6,
                  strength_op: Optional[Callable] = None):
@@ -94,7 +95,7 @@ class CosineWeights:
         """
         # 计算 L2 范数
         memory_norms = tf.norm(memory, axis=-1)  # [batch_shape..., memory_size]
-        keys_norms = tf.norm(keys, axis=-1)      # [batch_shape..., num_heads]
+        keys_norms = tf.norm(keys, axis=-1)  # [batch_shape..., num_heads]
 
         # 扩展维度以便广播
         # memory: [batch_shape..., memory_size, word_size] -> [batch_shape..., memory_size, 1, word_size]
@@ -106,7 +107,8 @@ class CosineWeights:
         # 计算点积
         # memory_expanded * keys_expanded: [batch_shape..., memory_size, num_heads, word_size]
         # reduce_sum over word_size: [batch_shape..., memory_size, num_heads]
-        dot_products = tf.reduce_sum(memory_expanded * keys_expanded, axis=-1)  # [batch_shape..., memory_size, num_heads]
+        dot_products = tf.reduce_sum(memory_expanded * keys_expanded,
+                                     axis=-1)  # [batch_shape..., memory_size, num_heads]
 
         # 转置到 [batch_shape..., num_heads, memory_size]
         # 假设最后两个维度是 memory_size 和 num_heads
@@ -134,6 +136,7 @@ class CosineWeights:
         weights = weighted_softmax(similarity, strengths, self._strength_op)  # [batch_shape..., num_heads, memory_size]
 
         return weights
+
 
 class WriteAllocation:
     def __init__(

@@ -1,7 +1,6 @@
 import tensorflow as tf
 from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import DefaultUsageUpdater
 
-
 class UsageUpdateTest(tf.test.TestCase):
     def setUp(self):
         super(UsageUpdateTest, self).setUp()
@@ -11,11 +10,7 @@ class UsageUpdateTest(tf.test.TestCase):
         self.epsilon = 1e-6  # 定义 epsilon
 
         # 初始化 UsageUpdate 实例
-        self.usage_update = DefaultUsageUpdater(
-            memory_size=self.memory_size,
-            num_writes=self.num_writes,
-            num_reads=self.num_reads
-        )
+        self.usage_update = DefaultUsageUpdater()
 
     def test_partial_write_and_read(self):
         """
@@ -32,23 +27,36 @@ class UsageUpdateTest(tf.test.TestCase):
              [0.4, 0.1, 0.2]]
         ], dtype=tf.float32)  # [1, 2, 3]
 
-        # 定义 read_weights
-        read_weights = tf.constant([
+        # 定义 free_gates
+        free_gates = tf.constant([
+            [0.1, 0.2]
+        ], dtype=tf.float32)  # [1, 2]
+
+        # 定义 prev_read_weights
+        prev_read_weights = tf.constant([
             [[0.3, 0.4, 0.3],
              [0.2, 0.5, 0.3]]
         ], dtype=tf.float32)  # [1, 2, 3]
 
+        # 定义 training
+        training = False
+
         # 调用 update_usage 方法
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            read_weights=read_weights,
-            prev_usage=initial_usage
+            free_gates=free_gates,
+            prev_read_weights=prev_read_weights,
+            prev_usage=initial_usage,
+            training=training
         )  # [1, 3]
 
         # 计算预期使用率基于新的 update_usage 实现
-        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(read_weights, axis=1)    # [1, 3]
-        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+
+        retention = tf.reduce_prod(1 - tf.expand_dims(free_gates, axis=-1) * prev_read_weights, axis=1)  # [1, 3]
+
+        usage = (initial_usage + write_weights_sum - initial_usage * write_weights_sum) * retention  # [1, 3]
+
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
@@ -71,25 +79,39 @@ class UsageUpdateTest(tf.test.TestCase):
              [1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [2, 2, 3]
 
-        # 定义 read_weights
-        read_weights = tf.constant([
-            [[0.5, 0.5, 0.0],
-             [0.0, 0.5, 0.5]],
-            [[1.0, 1.0, 1.0],
-             [0.0, 1.0, 0.0]]
+        # 定义 free_gates
+        free_gates = tf.constant([
+            [0.5, 0.5],
+            [0.5, 0.5]
+        ], dtype=tf.float32)  # [2, 2]
+
+        # 定义 prev_read_weights
+        prev_read_weights = tf.constant([
+            [[0.2, 0.3, 0.5],
+             [0.1, 0.7, 0.2]],
+            [[0.4, 0.4, 0.2],
+             [0.3, 0.6, 0.1]]
         ], dtype=tf.float32)  # [2, 2, 3]
+
+        # 定义 training
+        training = False
 
         # 调用 update_usage 方法
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            read_weights=read_weights,
-            prev_usage=initial_usage
+            free_gates=free_gates,
+            prev_read_weights=prev_read_weights,
+            prev_usage=initial_usage,
+            training=training
         )  # [2, 3]
 
         # 计算预期使用率基于新的 update_usage 实现
-        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [2, 3]
-        sum_w_read = tf.reduce_sum(read_weights, axis=1)    # [2, 3]
-        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [2, 3]
+        write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [2, 3]
+
+        retention = tf.reduce_prod(1 - tf.expand_dims(free_gates, axis=-1) * prev_read_weights, axis=1)  # [2, 3]
+
+        usage = (initial_usage + write_weights_sum - initial_usage * write_weights_sum) * retention  # [2, 3]
+
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [2, 3]
 
         # 断言
@@ -109,22 +131,35 @@ class UsageUpdateTest(tf.test.TestCase):
             [[1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 定义 read_weights（全读）
-        read_weights = tf.constant([
-            [[1.0, 1.0, 1.0]]
+        # 定义 free_gates
+        free_gates = tf.constant([
+            [0.3]
+        ], dtype=tf.float32)  # [1, 1]
+
+        # 定义 prev_read_weights
+        prev_read_weights = tf.constant([
+            [[0.4, 0.4, 0.2]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 调用 update_usage 方法，不再传递 free_gate
+        # 定义 training
+        training = False
+
+        # 调用 update_usage 方法
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            read_weights=read_weights,
-            prev_usage=initial_usage
+            free_gates=free_gates,
+            prev_read_weights=prev_read_weights,
+            prev_usage=initial_usage,
+            training=training
         )  # [1, 3]
 
         # 计算预期使用率基于新的 update_usage 实现
-        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(read_weights, axis=1)  # [1, 3]
-        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+
+        retention = tf.reduce_prod(1 - tf.expand_dims(free_gates, axis=-1) * prev_read_weights, axis=1)  # [1, 3]
+
+        usage = (initial_usage + write_weights_sum - initial_usage * write_weights_sum) * retention  # [1, 3]
+
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
@@ -144,22 +179,35 @@ class UsageUpdateTest(tf.test.TestCase):
             [[1 / 3, 1 / 3, 1 / 3]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 定义 read_weights（所有读权重为零）
-        read_weights = tf.constant([
+        # 定义 free_gates
+        free_gates = tf.constant([
+            [0.0]
+        ], dtype=tf.float32)  # [1, 1]
+
+        # 定义 prev_read_weights
+        prev_read_weights = tf.constant([
             [[0.0, 0.0, 0.0]]
         ], dtype=tf.float32)  # [1, 1, 3]
 
-        # 调用 update_usage 方法，不再传递 free_gate
+        # 定义 training
+        training = False
+
+        # 调用 update_usage 方法
         updated_usage = self.usage_update.update_usage(
             write_weights=write_weights,
-            read_weights=read_weights,
-            prev_usage=initial_usage
+            free_gates=free_gates,
+            prev_read_weights=prev_read_weights,
+            prev_usage=initial_usage,
+            training=training
         )  # [1, 3]
 
         # 计算预期使用率基于新的 update_usage 实现
-        sum_w_write = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
-        sum_w_read = tf.reduce_sum(read_weights, axis=1)  # [1, 3]
-        usage = initial_usage + sum_w_write - initial_usage * sum_w_write - sum_w_read  # [1, 3]
+        write_weights_sum = tf.reduce_sum(write_weights, axis=1)  # [1, 3]
+
+        retention = tf.reduce_prod(1 - tf.expand_dims(free_gates, axis=-1) * prev_read_weights, axis=1)  # [1, 3]
+
+        usage = (initial_usage + write_weights_sum - initial_usage * write_weights_sum) * retention  # [1, 3]
+
         expected_usage = tf.clip_by_value(usage, 0.0, 1.0)  # [1, 3]
 
         # 断言
