@@ -1,17 +1,16 @@
-import unittest
 import tensorflow as tf
-
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
 
 
-class MemoryAccessFlexibleInputTest(unittest.TestCase):
+class MemoryAccessFlexibleInputTest(tf.test.TestCase):
     def setUp(self):
+        super(MemoryAccessFlexibleInputTest, self).setUp()
         self.memory_size = 32
         self.word_size = 16
         self.num_reads = 2
         self.num_writes = 1
         self.batch_size = 1
-        self.controller_output_size = 128  # 固定尺寸
+        self.controller_output_size = 128
 
         self.memory_access = MemoryAccess(
             memory_size=self.memory_size,
@@ -33,7 +32,7 @@ class MemoryAccessFlexibleInputTest(unittest.TestCase):
         self.assertEqual(read_words.shape, (self.batch_size, self.num_reads, self.word_size))
 
 
-class MemoryAccessFlexibleMemoryTest(unittest.TestCase):
+class MemoryAccessFlexibleMemoryTest(tf.test.TestCase):
     def test_variable_memory_size(self):
         memory_sizes = [16, 32, 64]
         word_sizes = [8, 16, 32]
@@ -41,7 +40,7 @@ class MemoryAccessFlexibleMemoryTest(unittest.TestCase):
         num_writes = 1
         batch_size = 1
         input_size = 128
-        self.controller_output_size = 128  # 固定尺寸
+        self.controller_output_size = 128
         for memory_size in memory_sizes:
             for word_size in word_sizes:
                 with self.subTest(memory_size=memory_size, word_size=word_size):
@@ -67,4 +66,4 @@ class MemoryAccessFlexibleMemoryTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    tf.test.main()

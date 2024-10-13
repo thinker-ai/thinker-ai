@@ -1,11 +1,8 @@
-import unittest
-
 import tensorflow as tf
-
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess
 
 
-class MemoryAccessInitializationTest(unittest.TestCase):
+class MemoryAccessInitializationTest(tf.test.TestCase):
     def test_initialization(self):
         memory_size = 128
         word_size = 64
@@ -32,8 +29,9 @@ class MemoryAccessInitializationTest(unittest.TestCase):
         self.assertIsNotNone(memory_access.memory_updater)
 
 
-class MemoryAccessSingleStepTest(unittest.TestCase):
+class MemoryAccessSingleStepTest(tf.test.TestCase):
     def setUp(self):
+        super(MemoryAccessSingleStepTest, self).setUp()
         self.memory_size = 16
         self.word_size = 8
         self.num_reads = 1
@@ -51,16 +49,9 @@ class MemoryAccessSingleStepTest(unittest.TestCase):
         self.initial_state = self.memory_access.get_initial_state(self.batch_size)
 
     def test_single_step_read_write(self):
-        # 可以变化的输入尺寸
-        input_size = 32  # 或者其他任意值
-
-        # 定义一个模拟控制器，将输入映射到固定尺寸的输出
+        input_size = 32
         controller = tf.keras.layers.Dense(self.controller_output_size)
-
-        # 生成随机的控制器输入
         controller_input = tf.random.uniform([self.batch_size, input_size], dtype=tf.float32)
-
-        # 通过控制器生成固定尺寸的 controller_output
         controller_output = controller(controller_input)
 
         inputs = {
@@ -69,14 +60,12 @@ class MemoryAccessSingleStepTest(unittest.TestCase):
         }
 
         output = self.memory_access(inputs, training=False)
-
         read_words = output['read_words']
         final_state = output['final_state']
 
-        # 验证输出形状
         self.assertEqual(read_words.shape, (self.batch_size, self.num_reads, self.word_size))
         self.assertEqual(final_state.memory.shape, (self.batch_size, self.memory_size, self.word_size))
 
 
 if __name__ == '__main__':
-    unittest.main()
+    tf.test.main()

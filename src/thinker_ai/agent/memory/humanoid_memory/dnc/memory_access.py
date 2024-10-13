@@ -295,3 +295,29 @@ class MemoryAccess(tf.keras.layers.Layer):
             usage=usage,
             read_words=read_words
         )
+
+    def query_history(self, query_vector: tf.Tensor, top_k: int = 2) -> tf.Tensor:
+        """
+        基于与当前输入内容相关性查询历史记录。
+
+        Args:
+            query_vector (tf.Tensor): [batch_size, word_size]
+            top_k (int): 要检索的相关记录数量
+
+        Returns:
+            related_records (tf.Tensor): [batch_size, top_k, word_size]
+        """
+        # 计算余弦相似度
+        query_norm = tf.nn.l2_normalize(query_vector, axis=-1)  # [batch_size, word_size]
+        memory_norm = tf.nn.l2_normalize(self.state.memory, axis=-1)  # [batch_size, memory_size, word_size]
+
+        # 计算相似度
+        similarity = tf.einsum('bw,mw->bm', query_norm, memory_norm)  # [batch_size, memory_size]
+
+        # 获取 top_k 相似度最高的内存索引
+        top_k_values, top_k_indices = tf.nn.top_k(similarity, k=top_k, sorted=True)  # [batch_size, top_k]
+
+        # 根据索引从 memory 中检索相关记录
+        related_records = tf.gather(self.state.memory, top_k_indices, batch_dims=1)  # [batch_size, top_k, word_size]
+
+        return related_records
