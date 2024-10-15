@@ -318,20 +318,24 @@ class DefaultMemoryUpdater(MemoryUpdater):
         erase_vectors_expanded = tf.expand_dims(erase_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
         erase_matrix = tf.reduce_prod(1 - write_weights_expanded * erase_vectors_expanded,
                                       axis=1)  # [batch_size, memory_size, word_size]
+        tf.print("Erase Matrix Shape:", tf.shape(erase_matrix))
         tf.print("Erase Matrix Sample:", erase_matrix[:, :1, :1])  # 打印部分 erase_matrix
 
         # 更新内存
         memory_erased = memory * erase_matrix
-        tf.print("Memory Erased Sample:", tf.reduce_sum(memory_erased[:, :1, :], axis=-1))  # 打印部分 memory_erased
+        tf.print("Memory Erased Shape:", tf.shape(memory_erased))
+        tf.print("Memory Erased Sample:", memory_erased[:, :1, :1])  # 打印部分 memory_erased
 
         # 计算添加矩阵
         write_vectors_expanded = tf.expand_dims(write_vectors, axis=2)  # [batch_size, num_writes, 1, word_size]
         add_matrix = tf.reduce_sum(write_weights_expanded * write_vectors_expanded,
                                    axis=1)  # [batch_size, memory_size, word_size]
-        tf.print("Add Matrix Sample:", tf.reduce_sum(add_matrix[:, :1, :], axis=-1))  # 打印部分 add_matrix
+        tf.print("Add Matrix Shape:", tf.shape(add_matrix))
+        tf.print("Add Matrix Sample:", add_matrix[:, :1, :1])  # 打印部分 add_matrix
 
         memory_updated = memory_erased + add_matrix
-        tf.print("Memory Updated Sample:", tf.reduce_sum(memory_updated[:, :1, :], axis=-1))  # 打印部分 memory_updated
+        tf.print("Memory Updated Shape:", tf.shape(memory_updated))
+        tf.print("Memory Updated Sample:", memory_updated[:, :1, :1])  # 打印部分 memory_updated
         return memory_updated  # [batch_size, memory_size, word_size]
 
 

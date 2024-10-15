@@ -36,6 +36,7 @@ class ComponentFactory:
 
     def create_content_weight_calculator(self):
         config = self.config.get('ContentWeightCalculator', {})
+        print(f"ContentWeightCalculator config: {config}")  # 添加打印
         class_path = config.pop('class_path', 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultContentWeightCalculator')
         cls = self._load_class(class_path)
         filtered_config = self._filter_kwargs(cls, config)

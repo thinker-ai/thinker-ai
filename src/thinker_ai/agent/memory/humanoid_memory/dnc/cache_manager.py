@@ -1,7 +1,6 @@
+# cache_manager.py
 import os
 import pickle
-
-
 class CacheManager:
     def __init__(self, cache_dir: str = "./cache", max_cache_size: int = 1024):
         self.cache_dir = cache_dir
@@ -31,7 +30,6 @@ class CacheManager:
         """将数据写入缓存，并持久化到磁盘。"""
         # 首先将数据写入内存缓存
         self.memory_cache[cache_key] = data
-
         # 如果缓存大小超过限制，则持久化
         if len(self.memory_cache) > self.max_cache_size:
             self._persist_to_disk(cache_key, data)

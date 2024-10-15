@@ -102,7 +102,10 @@ class MemoryAccess(tf.keras.layers.Layer):
                 num_write_gates +
                 num_read_modes
         )
-
+        tf.print(f"Calculating interface size: {interface_size} = "
+                 f"{num_read_keys} + {num_read_strengths} + {num_write_keys} + "
+                 f"{num_write_strengths} + {num_erase_vectors} + {num_write_vectors} + "
+                 f"{num_free_gates} + {num_allocation_gates} + {num_write_gates} + {num_read_modes}")
         return interface_size
 
     def call(self, inputs: Dict[str, Any], training: bool = False):
@@ -113,6 +116,7 @@ class MemoryAccess(tf.keras.layers.Layer):
         cached_memory_state = self.cache_manager.read_from_cache('memory_state')
         if cached_memory_state is not None:
             prev_state = cached_memory_state
+            tf.print("Loaded cached memory state.")
 
         tf.debugging.assert_equal(
             tf.shape(controller_output)[-1],
@@ -140,6 +144,10 @@ class MemoryAccess(tf.keras.layers.Layer):
             interfaces = self._parse_interface_vector(interface_vector)
             read_words, final_state = self._process_time_step(prev_state, interfaces, training)
 
+        tf.print("Final state memory:", final_state.memory)
+        tf.print("Final state read_weights:", final_state.read_weights)
+        tf.print("Final state write_weights:", final_state.write_weights)
+
         # 更新后的内存状态持久化到缓存
         self.cache_manager.write_to_cache('memory_state', final_state)
 
@@ -153,6 +161,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             strengths=interfaces['write_strengths'],
             memory=prev_state.memory
         )
+        tf.print("Write content weights:", write_content_weights)
 
         # Compute write weights
         write_weights = self.write_weight_calculator.compute(
@@ -162,6 +171,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             prev_usage=prev_state.usage,
             training=training
         )
+        tf.print("Write weights:", write_weights)
 
         # Update usage
         usage = self.usage_updater.update_usage(
@@ -171,6 +181,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             prev_usage=prev_state.usage,
             training=training
         )
+        tf.print("Updated usage:", usage)
 
         # Update memory
         memory = self.memory_updater.update_memory(
@@ -179,6 +190,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             erase_vectors=interfaces['erase_vectors'],
             write_vectors=interfaces['write_vectors']
         )
+        tf.print("Updated memory:", memory)
 
         # Update linkage
         linkage = self.temporal_linkage_updater.update_linkage(
@@ -186,6 +198,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             prev_linkage=prev_state.linkage,
             training=training
         )
+        tf.print("Updated linkage:", linkage)
 
         # Compute read content weights
         read_content_weights = self.content_weight_calculator.compute(
@@ -193,6 +206,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             strengths=interfaces['read_strengths'],
             memory=memory
         )
+        tf.print("Read content weights:", read_content_weights)
 
         # Compute read weights
         read_weights = self.read_weight_calculator.compute(
@@ -202,9 +216,11 @@ class MemoryAccess(tf.keras.layers.Layer):
             read_mode=interfaces['read_modes'],
             training=training
         )
+        tf.print("Read weights:", read_weights)
 
         # Read from memory
         read_words = tf.matmul(read_weights, memory)  # Shape: [batch_size, num_reads, word_size]
+        tf.print("Read words:", read_words)
 
         # Prepare the next state
         next_state = BatchAccessState(
@@ -307,27 +323,21 @@ class MemoryAccess(tf.keras.layers.Layer):
         )
 
     def query_history(self, query_vector: tf.Tensor, top_k: int = 2) -> tf.Tensor:
-        """
-        基于与当前输入内容相关性查询历史记录。
+        # 获取当前内存状态
+        state = self.cache_manager.read_from_cache('memory_state')
+        if state is None:
+            raise ValueError("No memory state found in cache.")
 
-        Args:
-            query_vector (tf.Tensor): [batch_size, word_size]
-            top_k (int): 要检索的相关记录数量
+        query_norm = tf.nn.l2_normalize(query_vector, axis=-1)
+        memory_norm = tf.nn.l2_normalize(state.memory, axis=-1)
 
-        Returns:
-            related_records (tf.Tensor): [batch_size, top_k, word_size]
-        """
         # 计算余弦相似度
-        query_norm = tf.nn.l2_normalize(query_vector, axis=-1)  # [batch_size, word_size]
-        memory_norm = tf.nn.l2_normalize(self.state.memory, axis=-1)  # [batch_size, memory_size, word_size]
-
-        # 计算相似度
-        similarity = tf.einsum('bw,mw->bm', query_norm, memory_norm)  # [batch_size, memory_size]
+        similarity = tf.einsum('bw,bmw->bm', query_norm, memory_norm)  # [batch_size, memory_size]
 
         # 获取 top_k 相似度最高的内存索引
         top_k_values, top_k_indices = tf.nn.top_k(similarity, k=top_k, sorted=True)  # [batch_size, top_k]
 
         # 根据索引从 memory 中检索相关记录
-        related_records = tf.gather(self.state.memory, top_k_indices, batch_dims=1)  # [batch_size, top_k, word_size]
+        related_records = tf.gather(state.memory, top_k_indices, batch_dims=1)  # [batch_size, top_k, word_size]
 
         return related_records
