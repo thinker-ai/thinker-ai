@@ -35,6 +35,9 @@ class MemoryAccess(tf.keras.layers.Layer):
         # Calculate the size of the interface vector
         self.interface_size = self._calculate_interface_size()
 
+        # 计算并存储接口向量各部分的索引
+        self.interface_vector_indices = self._calculate_interface_vector_indices()
+
         # Define the interface layer, mapping controller output to interface vector
         self.interface_layer = tf.keras.layers.Dense(
             units=self.interface_size,
@@ -56,7 +59,7 @@ class MemoryAccess(tf.keras.layers.Layer):
                 word_size=self.word_size
             )
 
-        factory = ComponentFactory(
+        self.component_factory = ComponentFactory(
             config=config,
             memory_size=self.memory_size,
             word_size=self.word_size,
@@ -64,7 +67,7 @@ class MemoryAccess(tf.keras.layers.Layer):
             num_writes=self.num_writes
         )
 
-        components = factory.create_all_components()
+        components = self.component_factory.create_all_components()
 
         # Ensure all components are properly initialized
         self.content_weight_calculator = components.get('content_weight_calculator')
@@ -108,6 +111,66 @@ class MemoryAccess(tf.keras.layers.Layer):
                  f"{num_write_strengths} + {num_erase_vectors} + {num_write_vectors} + "
                  f"{num_free_gates} + {num_allocation_gates} + {num_write_gates} + {num_read_modes}")
         return interface_size
+
+    def _calculate_interface_vector_indices(self):
+        indices = {}
+        idx = 0
+        r = self.num_reads
+        w = self.num_writes
+        W = self.word_size
+        R = self.num_read_modes
+
+        # Read keys
+        indices['read_keys_start'] = idx
+        indices['read_keys_end'] = idx + r * W
+        idx = indices['read_keys_end']
+
+        # Read strengths
+        indices['read_strengths_start'] = idx
+        indices['read_strengths_end'] = idx + r
+        idx = indices['read_strengths_end']
+
+        # Write keys
+        indices['write_keys_start'] = idx
+        indices['write_keys_end'] = idx + w * W
+        idx = indices['write_keys_end']
+
+        # Write strengths
+        indices['write_strengths_start'] = idx
+        indices['write_strengths_end'] = idx + w
+        idx = indices['write_strengths_end']
+
+        # Erase vectors
+        indices['erase_vectors_start'] = idx
+        indices['erase_vectors_end'] = idx + w * W
+        idx = indices['erase_vectors_end']
+
+        # Write vectors
+        indices['write_vectors_start'] = idx
+        indices['write_vectors_end'] = idx + w * W
+        idx = indices['write_vectors_end']
+
+        # Free gates
+        indices['free_gates_start'] = idx
+        indices['free_gates_end'] = idx + r
+        idx = indices['free_gates_end']
+
+        # Allocation gates
+        indices['allocation_gates_start'] = idx
+        indices['allocation_gates_end'] = idx + w
+        idx = indices['allocation_gates_end']
+
+        # Write gates
+        indices['write_gates_start'] = idx
+        indices['write_gates_end'] = idx + w
+        idx = indices['write_gates_end']
+
+        # Read modes
+        indices['read_modes_start'] = idx
+        indices['read_modes_end'] = idx + r * R
+        idx = indices['read_modes_end']
+
+        return indices
 
     def call(self, inputs: Dict[str, Any], training: bool = False):
         controller_output = inputs['inputs']
@@ -327,26 +390,44 @@ class MemoryAccess(tf.keras.layers.Layer):
             read_words=read_words
         )
 
-    def query_history(self, query_vector: tf.Tensor, top_k: int = 2) -> tf.Tensor:
-        # 获取当前内存状态
-        state = self.cache_manager.read_from_cache('memory_state')
-        if state is None:
-            raise ValueError("No memory state found in cache.")
-        # 添加形状断言
-        tf.debugging.assert_rank(query_vector, 2, message="query_vector must be rank 2")
-        tf.debugging.assert_equal(tf.shape(query_vector)[0], tf.shape(state.memory)[0],
-                                  message="batch size of query_vector must match memory")
+    def query_history(self, query_vector: tf.Tensor, top_k: int = 1, read_strength: float = 10.0):
+        """
+        查询记忆中与查询向量相似的记录。
 
-        query_norm = tf.nn.l2_normalize(query_vector, axis=-1)
-        memory_norm = tf.nn.l2_normalize(state.memory, axis=-1)
+        参数：
+            query_vector: [batch_size, word_size]
+            top_k: int，返回的记录数量
+            read_strength: float，内容寻址的强度
 
-        # 计算余弦相似度
-        similarity = tf.einsum('bw,bmw->bm', query_norm, memory_norm)  # [batch_size, memory_size]
+        返回：
+            related_records: [batch_size, top_k, word_size]
+        """
+        batch_size = tf.shape(query_vector)[0]
 
-        # 获取 top_k 相似度最高的内存索引
-        top_k_values, top_k_indices = tf.nn.top_k(similarity, k=top_k, sorted=True)  # [batch_size, top_k]
+        # 创建接口向量
+        indices = self.interface_vector_indices
 
-        # 根据索引从 memory 中检索相关记录
-        related_records = tf.gather(state.memory, top_k_indices, batch_dims=1)  # [batch_size, top_k, word_size]
+        # 读取键
+        read_keys = tf.reshape(query_vector, [batch_size, self.num_reads * self.word_size])  # [batch_size, r * W]
 
-        return related_records
+        # 读取强度
+        read_strengths = tf.fill([batch_size, self.num_reads], read_strength)  # [batch_size, r]
+
+        # 其余部分为零
+        remaining_size = self.interface_size - indices['read_strengths_end']
+        zeros_remaining = tf.zeros([batch_size, remaining_size], dtype=tf.float32)
+
+        # 构建接口向量
+        interface_vector = tf.concat([read_keys, read_strengths, zeros_remaining], axis=1)  # [batch_size, interface_size]
+
+        # 解析接口向量
+        interfaces = self._parse_interface_vector(interface_vector)
+
+        # 获取初始状态
+        prev_state = self.get_initial_state(batch_size)
+
+        # 处理时间步
+        read_words, final_state = self._process_time_step(prev_state, interfaces, training=False)
+
+        # 提取 top_k 个读取内容
+        return read_words[:, :top_k, :]

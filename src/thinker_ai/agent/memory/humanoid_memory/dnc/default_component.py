@@ -47,7 +47,6 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
     def __init__(self, word_size: int, epsilon: float = 1e-6):
         self._word_size = word_size
         self._epsilon = epsilon
-
     def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
         """
         计算内容权重。
@@ -189,7 +188,7 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         # 计算写入权重
         write_weights = write_gate[:, :, tf.newaxis] * (
                 allocation_gate[:, :, tf.newaxis] * allocation_weights +
-                (1 - allocation_gate[:, :, tf.newaxis]) * write_content_weights_normalized
+                (1 - allocation_gate[:, :, tf.newaxis]) * write_content_weights_normalized # 是否应该换成write_content_weights？
         )  # [batch_size, num_writes, memory_size]
 
         return write_weights  # [batch_size, num_writes, memory_size]
