@@ -1,3 +1,4 @@
+# memory_access.py
 import tensorflow as tf
 from typing import Optional, Dict, Any, Tuple
 from collections import namedtuple
@@ -151,7 +152,11 @@ class MemoryAccess(tf.keras.layers.Layer):
         # 更新后的内存状态持久化到缓存
         self.cache_manager.write_to_cache('memory_state', final_state)
 
-        return {'read_words': read_words, 'final_state': final_state}
+        return {
+            'read_words': read_words,
+            'final_state': final_state,
+            'write_weights': final_state.write_weights  # 添加这一行
+        }
 
     def _process_time_step(self, prev_state: BatchAccessState,
                            interfaces: Dict[str, tf.Tensor], training: bool) -> Tuple[tf.Tensor, BatchAccessState]:
@@ -327,6 +332,10 @@ class MemoryAccess(tf.keras.layers.Layer):
         state = self.cache_manager.read_from_cache('memory_state')
         if state is None:
             raise ValueError("No memory state found in cache.")
+        # 添加形状断言
+        tf.debugging.assert_rank(query_vector, 2, message="query_vector must be rank 2")
+        tf.debugging.assert_equal(tf.shape(query_vector)[0], tf.shape(state.memory)[0],
+                                  message="batch size of query_vector must match memory")
 
         query_norm = tf.nn.l2_normalize(query_vector, axis=-1)
         memory_norm = tf.nn.l2_normalize(state.memory, axis=-1)
