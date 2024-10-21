@@ -121,7 +121,7 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
             self,
             memory_size: int,
             num_writes: int,
-            temperature: float = 1.0  # 添加温度参数以控制 softmax 的锐度
+            epsilon: float = 1e-6
     ):
         if memory_size <= 0:
             raise ValueError("memory_size must be greater than 0.")
@@ -129,12 +129,11 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
             raise ValueError("num_writes must be greater than 0.")
         self.memory_size = memory_size
         self.num_writes = num_writes
-        self.temperature = temperature
-        self.epsilon = 1e-6
+        self.epsilon = epsilon
 
     def compute_allocation_weights(self, usage: tf.Tensor) -> tf.Tensor:
         """
-        使用 softmax 基于反使用率计算分配权重，确保可微分。
+        按照 DNC 论文计算分配权重。
 
         Args:
             usage: [batch_size, memory_size]
@@ -142,18 +141,48 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         Returns:
             allocation_weights: [batch_size, num_writes, memory_size]
         """
-        # 计算反使用率
-        inverse_usage = 1.0 - usage  # [batch_size, memory_size]
+        batch_size = tf.shape(usage)[0]
 
-        # 应用 softmax 计算分配权重
-        allocation_weights = tf.nn.softmax(inverse_usage / self.temperature, axis=-1)  # [batch_size, memory_size]
+        # 确保使用率在 [0, 1] 范围内
+        usage = tf.clip_by_value(usage, 0.0, 1.0)
+
+        # 判断是否所有内存都已被使用
+        is_all_used = tf.reduce_all(tf.greater_equal(usage, 1.0 - self.epsilon), axis=1)  # [batch_size]
+
+        # 计算 allocation_weights
+        sorted_usage, free_list = tf.nn.top_k(-usage, k=self.memory_size)
+        sorted_usage = -sorted_usage  # [batch_size, memory_size]
+        sorted_nonusage = 1 - sorted_usage  # [batch_size, memory_size]
+
+        # 处理 sorted_nonusage 中接近于零的值
+        sorted_nonusage = tf.where(sorted_nonusage <= self.epsilon, tf.zeros_like(sorted_nonusage), sorted_nonusage)
+
+        cumprod = tf.math.cumprod(sorted_nonusage + self.epsilon, axis=1, exclusive=True)  # [batch_size, memory_size]
+        allocation_weights_sorted = sorted_nonusage * cumprod  # [batch_size, memory_size]
+
+        # 将 allocation_weights_sorted 映射回原来的顺序
+        inverted_indices = tf.argsort(free_list, axis=1)
+        allocation_weights = tf.gather(allocation_weights_sorted, inverted_indices, batch_dims=1)  # [batch_size, memory_size]
+
+        # 归一化 allocation_weights
+        allocation_weights_sum = tf.reduce_sum(allocation_weights, axis=1, keepdims=True) + self.epsilon  # [batch_size, 1]
+        allocation_weights_normalized = allocation_weights / allocation_weights_sum  # [batch_size, memory_size]
+
+        # 当所有内存已被使用时，将 allocation_weights 设置为零
+        is_all_used = tf.reshape(is_all_used, [batch_size, 1])  # [batch_size, 1]
+        is_all_used_broadcast = tf.tile(is_all_used, [1, self.memory_size])  # [batch_size, memory_size]
+
+        allocation_weights_normalized = tf.where(
+            is_all_used_broadcast,
+            tf.zeros_like(allocation_weights_normalized),
+            allocation_weights_normalized
+        )  # [batch_size, memory_size]
 
         # 扩展维度以匹配 num_writes
-        allocation_weights = tf.expand_dims(allocation_weights, axis=1)  # [batch_size, 1, memory_size]
-        allocation_weights = tf.tile(allocation_weights,
-                                     [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
+        allocation_weights_normalized = tf.expand_dims(allocation_weights_normalized, axis=1)  # [batch_size, 1, memory_size]
+        allocation_weights_normalized = tf.tile(allocation_weights_normalized, [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
 
-        return allocation_weights  # [batch_size, num_writes, memory_size]
+        return allocation_weights_normalized  # [batch_size, num_writes, memory_size]
 
     def compute(self, write_content_weights: tf.Tensor, allocation_gate: tf.Tensor,
                 write_gate: tf.Tensor, prev_usage: tf.Tensor, training: bool) -> tf.Tensor:
@@ -188,10 +217,11 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         # 计算写入权重
         write_weights = write_gate[:, :, tf.newaxis] * (
                 allocation_gate[:, :, tf.newaxis] * allocation_weights +
-                (1 - allocation_gate[:, :, tf.newaxis]) * write_content_weights_normalized # 是否应该换成write_content_weights？
+                (1 - allocation_gate[:, :, tf.newaxis]) * write_content_weights_normalized
         )  # [batch_size, num_writes, memory_size]
 
         return write_weights  # [batch_size, num_writes, memory_size]
+
 
 
 class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
