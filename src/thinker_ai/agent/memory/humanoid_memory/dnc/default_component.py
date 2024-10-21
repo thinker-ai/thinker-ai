@@ -282,7 +282,8 @@ class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
         if forward:
             weights = tf.matmul(read_weights, link)
         else:
-            weights = tf.matmul(read_weights, tf.transpose(link, perm=[0, 2, 1]))
+            link_transposed = tf.transpose(link, perm=[0, 2, 1])  # [batch_size, memory_size, memory_size]
+            weights = tf.matmul(read_weights, link_transposed)  # [batch_size, num_reads, memory_size]
         return weights
 
     def state_size(self) -> Dict[str, tf.TensorShape]:
@@ -361,7 +362,7 @@ class DefaultMemoryUpdater(MemoryUpdater):
 
         # Update memory
         memory_updated = memory * erase_term + add_term
-        return memory_updated
+        return memory_updated # [batch_size, memory_size, word_size]
 
 
 def get_default_config(memory_size, num_writes, num_reads, word_size) -> Dict[str, Any]:

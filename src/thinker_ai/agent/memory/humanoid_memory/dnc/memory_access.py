@@ -403,7 +403,6 @@ class MemoryAccess(tf.keras.layers.Layer):
             related_records: [batch_size, top_k, word_size]
         """
         batch_size = tf.shape(query_vector)[0]
-
         # 创建接口向量
         indices = self.interface_vector_indices
 
