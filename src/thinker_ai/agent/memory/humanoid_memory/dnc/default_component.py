@@ -47,6 +47,7 @@ class DefaultContentWeightCalculator(ContentWeightCalculator):
     def __init__(self, word_size: int, epsilon: float = 1e-6):
         self._word_size = word_size
         self._epsilon = epsilon
+
     def compute(self, keys: tf.Tensor, strengths: tf.Tensor, memory: tf.Tensor) -> tf.Tensor:
         """
         计算内容权重。
@@ -162,10 +163,12 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
 
         # 将 allocation_weights_sorted 映射回原来的顺序
         inverted_indices = tf.argsort(free_list, axis=1)
-        allocation_weights = tf.gather(allocation_weights_sorted, inverted_indices, batch_dims=1)  # [batch_size, memory_size]
+        allocation_weights = tf.gather(allocation_weights_sorted, inverted_indices,
+                                       batch_dims=1)  # [batch_size, memory_size]
 
         # 归一化 allocation_weights
-        allocation_weights_sum = tf.reduce_sum(allocation_weights, axis=1, keepdims=True) + self.epsilon  # [batch_size, 1]
+        allocation_weights_sum = tf.reduce_sum(allocation_weights, axis=1,
+                                               keepdims=True) + self.epsilon  # [batch_size, 1]
         allocation_weights_normalized = allocation_weights / allocation_weights_sum  # [batch_size, memory_size]
 
         # 当所有内存已被使用时，将 allocation_weights 设置为零
@@ -179,8 +182,10 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         )  # [batch_size, memory_size]
 
         # 扩展维度以匹配 num_writes
-        allocation_weights_normalized = tf.expand_dims(allocation_weights_normalized, axis=1)  # [batch_size, 1, memory_size]
-        allocation_weights_normalized = tf.tile(allocation_weights_normalized, [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
+        allocation_weights_normalized = tf.expand_dims(allocation_weights_normalized,
+                                                       axis=1)  # [batch_size, 1, memory_size]
+        allocation_weights_normalized = tf.tile(allocation_weights_normalized,
+                                                [1, self.num_writes, 1])  # [batch_size, num_writes, memory_size]
 
         return allocation_weights_normalized  # [batch_size, num_writes, memory_size]
 
@@ -221,7 +226,6 @@ class DefaultWriteWeightCalculator(WriteWeightCalculator):
         )  # [batch_size, num_writes, memory_size]
 
         return write_weights  # [batch_size, num_writes, memory_size]
-
 
 
 class DefaultTemporalLinkageUpdater(TemporalLinkageUpdater):
@@ -349,11 +353,11 @@ class DefaultMemoryUpdater(MemoryUpdater):
 
         # Compute the erase and add matrices
         w = tf.expand_dims(write_weights, -1)  # [batch_size, num_writes, memory_size, 1]
-        e = tf.expand_dims(erase_vectors, 2)   # [batch_size, num_writes, 1, word_size]
-        a = tf.expand_dims(write_vectors, 2)   # [batch_size, num_writes, 1, word_size]
+        e = tf.expand_dims(erase_vectors, 2)  # [batch_size, num_writes, 1, word_size]
+        a = tf.expand_dims(write_vectors, 2)  # [batch_size, num_writes, 1, word_size]
 
         erase_term = tf.reduce_prod(1 - w * e, axis=1)  # [batch_size, memory_size, word_size]
-        add_term = tf.reduce_sum(w * a, axis=1)         # [batch_size, memory_size, word_size]
+        add_term = tf.reduce_sum(w * a, axis=1)  # [batch_size, memory_size, word_size]
 
         # Update memory
         memory_updated = memory * erase_term + add_term
@@ -366,7 +370,7 @@ def get_default_config(memory_size, num_writes, num_reads, word_size) -> Dict[st
             'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultWriteWeightCalculator',
             'memory_size': memory_size,  # 动态设置
             'num_writes': num_writes,  # 动态设置
-            'temperature': 1.0  # 添加温度参数
+            'epsilon': 1e-6  # 保持不变
         },
         'ReadWeightCalculator': {
             'class_path': 'thinker_ai.agent.memory.humanoid_memory.dnc.default_component.DefaultReadWeightCalculator',
