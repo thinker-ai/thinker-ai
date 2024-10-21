@@ -65,7 +65,6 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
 
     def _build_controller_output(self, write_vector=None, erase_logit=None, write_strength=10.0,
                                  read_content_keys=None, read_strengths=None, read_modes=None,
-                                 write_content_keys=None, write_content_strengths=None,
                                  allocation_gate=None, write_gate=None,
                                  free_gates=None):
         """
@@ -84,12 +83,32 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
 
         indices = self.memory_access.interface_vector_indices
 
-        # 设置 write_vectors 部分
+        # 设置 read_keys 部分
+        if read_content_keys is not None:
+            read_keys_start = indices['read_keys_start']
+            read_keys_end = indices['read_keys_end']
+            read_keys_flat = read_content_keys.reshape(batch_size, -1)
+            controller_output[:, read_keys_start:read_keys_end] = read_keys_flat
+
+        # 设置 read_strengths 部分
+        if read_strengths is not None:
+            read_strengths_start = indices['read_strengths_start']
+            read_strengths_end = indices['read_strengths_end']
+            read_strengths_flat = read_strengths.reshape(batch_size, -1)
+            controller_output[:, read_strengths_start:read_strengths_end] = read_strengths_flat
+
+        # 设置 write_keys 部分
         if write_vector is not None:
-            write_vectors_start = indices['write_vectors_start']
-            write_vectors_end = indices['write_vectors_end']
-            write_vector_flat = write_vector.reshape(batch_size, -1)
-            controller_output[:, write_vectors_start:write_vectors_end] = write_vector_flat
+            write_keys_start = indices['write_keys_start']
+            write_keys_end = indices['write_keys_end']
+            write_keys_flat = write_vector.reshape(batch_size, -1)
+            controller_output[:, write_keys_start:write_keys_end] = write_keys_flat
+
+        # 设置 write_strengths 部分
+        if write_strength is not None:
+            write_strengths_start = indices['write_strengths_start']
+            write_strengths_end = indices['write_strengths_end']
+            controller_output[:, write_strengths_start:write_strengths_end] = write_strength
 
         # 设置 erase_vectors 部分
         if erase_logit is not None:
@@ -99,11 +118,19 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
                                         dtype=np.float32)
             controller_output[:, erase_vectors_start:erase_vectors_end] = erase_vector_flat
 
-        # 设置 write_strengths 部分
-        if write_strength is not None:
-            write_strengths_start = indices['write_strengths_start']
-            write_strengths_end = indices['write_strengths_end']
-            controller_output[:, write_strengths_start:write_strengths_end] = write_strength
+        # 设置 write_vectors 部分
+        if write_vector is not None:
+            write_vectors_start = indices['write_vectors_start']
+            write_vectors_end = indices['write_vectors_end']
+            write_vectors_flat = write_vector.reshape(batch_size, -1)
+            controller_output[:, write_vectors_start:write_vectors_end] = write_vectors_flat
+
+        # 设置 free_gates 部分
+        if free_gates is not None:
+            free_gates_start = indices['free_gates_start']
+            free_gates_end = indices['free_gates_end']
+            free_gates_flat = free_gates.reshape(batch_size, -1)
+            controller_output[:, free_gates_start:free_gates_end] = free_gates_flat
 
         # 设置 allocation_gates 部分
         if allocation_gate is not None:
@@ -119,20 +146,6 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
             write_gate_flat = write_gate.reshape(batch_size, -1)
             controller_output[:, write_gates_start:write_gates_end] = write_gate_flat
 
-        # 设置 read_content_keys 部分
-        if read_content_keys is not None:
-            read_keys_start = indices['read_keys_start']
-            read_keys_end = indices['read_keys_end']
-            read_keys_flat = read_content_keys.reshape(batch_size, -1)
-            controller_output[:, read_keys_start:read_keys_end] = read_keys_flat
-
-        # 设置 read_strengths 部分
-        if read_strengths is not None:
-            read_strengths_start = indices['read_strengths_start']
-            read_strengths_end = indices['read_strengths_end']
-            read_strengths_flat = read_strengths.reshape(batch_size, -1)
-            controller_output[:, read_strengths_start:read_strengths_end] = read_strengths_flat
-
         # 设置 read_modes 部分
         if read_modes is not None:
             read_modes_start = indices['read_modes_start']
@@ -147,30 +160,18 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         内容读取与写入：
         验证写入的内容能够被准确读取。
         """
+        batch_size = self.batch_size
 
-    def test_user_memory_isolation(self):
-        """
-        测试不同用户的内存是否相互隔离。
-        """
+        # 构建写入内容
+        write_vector = np.random.rand(batch_size, self.num_writes, self.word_size).astype(np.float32)
 
-    def test_full_erase(self):
-        """
-        全部擦除 (erase_vector = 1.0)：
-        验证内存被全部擦除，旧内容被新内容覆盖。
-        """
-        # 构建初始的 write_vector，用于写入初始内容
-        initial_write_vector = np.random.rand(self.batch_size, self.num_writes, self.word_size).astype(np.float32)
-
-        # 设置 erase_logit 为非常大的正值，使 erase_vector = sigmoid(large_value) ≈ 1.0
-        erase_logit = 1000.0  # 非常大的值
-
-        # 构建 controller_output，使得 interface_vector 包含所需的 write_vector 和 erase_vector
+        # 构建 controller_output，使得 interface_vector 包含所需的 write_vector 和其他必要部分
         controller_output = self._build_controller_output(
-            write_vector=initial_write_vector,
-            erase_logit=erase_logit,
+            write_vector=write_vector,
+            erase_logit=-1000.0,  # 非常小的值，确保 erase_vector ≈ 0.0
             write_strength=10.0,
-            allocation_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32),
-            write_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32)
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
         )
 
         # 将 controller_output 转换为 Tensor
@@ -186,31 +187,217 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         # 获取更新后的 memory
         updated_memory = outputs['final_state'].memory.numpy()
 
-        # 由于 erase_vector ≈ 1.0，内存应该被完全擦除，然后写入新的 write_vector
-        # 计算预期的内存
-        expected_memory = np.zeros((self.batch_size, self.memory_size, self.word_size), dtype=np.float32)
+        # 获取 read_weights 和 write_weights
+        read_weights = outputs['final_state'].read_weights.numpy()  # [batch_size, num_reads, memory_size]
         write_weights = outputs['write_weights'].numpy()  # [batch_size, num_writes, memory_size]
-        for b in range(self.batch_size):
+
+        # 计算预期的内存内容
+        expected_memory = np.zeros((batch_size, self.memory_size, self.word_size), dtype=np.float32)
+        for b in range(batch_size):
             for w in range(self.num_writes):
                 for i in range(self.memory_size):
                     ww = write_weights[b, w, i]  # 写入权重
-                    expected_memory[b, i, :] += ww * initial_write_vector[b, w, :]  # 写入新的内容
+                    expected_memory[b, i, :] += ww * write_vector[b, w, :]
 
-        # 验证 updated_memory 与 expected_memory 近似相等
+        # 验证更新后的内存与预期内存接近
         self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
 
-    def test_partial_erase(self):
+        # 验证读取内容是否与写入内容匹配
+        # 读取内容应等于 read_weights * memory 的加权和
+        read_words = outputs['read_words'].numpy()
+        for b in range(batch_size):
+            for r in range(self.num_reads):
+                # 计算实际读取的内容
+                actual_read = np.dot(read_weights[b, r, :], updated_memory[b, :, :])  # shape (word_size,)
+                # 计算预期的读取内容
+                # 应考虑 read_weights 对 write_weights 的加权
+                weighted_sum = np.sum(write_weights[b, 0, :] * read_weights[b, r, :])
+                expected_read = write_vector[b, 0, :] * weighted_sum
+                self.assertAllClose(read_words[b, r, :], expected_read, atol=1e-5)
+
+    def test_user_memory_isolation(self):
         """
-        部分擦除 (erase_vector = 0.5)：
-        验证内存被部分擦除，旧内容与新内容的混合。
+        测试不同用户的内存是否相互隔离。
         """
+        batch_size = self.batch_size
+
+        # 为每个用户定义不同的写入内容
+        write_vector_user1 = np.ones((batch_size, self.num_writes, self.word_size), dtype=np.float32)
+        write_vector_user2 = np.ones((batch_size, self.num_writes, self.word_size), dtype=np.float32) * 2.0
+
+        # 用户1写入
+        controller_output_user1 = self._build_controller_output(
+            write_vector=write_vector_user1,
+            erase_logit=-1000.0,  # erase_vector ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_user1_tensor = tf.convert_to_tensor(controller_output_user1)
+
+        inputs_user1 = {
+            'inputs': controller_output_user1_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs_user1 = self.memory_access(inputs_user1)
+        updated_memory_user1 = outputs_user1['final_state'].memory.numpy()
+        write_weights_user1 = outputs_user1['write_weights'].numpy()
+
+        # 验证用户1的写入内容
+        expected_memory_user1 = np.einsum('bwm,bwd->bmd', write_weights_user1, write_vector_user1)
+        self.assertAllClose(updated_memory_user1, expected_memory_user1, atol=1e-5)
+
+        # 用户2写入
+        controller_output_user2 = self._build_controller_output(
+            write_vector=write_vector_user2,
+            erase_logit=-1000.0,  # erase_vector ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_user2_tensor = tf.convert_to_tensor(controller_output_user2)
+
+        inputs_user2 = {
+            'inputs': controller_output_user2_tensor,
+            'prev_state': outputs_user1['final_state']
+        }
+        outputs_user2 = self.memory_access(inputs_user2)
+        updated_memory_user2 = outputs_user2['final_state'].memory.numpy()
+        write_weights_user2 = outputs_user2['write_weights'].numpy()
+
+        # 验证用户2的写入内容
+        expected_memory_user2 = np.einsum('bwm,bwd->bmd', write_weights_user2, write_vector_user2)
+        self.assertAllClose(updated_memory_user2, expected_memory_user2, atol=1e-5)
+
+        # 验证用户1的内存未被用户2 的写入影响
+        # 重新计算用户1的预期内存
+        expected_memory_user1_after_user2 = np.einsum('bwm,bwd->bmd', write_weights_user1, write_vector_user1)
+        self.assertAllClose(updated_memory_user1, expected_memory_user1_after_user2, atol=1e-5)
+
+    def test_full_erase(self):
+        """
+        完全擦除 (erase_vector = 1)：
+        验证内存被完全擦除，只保留新写入的内容。
+        """
+        batch_size = self.batch_size
+
+        # 初始化写入内容
+        initial_write_vector = np.random.rand(batch_size, self.num_writes, self.word_size).astype(np.float32)
+
+        # 首次写入初始内容，erase_vector ≈ 0.0
+        controller_output_initial = self._build_controller_output(
+            write_vector=initial_write_vector,
+            erase_logit=-1000.0,  # erase_vector ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_initial_tensor = tf.convert_to_tensor(controller_output_initial)
+
+        inputs_initial = {
+            'inputs': controller_output_initial_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs_initial = self.memory_access(inputs_initial)
+        updated_memory_initial = outputs_initial['final_state'].memory.numpy()
+        write_weights_initial = outputs_initial['write_weights'].numpy()
+
+        # 确认初始写入已正确应用
+        expected_memory_initial = np.einsum('bwm,bwd->bmd', write_weights_initial, initial_write_vector)
+        self.assertAllClose(updated_memory_initial, expected_memory_initial, atol=1e-5)
+
+        # 构建完全擦除的写入内容
+        write_vector_new = np.random.rand(batch_size, self.num_writes, self.word_size).astype(np.float32)
+        erase_logit = 1e9  # 使用非常大的正数近似 +inf
+
+        # 构建 controller_output，使得 interface_vector 包含所需的 write_vector_new 和 erase_vector=1.0
+        controller_output_full_erase = self._build_controller_output(
+            write_vector=write_vector_new,
+            erase_logit=erase_logit,
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_full_erase_tensor = tf.convert_to_tensor(controller_output_full_erase)
+
+        # 调用 memory_access 进行完全擦除并写入新内容
+        inputs_full_erase = {
+            'inputs': controller_output_full_erase_tensor,
+            'prev_state': outputs_initial['final_state']
+        }
+        outputs_full_erase = self.memory_access(inputs_full_erase)
+        updated_memory_full_erase = outputs_full_erase['final_state'].memory.numpy()
+        write_weights_new = outputs_full_erase['write_weights'].numpy()
+
+        # 预期内存内容应仅为 write_weights_new * write_vector_new
+        expected_memory = np.einsum('bwm,bwd->bmd', write_weights_new, write_vector_new)
+
+        # 验证内存内容接近预期
+        self.assertAllClose(updated_memory_full_erase, expected_memory, atol=1e-5)
 
     def test_no_erase(self):
         """
         不擦除 (erase_vector = 0)：
         验证内存不被擦除，旧内容与新内容相加。
         """
+        batch_size = self.batch_size
 
+        # 初始化写入内容
+        initial_write_vector = np.random.rand(batch_size, self.num_writes, self.word_size).astype(np.float32)
+
+        # 首次写入初始内容，erase_vector = 0.0
+        controller_output_initial = self._build_controller_output(
+            write_vector=initial_write_vector,
+            erase_logit=-10000.0,  # erase_vector ≈ sigmoid(-10000) ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_initial_tensor = tf.convert_to_tensor(controller_output_initial)
+
+        inputs_initial = {
+            'inputs': controller_output_initial_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs_initial = self.memory_access(inputs_initial)
+        updated_memory_initial = outputs_initial['final_state'].memory.numpy()
+        write_weights_initial = outputs_initial['write_weights'].numpy()
+
+        # 构建不擦除的写入内容
+        write_vector_new = np.random.rand(batch_size, self.num_writes, self.word_size).astype(np.float32)
+        erase_logit = -10000.0  # erase_vector ≈ 0.0
+
+        # 构建 controller_output，使得 interface_vector 包含所需的 write_vector_new 和 erase_vector=0.0
+        controller_output_no_erase = self._build_controller_output(
+            write_vector=write_vector_new,
+            erase_logit=erase_logit,
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_no_erase_tensor = tf.convert_to_tensor(controller_output_no_erase)
+
+        # 调用 memory_access 进行不擦除并写入新内容
+        inputs_no_erase = {
+            'inputs': controller_output_no_erase_tensor,
+            'prev_state': outputs_initial['final_state']
+        }
+        outputs_no_erase = self.memory_access(inputs_no_erase)
+        updated_memory_no_erase = outputs_no_erase['final_state'].memory.numpy()
+        write_weights_new = outputs_no_erase['write_weights'].numpy()
+
+        # 预期内存内容应为初始内容 + write_weights_new * write_vector_new
+        # 使用 np.einsum 进行批量矩阵乘法
+        expected_memory = updated_memory_initial + np.einsum('bwm,bwd->bmd', write_weights_new, write_vector_new)
+
+        # 或者，使用循环方法（如果 np.einsum 不适用）
+        # expected_memory = updated_memory_initial.copy()
+        # for b in range(batch_size):
+        #     for w in range(self.num_writes):
+        #         expected_memory[b] += write_weights_new[b, w, :, np.newaxis] * write_vector_new[b, w, :]
+
+        # 验证内存内容接近预期
+        self.assertAllClose(updated_memory_no_erase, expected_memory, atol=1e-5)
 
     def test_parse_interface_vector(self):
         """
@@ -231,7 +418,122 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         self.assertEqual(parsed['free_gates'].shape, [batch_size, self.num_reads])
         self.assertEqual(parsed['allocation_gates'].shape, [batch_size, self.num_writes])
         self.assertEqual(parsed['write_gates'].shape, [batch_size, self.num_writes])
-        self.assertEqual(parsed['read_modes'].shape, [batch_size, self.num_reads, 3])
+        self.assertEqual(parsed['read_modes'].shape, [batch_size, self.num_reads, self.num_read_modes])
+
+        # 进一步验证解析后的值的合理性
+        # 例如，read_modes 应该是 softmax 后的概率分布
+        read_modes_sum = tf.reduce_sum(parsed['read_modes'], axis=-1)
+        self.assertAllClose(read_modes_sum, tf.ones_like(read_modes_sum), atol=1e-5)
+
+    def test_batch_independence(self):
+        """
+        测试批次中的每个样本在内存操作中是独立的。
+        """
+        batch_size = 2  # 使用小批次
+        num_writes = self.num_writes
+        word_size = self.word_size
+        memory_size = self.memory_size
+
+        # 为每个批次样本定义不同的写入内容
+        write_vector_batch1 = np.ones((batch_size, num_writes, word_size), dtype=np.float32) * 1.0
+        write_vector_batch2 = np.ones((batch_size, num_writes, word_size), dtype=np.float32) * 2.0
+
+        # 用户1写入（批次1）
+        controller_output_user1 = self._build_controller_output(
+            write_vector=write_vector_batch1,
+            erase_logit=-1000.0,  # erase_vector ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, num_writes), dtype=np.float32)
+        )
+        controller_output_user1_tensor = tf.convert_to_tensor(controller_output_user1)
+
+        inputs_user1 = {
+            'inputs': controller_output_user1_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs_user1 = self.memory_access(inputs_user1)
+        updated_memory_user1 = outputs_user1['final_state'].memory.numpy()
+        write_weights_user1 = outputs_user1['write_weights'].numpy()
+
+        # 用户2写入（批次2）
+        controller_output_user2 = self._build_controller_output(
+            write_vector=write_vector_batch2,
+            erase_logit=-1000.0,  # erase_vector ≈ 0.0
+            write_strength=10.0,
+            allocation_gate=np.ones((batch_size, num_writes), dtype=np.float32),
+            write_gate=np.ones((batch_size, num_writes), dtype=np.float32)
+        )
+        controller_output_user2_tensor = tf.convert_to_tensor(controller_output_user2)
+
+        inputs_user2 = {
+            'inputs': controller_output_user2_tensor,
+            'prev_state': outputs_user1['final_state']
+        }
+        outputs_user2 = self.memory_access(inputs_user2)
+        updated_memory_user2 = outputs_user2['final_state'].memory.numpy()
+        write_weights_user2 = outputs_user2['write_weights'].numpy()
+
+        # 验证批次1的内存仅包含批次1的写入内容
+        expected_memory_batch1 = np.einsum('bwm,bwd->bmd', write_weights_user1, write_vector_batch1)
+        self.assertAllClose(updated_memory_user1, expected_memory_batch1, atol=1e-5)
+
+        # 验证批次2的内存仅包含批次2的写入内容
+        expected_memory_batch2 = np.einsum('bwm,bwd->bmd', write_weights_user2, write_vector_batch2)
+        self.assertAllClose(updated_memory_user2, expected_memory_batch2, atol=1e-5)
+
+        # 确保批次1和批次2的内存内容不同
+        self.assertNotAllClose(updated_memory_user1, updated_memory_user2, atol=1e-5, msg="不同批次的内存内容应不同")
+
+    def test_step_by_step_memory_update(self):
+        """
+        单步验证内存更新操作，确保擦除和写入步骤正确。
+        """
+        batch_size = 1  # 使用单个样本
+        num_writes = 1
+        word_size = self.word_size
+        memory_size = self.memory_size
+
+        # 定义固定的初始内存（全零）
+        initial_memory = np.zeros((batch_size, memory_size, word_size), dtype=np.float32)
+        initial_state = self.initial_state._replace(memory=initial_memory)
+
+        # 定义固定的写入向量和擦除向量
+        write_vector = np.array([[[1.0] * word_size]], dtype=np.float32)  # shape (1, 1, word_size)
+        erase_vector = np.array([[[1.0] * word_size]], dtype=np.float32)  # 完全擦除
+
+        # 定义写入权重（例如，写入到第一个内存位置）
+        write_weights = np.array([[[1.0] + [0.0] * (memory_size - 1)]], dtype=np.float32)  # shape (1, 1, memory_size)
+
+        # 构建 controller_output
+        controller_output = {
+            'write_keys': np.zeros((batch_size, num_writes, self.key_size), dtype=np.float32),  # 假设为零
+            'erase_vectors': erase_vector,
+            'write_vectors': write_vector,
+            'write_weights': write_weights,
+            # 其他必要的接口向量，可以根据实际实现添加
+        }
+
+        controller_output_tensor = tf.convert_to_tensor(controller_output)
+
+        # 调用 memory_access
+        inputs = {
+            'inputs': controller_output_tensor,
+            'prev_state': initial_state
+        }
+        outputs = self.memory_access(inputs)
+        final_memory = outputs['final_state'].memory.numpy()
+
+        # 手动计算预期的内存状态
+        # Step 1: 擦除内存（初始内存为零，擦除后仍为零）
+        memory_erased = initial_memory * (1 - erase_vector * write_weights)  # 仍为零
+
+        # Step 2: 写入新内容
+        write_matrix = np.einsum('bwm,bwd->bmd', write_weights, write_vector)  # 只在第一个内存位置写入1.0
+        expected_memory = memory_erased + write_matrix  # 只在第一个位置有1.0
+
+        # 验证内存内容
+        self.assertAllClose(final_memory, expected_memory, atol=1e-5)
 
     def test_memory_shape(self):
         """
@@ -240,6 +542,63 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         expected_shape = [self.batch_size, self.memory_size, self.word_size]
         actual_shape = self.initial_state.memory.shape
         self.assertEqual(expected_shape, actual_shape)
+
+    def test_step_by_step_memory_update_with_logging(self):
+        """
+        单步验证内存更新操作，并打印中间结果以对比。
+        """
+        batch_size = 1
+        num_writes = 1
+        word_size = self.word_size
+        memory_size = self.memory_size
+
+        # 定义固定的初始内存（全零）
+        initial_memory = np.zeros((batch_size, memory_size, word_size), dtype=np.float32)
+        initial_state = self.initial_state._replace(memory=initial_memory)
+
+        # 定义固定的写入向量和擦除向量
+        write_vector = np.array([[[1.0] * word_size]], dtype=np.float32)  # shape (1, 1, word_size)
+        erase_vector = np.array([[[1.0] * word_size]], dtype=np.float32)  # 完全擦除
+
+        # 定义写入权重（例如，写入到第一个内存位置）
+        write_weights = np.array([[[1.0] + [0.0] * (memory_size - 1)]], dtype=np.float32)  # shape (1, 1, memory_size)
+
+        # 构建 controller_output
+        controller_output = {
+            'write_keys': np.zeros((batch_size, num_writes, self.key_size), dtype=np.float32),  # 假设为零
+            'erase_vectors': erase_vector,
+            'write_vectors': write_vector,
+            'write_weights': write_weights,
+            # 其他必要的接口向量，可以根据实际实现添加
+        }
+
+        controller_output_tensor = tf.convert_to_tensor(controller_output)
+
+        # 调用 memory_access
+        inputs = {
+            'inputs': controller_output_tensor,
+            'prev_state': initial_state
+        }
+        outputs = self.memory_access(inputs)
+        final_memory = outputs['final_state'].memory.numpy()
+
+        # 手动计算预期的内存状态
+        # Step 1: 擦除内存
+        memory_erased = initial_memory * (1 - erase_vector * write_weights)
+        print("Memory After Erase:", memory_erased)
+
+        # Step 2: 写入新内容
+        write_matrix = np.einsum('bwm,bwd->bmd', write_weights, write_vector)
+        print("Write Matrix:", write_matrix)
+
+        expected_memory = memory_erased + write_matrix
+        print("Expected Memory:", expected_memory)
+
+        # 打印实际内存状态
+        print("Final Memory:", final_memory)
+
+        # 验证内存内容
+        self.assertAllClose(final_memory, expected_memory, atol=1e-5)
 
     # def test_history_query_related_to_current_input(self):
     #     """
