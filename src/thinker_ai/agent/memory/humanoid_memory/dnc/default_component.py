@@ -117,6 +117,10 @@ class DefaultUsageUpdater(UsageUpdater):
         return usage
 
 
+# 是否存在这个问题：compute_allocation_weights方法应该为每个写入头（num_writes > 1）分配独立的内存位置，
+# 且每个写入头的allocation_weights为独热编码（one-hot encoding）。然而，现在compute_allocation_weights
+# 方法通过tf.tile将相同的allocation_weights_normalized分配给所有写入头，导致所有写入头尝试写入相同的内存
+# 位置。这与DNC论文中每个写入头应独立且不重叠地分配内存位置的要求不符
 class DefaultWriteWeightCalculator(WriteWeightCalculator):
     def __init__(
             self,
@@ -362,7 +366,7 @@ class DefaultMemoryUpdater(MemoryUpdater):
 
         # Update memory
         memory_updated = memory * erase_term + add_term
-        return memory_updated # [batch_size, memory_size, word_size]
+        return memory_updated  # [batch_size, memory_size, word_size]
 
 
 def get_default_config(memory_size, num_writes, num_reads, word_size) -> Dict[str, Any]:
