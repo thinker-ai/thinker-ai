@@ -117,10 +117,16 @@ class DefaultUsageUpdater(UsageUpdater):
         return usage
 
 
-# 是否存在这个问题：compute_allocation_weights方法应该为每个写入头（num_writes > 1）分配独立的内存位置，
+# 是否存在这几个问题：
+# 1、compute_allocation_weights方法应该为每个写入头（num_writes > 1）分配独立的内存位置，
 # 且每个写入头的allocation_weights为独热编码（one-hot encoding）。然而，现在compute_allocation_weights
 # 方法通过tf.tile将相同的allocation_weights_normalized分配给所有写入头，导致所有写入头尝试写入相同的内存
-# 位置。这与DNC论文中每个写入头应独立且不重叠地分配内存位置的要求不符
+# 位置。这与DNC论文中每个写入头应独立且不重叠地分配内存位置的要求不符，
+# 2、在将 allocation_weights_normalized进行扩展和复制后，应用 softmax 函数会导致了权重的重新分配，使得原本
+# 已正确规范化的权重被扭曲，无法与手动计算的预期值匹配，所以要删除？
+# 3、compute_allocation_weights 方法目前为每个写入头 复制相同的分配权重，导致所有写入头分配到相同的内存位置。
+# 这与 DNC 论文中 多个写入头应该分配到不同内存位置 的要求不符。这种 权重重复分配 导致 write_weights_sum 总是接
+# 近于 1.0，无论 write_gate 的值如何，进而引发测试失败。
 class DefaultWriteWeightCalculator(WriteWeightCalculator):
     def __init__(
             self,
