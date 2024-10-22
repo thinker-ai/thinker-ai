@@ -406,6 +406,15 @@ class MemoryAccess(tf.keras.layers.Layer):
         # 创建接口向量
         indices = self.interface_vector_indices
 
+        # 检查缓存中是否有持久化的内存状态
+        cached_memory_state = self.cache_manager.read_from_cache('memory_state')
+        if cached_memory_state is not None:
+            prev_state = cached_memory_state
+            tf.print("Loaded cached memory state.")
+        else:
+            # 获取初始状态
+            prev_state = self.get_initial_state(batch_size)
+
         # 读取键
         read_keys = tf.reshape(query_vector, [batch_size, self.num_reads * self.word_size])  # [batch_size, r * W]
 
@@ -417,16 +426,16 @@ class MemoryAccess(tf.keras.layers.Layer):
         zeros_remaining = tf.zeros([batch_size, remaining_size], dtype=tf.float32)
 
         # 构建接口向量
-        interface_vector = tf.concat([read_keys, read_strengths, zeros_remaining], axis=1)  # [batch_size, interface_size]
+        interface_vector = tf.concat([read_keys, read_strengths, zeros_remaining],axis=1)  # [batch_size, interface_size]
 
         # 解析接口向量
         interfaces = self._parse_interface_vector(interface_vector)
 
-        # 获取初始状态
-        prev_state = self.get_initial_state(batch_size)
-
         # 处理时间步
         read_words, final_state = self._process_time_step(prev_state, interfaces, training=False)
+
+        # 更新缓存
+        self.cache_manager.write_to_cache('memory_state', final_state)
 
         # 提取 top_k 个读取内容
         return read_words[:, :top_k, :]
