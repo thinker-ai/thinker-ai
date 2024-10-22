@@ -1,14 +1,16 @@
 # test_memory_access_scenario.py
 import numpy as np
 import tensorflow as tf
-from collections import namedtuple
 
 from thinker_ai.agent.memory.humanoid_memory.dnc.cache_manager import CacheManager
+from thinker_ai.agent.memory.humanoid_memory.dnc.default_component import get_default_config
 from thinker_ai.agent.memory.humanoid_memory.dnc.memory_access import MemoryAccess, BatchAccessState
 
 
 class MemoryAccessUserScenarioTest(tf.test.TestCase):
     def setUp(self):
+        super(MemoryAccessUserScenarioTest, self).setUp()
+        # 初始化测试参数
         self.memory_size = 32
         self.word_size = 16  # 保持word_size=16
         self.num_reads = 2
@@ -16,18 +18,28 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         self.batch_size = 2  # 两个用户
         self.controller_output_size = 93  # 32 + 2 + 16 + 1 + 16 + 16 + 2 + 1 + 1 + 6
         self.num_read_modes = 3  # 添加此行
+        self.epsilon = 1e-6  # 定义 epsilon
 
         # 初始化 CacheManager
-        self.cache_manager = CacheManager(max_cache_size=self.memory_size)
+        self.cache_manager = CacheManager(cache_dir="./test_cache", max_cache_size=10)
+        self.cache_manager.clear_cache()  # 确保缓存为空
 
         # 初始化 MemoryAccess 并注入 CacheManager
+        config = get_default_config(
+            memory_size=self.memory_size,
+            num_writes=self.num_writes,
+            num_reads=self.num_reads,
+            word_size=self.word_size
+        )
+
         self.memory_access = MemoryAccess(
             memory_size=self.memory_size,
             word_size=self.word_size,
             num_reads=self.num_reads,
             num_writes=self.num_writes,
             controller_output_size=self.controller_output_size,
-            cache_manager=self.cache_manager
+            cache_manager=self.cache_manager,
+            config=config
         )
 
         # 获取 interface_size
@@ -38,6 +50,9 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
 
         # 设置 interface_layer 的权重以获得可预测的输出
         self._set_interface_layer_weights()
+
+        # 将初始状态写入缓存
+        self.cache_manager.write_to_cache('memory_state', self.initial_state)
 
     def _set_interface_layer_weights(self):
         """
@@ -76,12 +91,6 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         """
         batch_size = self.batch_size
         controller_output_size = self.controller_output_size
-        interface_size = self.interface_size
-        num_reads = self.num_reads
-        num_writes = self.num_writes
-        word_size = self.word_size
-        num_read_modes = self.num_read_modes
-
         # 初始化为零
         controller_output = np.zeros((batch_size, controller_output_size), dtype=np.float32)
 
@@ -169,7 +178,7 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
 
     def _perform_write_operation(self, write_vector_value, erase_logit):
         """
-        执行写操作并返回更新后的内存、写入权重和擦除向量。
+        执行写操作并返回更新后的内存、写入权重和写入向量。
         """
         batch_size = self.batch_size
 
@@ -194,20 +203,450 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
             'prev_state': self.initial_state
         }
         outputs = self.memory_access(inputs)
+        final_state = outputs['final_state']
 
-        # 获取更新后的 memory
-        updated_memory = outputs['final_state'].memory.numpy()
+        # 更新 initial_state 和 cache
+        self.initial_state = final_state
+        self.cache_manager.write_to_cache('memory_state', final_state)
 
-        # 获取 write_weights 和 erase_vectors
-        write_weights = outputs['final_state'].write_weights.numpy()
-        erase_vectors = self.memory_access._parse_interface_vector(tf.convert_to_tensor(controller_output))[
-            'erase_vectors'].numpy()
+        # 获取更新后的 memory 和 write_weights
+        updated_memory = final_state.memory.numpy()  # [batch_size, memory_size, word_size]
+        write_weights = final_state.write_weights.numpy()  # [batch_size, num_writes, memory_size]
 
-        # 调试输出
+        # 验证 write_weights 在 memory_size 维度上归一化
+        write_weights_sum = np.sum(write_weights, axis=2)  # [batch_size, num_writes]
+        self.assertAllClose(write_weights_sum, np.ones([self.batch_size, self.num_writes]), atol=1e-5)
+
+        return updated_memory, write_weights, write_vector
+
+    def test_memory_write_operation(self):
+        """
+        验证写操作是否正确更新内存。
+        """
+        # 执行写操作，不擦除
+        updated_memory, write_weights, write_vectors = self._perform_write_operation(
+            write_vector_value=1.0,
+            erase_logit=-1000.0
+        )
+
+        # 正确的广播方式
+        expected_memory = write_weights[:, 0, :, np.newaxis] * write_vectors[:, 0, np.newaxis, :]  # [2,32,16]
+
+        # 将 expected_memory 转换为相同的数据类型（如果需要）
+        expected_memory = expected_memory.astype(np.float32)
+
+        # 打印调试信息（可选）
         tf.print("Write Weights:", write_weights)
-        tf.print("Updated Memory:", updated_memory)
+        tf.print("Expected Memory:", expected_memory)
+        tf.print("Actual Updated Memory:", updated_memory)
 
-        return updated_memory, write_weights, erase_vectors
+        # 断言
+        self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
+
+    def test_single_write_operation(self):
+        """
+        验证单次写操作是否正确更新内存，并能通过查询读取到正确的写入内容。
+        """
+        # 执行写操作
+        updated_memory, write_weights, write_vectors = self._perform_write_operation(
+            write_vector_value=1.0,
+            erase_logit=-1000.0  # 确保不擦除
+        )
+
+        # 获取读_weights
+        read_weights = self.initial_state.read_weights.numpy()  # [2,2,32]
+
+        # 计算预期读取向量
+        # 使用批量矩阵乘法，应该使用 memory
+        expected_read_vectors = np.einsum('brm,bmk->brk', read_weights, updated_memory)  # [2,2,16]
+
+        # 定义查询向量，与写入向量相同
+        write_vector = np.ones([self.batch_size, self.num_writes, self.word_size], dtype=np.float32)
+        query_vector = np.tile(write_vector, (1, self.num_reads, 1)).reshape(self.batch_size,
+                                                                             self.num_reads * self.word_size)  # [2,32]
+        query_vector_tf = tf.convert_to_tensor(query_vector, dtype=tf.float32)
+
+        # 执行查询
+        read_vectors = self.memory_access.query_history(
+            query_vector=query_vector_tf,
+            top_k=self.num_reads,
+            read_strength=10.0
+        )  # [2,2,16]
+        read_vectors_np = read_vectors.numpy()
+
+        # 打印调试信息（可选）
+        tf.print("Read Weights:", self.initial_state.read_weights)
+        tf.print("Expected Read Vectors:", expected_read_vectors)
+        tf.print("Actual Read Vectors:", read_vectors_np)
+
+        # 断言
+        self.assertAllClose(read_vectors_np, expected_read_vectors, atol=1e-5)
+
+    def test_basic_query_operation(self):
+        """
+        验证基本的查询操作是否能够检索到正确的内存内容。
+        """
+        # 写入已知向量
+        write_vectors = np.array([
+            [0.1] * self.word_size,
+            [0.4] * self.word_size,
+            [0.5] * self.word_size
+        ], dtype=np.float32)  # [3, word_size]
+
+        for vec in write_vectors:
+            write_vector = np.tile(vec, (self.batch_size, self.num_writes, 1))  # [batch_size, num_writes, word_size]
+            controller_output = self._build_controller_output(
+                write_vector=write_vector,
+                erase_logit=0.0,
+                write_strength=10.0,
+                allocation_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32),
+                write_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32)
+            )
+            # 转换为 Tensor
+            controller_output_tensor = tf.convert_to_tensor(controller_output)
+            # 调用 memory_access
+            inputs = {
+                'inputs': controller_output_tensor,
+                'prev_state': self.initial_state
+            }
+            outputs = self.memory_access(inputs)
+            # 更新 initial_state
+            self.initial_state = outputs['final_state']
+
+        # 定义查询向量，与最后一个写入的向量相关
+        query_vector = np.tile(write_vectors[-1], (self.batch_size, self.num_reads, 1)).astype(
+            np.float32)  # [batch_size, num_reads, word_size]
+        query_vector = query_vector.reshape(self.batch_size, self.num_reads * self.word_size)  # [batch_size, 32]
+
+        # 执行查询
+        related_records = self.memory_access.query_history(
+            query_vector=tf.convert_to_tensor(query_vector),
+            top_k=1,
+            read_strength=10.0
+        )  # [batch_size, 1, word_size]
+
+        # 预期相关记录为最后一个写入向量 * write_strength
+        # 由于写入向量为1.0，并且写_strength影响了内容权重，所以预期读取向量为写入向量
+        expected_related_records = np.tile(write_vectors[-1], (self.batch_size, 1, 1)).astype(
+            np.float32)  # [batch_size,1,word_size]
+
+        # 将 related_records 转换为 NumPy 数组
+        related_records_np = related_records.numpy()
+
+        # 断言
+        self.assertAllClose(related_records_np, expected_related_records, atol=1e-5)
+
+    def test_content_weight_calculator(self):
+        """
+        验证 ContentWeightCalculator 是否正确计算 content_weights。
+        """
+        # 使用 MemoryAccess 实例的 ContentWeightCalculator
+        content_weight_calculator = self.memory_access.content_weight_calculator
+
+        # 假设 ContentWeightCalculator 的输入是 keys 和 memory
+        keys = tf.constant(
+            np.full([self.batch_size, self.num_writes, self.word_size], 0.25, dtype=np.float32)
+        )  # [2,1,16]
+        memory = tf.constant(
+            np.full([self.batch_size, self.memory_size, self.word_size], 0.25, dtype=np.float32)
+        )  # [2,32,16]
+
+        # 计算 content_weights
+        content_weights = content_weight_calculator.compute(
+            keys=keys,
+            strengths=tf.ones([self.batch_size, self.num_writes], dtype=tf.float32),  # [2,1]
+            memory=memory
+        ).numpy()  # [2,1,32]
+
+        # 打印调试信息
+        print("Content Weights:", content_weights)
+
+        # 预期内容权重应均匀分布，因为所有相似度相同
+        expected_content_weights = np.full([self.batch_size, self.num_writes, self.memory_size], 1.0 / self.memory_size,
+                                           dtype=np.float32)
+
+        # 断言
+        self.assertAllClose(content_weights, expected_content_weights, atol=1e-5)
+
+    def test_history_query_related_to_current_input_integrated(self):
+        """
+        集成测试，验证相关历史记录查询结果按时序排列，最相关的记录在前。
+        """
+        batch_size = self.batch_size
+        write_strength = 10.0
+        # 定义多个写入向量，后写入的向量更相关
+        write_vectors = np.array([
+            [0.1] * self.word_size,
+            [0.4] * self.word_size,
+            [0.5] * self.word_size
+        ], dtype=np.float32)  # [3, word_size]
+
+        # 执行多个写入操作
+        for i in range(len(write_vectors)):
+            # 确保 write_vector 形状为 (batch_size, num_writes, word_size)
+            write_vector = np.tile(write_vectors[i:i + 1],
+                                   (batch_size, self.num_writes, 1))  # [batch_size, num_writes, word_size]
+            controller_output = self._build_controller_output(
+                write_vector=write_vector,
+                erase_logit=0.0,  # erase_vector=0.0
+                write_strength=write_strength,
+                allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+                write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+            )
+            # 转换为 Tensor
+            controller_output_tensor = tf.convert_to_tensor(controller_output)
+            # 调用 memory_access
+            inputs = {
+                'inputs': controller_output_tensor,
+                'prev_state': self.initial_state
+            }
+            outputs = self.memory_access(inputs)
+            # 更新 initial_state
+            self.initial_state = outputs['final_state']
+
+        # 定义当前输入主题向量，最相关于最后一个写入
+        current_input = np.tile(write_vectors[2], (batch_size, self.num_reads, 1)).astype(
+            np.float32)  # [batch_size, num_reads, word_size]
+        current_input = current_input.reshape(batch_size, self.num_reads * self.word_size)  # [batch_size, 32]
+
+        related_records = self.memory_access.query_history(
+            query_vector=tf.convert_to_tensor(current_input),
+            top_k=1,  # 调整 top_k 与实际输出一致
+            read_strength=write_strength  #
+        )  # [batch_size, 1, word_size]
+
+        # 预期相关记录应为最后一个写入向量 * write_strength
+        expected_related_records = np.tile(write_vectors[2] * write_strength, (batch_size, 1, 1)).astype(
+            np.float32)  # [batch_size,1,word_size]
+
+        # 将 related_records 转换为 NumPy 数组
+        related_records_np = related_records.numpy()
+
+        # 断言
+        self.assertAllClose(related_records_np, expected_related_records, atol=1e-5)
+
+    def test_history_query_temporal_order(self):
+        """
+        测试相关历史记录查询结果按时序排列，最相关的记录在前。
+        """
+        batch_size = self.batch_size
+        write_strength = 10.0
+        # 定义多个写入向量，后写入的向量更相关
+        write_vectors = np.array([
+            [0.1] * self.word_size,
+            [0.4] * self.word_size,
+            [0.5] * self.word_size
+        ], dtype=np.float32)  # [3, word_size]
+
+        # 执行多个写入操作
+        for i in range(len(write_vectors)):
+            # 确保 write_vector 形状为 (batch_size, num_writes, word_size)
+            write_vector = np.tile(write_vectors[i:i + 1],
+                                   (batch_size, self.num_writes, 1))  # [batch_size, num_writes, word_size]
+            controller_output = self._build_controller_output(
+                write_vector=write_vector,
+                erase_logit=0.0,  # erase_vector=0.0
+                write_strength=write_strength,
+                allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
+                write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
+            )
+            # 转换为 Tensor
+            controller_output_tensor = tf.convert_to_tensor(controller_output)
+            # 调用 memory_access
+            inputs = {
+                'inputs': controller_output_tensor,
+                'prev_state': self.initial_state
+            }
+            outputs = self.memory_access(inputs)
+            # 更新 initial_state
+            self.initial_state = outputs['final_state']
+
+        # 定义当前输入主题向量，最相关于最后一个写入
+        current_input = np.tile(write_vectors[2], (batch_size, self.num_reads, 1)).astype(
+            np.float32)  # [batch_size, num_reads, word_size]
+        current_input = current_input.reshape(batch_size, self.num_reads * self.word_size)  # [batch_size, 32]
+
+        related_records = self.memory_access.query_history(
+            query_vector=tf.convert_to_tensor(current_input),
+            top_k=1,  # 调整 top_k 与实际输出一致
+            read_strength=10.0
+        )  # [batch_size, 1, word_size]
+
+        # 预期相关记录应为最后一个写入向量 * write_strength
+        expected_related_records = np.tile(write_vectors[2] * write_strength, (batch_size, 1, 1)).astype(
+            np.float32)  # [batch_size,1,word_size]
+
+        # 将 related_records 转换为 NumPy 数组
+        related_records_np = related_records.numpy()
+
+        # 断言
+        self.assertAllClose(related_records_np, expected_related_records, atol=1e-5)
+
+    def test_memory_write_and_query(self):
+        """
+        验证写入操作后，能够通过查询检索到正确的向量。
+        """
+        # 写入向量
+        write_vectors = np.array([
+            [0.2] * self.word_size,
+            [0.3] * self.word_size
+        ], dtype=np.float32)  # [2, word_size]
+
+        for vec in write_vectors:
+            write_vector = np.tile(vec, (self.batch_size, self.num_writes, 1))
+            controller_output = self._build_controller_output(
+                write_vector=write_vector,
+                erase_logit=0.0,
+                write_strength=10.0,
+                allocation_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32),
+                write_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32)
+            )
+            # 转换为 Tensor
+            controller_output_tensor = tf.convert_to_tensor(controller_output)
+            # 调用 memory_access
+            inputs = {
+                'inputs': controller_output_tensor,
+                'prev_state': self.initial_state
+            }
+            outputs = self.memory_access(inputs)
+            # 更新 initial_state
+            self.initial_state = outputs['final_state']
+
+            # 打印当前内存状态
+            current_memory = self.memory_access.get_initial_state(self.batch_size).memory.numpy()
+            print(f"Memory after writing vector {vec}: {current_memory}")
+
+        # 查询向量
+        query_vector = np.tile(write_vectors[-1], (self.batch_size, self.num_reads, 1)).astype(np.float32)
+        query_vector = query_vector.reshape(self.batch_size, self.num_reads * self.word_size)
+
+        # 执行查询
+        related_records = self.memory_access.query_history(
+            query_vector=tf.convert_to_tensor(query_vector),
+            top_k=1,
+            read_strength=10.0
+        )
+        print("Related Records:", related_records.numpy())
+
+        # 预期结果
+        expected_related_records = np.tile(write_vectors[-1] * 10.0, (self.batch_size, 1, 1)).astype(np.float32)
+
+        # 将 related_records 转换为 NumPy 数组
+        related_records_np = related_records.numpy()
+
+        # 断言
+        self.assertAllClose(related_records_np, expected_related_records, atol=1e-5)
+
+    def test_memory_state_after_write(self):
+        """
+        在写入操作后，验证内存状态是否正确。
+        """
+        write_vector = np.ones((self.batch_size, self.num_writes, self.word_size), dtype=np.float32)  # 全1向量
+        controller_output = self._build_controller_output(
+            write_vector=write_vector,
+            erase_logit=0.0,
+            write_strength=10.0,
+            allocation_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32),
+            write_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32)
+        )
+        controller_output_tensor = tf.convert_to_tensor(controller_output)
+        inputs = {
+            'inputs': controller_output_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs = self.memory_access(inputs)
+        self.initial_state = outputs['final_state']
+
+        # 获取更新后的内存
+        updated_memory = self.memory_access.get_initial_state(self.batch_size).memory.numpy()
+        print("Updated Memory State:", updated_memory)
+
+        # 预期内存等于写入向量 * write_strength
+        expected_memory = write_vector * 10.0
+        self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
+
+    def test_write_gate_activation(self):
+        """
+        验证写门是否正确激活，从而允许写入操作。
+        """
+        write_vector = np.ones((self.batch_size, self.num_writes, self.word_size), dtype=np.float32)
+        allocation_gate = np.zeros((self.batch_size, self.num_writes), dtype=np.float32)  # 关闭分配门
+        write_gate = np.ones((self.batch_size, self.num_writes), dtype=np.float32)  # 打开写门
+
+        controller_output = self._build_controller_output(
+            write_vector=write_vector,
+            erase_logit=0.0,
+            write_strength=10.0,
+            allocation_gate=allocation_gate,
+            write_gate=write_gate
+        )
+        controller_output_tensor = tf.convert_to_tensor(controller_output)
+        inputs = {
+            'inputs': controller_output_tensor,
+            'prev_state': self.initial_state
+        }
+        outputs = self.memory_access(inputs)
+        self.initial_state = outputs['final_state']
+
+        # 获取更新后的内存
+        updated_memory = self.memory_access.get_initial_state(self.batch_size).memory.numpy()
+        print("Updated Memory with Allocation Gate Closed:", updated_memory)
+
+        # 预期内存未被更新，因为分配门关闭
+        expected_memory = np.zeros_like(updated_memory)
+
+        # 断言
+        self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
+
+    def test_similarity_calculation(self):
+        """
+        验证相似度计算是否正确。
+        """
+        # 写入已知向量
+        write_vectors = np.array([
+            [1.0] * self.word_size,
+            [2.0] * self.word_size
+        ], dtype=np.float32)
+        for vec in write_vectors:
+            write_vector = np.tile(vec, (self.batch_size, self.num_writes, 1))
+            controller_output = self._build_controller_output(
+                write_vector=write_vector,
+                erase_logit=0.0,
+                write_strength=10.0,
+                allocation_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32),
+                write_gate=np.ones((self.batch_size, self.num_writes), dtype=np.float32)
+            )
+            # 转换为 Tensor
+            controller_output_tensor = tf.convert_to_tensor(controller_output)
+            # 调用 memory_access
+            inputs = {
+                'inputs': controller_output_tensor,
+                'prev_state': self.initial_state
+            }
+            outputs = self.memory_access(inputs)
+            # 更新 initial_state
+            self.initial_state = outputs['final_state']
+
+        # 定义查询向量
+        query_vector = np.tile([2.0] * self.word_size, (self.batch_size, self.num_reads, 1)).astype(np.float32)
+        query_vector = query_vector.reshape(self.batch_size, self.num_reads * self.word_size)
+
+        # 执行查询
+        related_records = self.memory_access.query_history(
+            query_vector=tf.convert_to_tensor(query_vector),
+            top_k=1,
+            read_strength=10.0
+        )
+        print("Related Records based on Similarity:", related_records.numpy())
+
+        # 预期相关记录为第二个写入向量 * write_strength
+        expected_related_records = np.tile(write_vectors[-1] * 10.0, (self.batch_size, 1, 1)).astype(np.float32)
+
+        # 将 related_records 转换为 NumPy 数组
+        related_records_np = related_records.numpy()
+
+        # 断言
+        self.assertAllClose(related_records_np, expected_related_records, atol=1e-5)
 
     def test_step_by_step_memory_update(self):
         """
@@ -240,121 +679,10 @@ class MemoryAccessUserScenarioTest(tf.test.TestCase):
         # 断言
         self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
 
-    def test_memory_write_operation(self):
-        """
-        验证写操作是否正确更新内存。
-        """
-        # 执行写操作，不擦除
-        updated_memory, _, _ = self._perform_write_operation(write_vector_value=1.0, erase_logit=-1000.0)
-
-        # 预期内存应包含写入向量
-        expected_memory = np.ones((self.batch_size, self.memory_size, self.word_size), dtype=np.float32)
-
-        # 断言内存是否正确更新
-        self.assertAllClose(updated_memory, expected_memory, atol=1e-5)
-
-    def test_history_query_related_to_current_input_integrated(self):
-        """
-        集成测试，验证相关历史记录查询结果按时序排列，最相关的记录在前。
-        """
-        batch_size = self.batch_size
-
-        # 定义多个写入向量，后写入的向量更相关
-        write_vectors = np.array([
-            [0.1] * self.word_size,
-            [0.4] * self.word_size,
-            [0.5] * self.word_size
-        ], dtype=np.float32)  # [3, word_size]
-
-        # 执行多个写入操作
-        for i in range(len(write_vectors)):
-            # 确保 write_vector 形状为 (batch_size, num_writes, word_size)
-            write_vector = np.tile(write_vectors[i:i + 1],
-                                   (batch_size, self.num_writes, 1))  # [batch_size, num_writes, word_size]
-            controller_output = self._build_controller_output(
-                write_vector=write_vector,
-                erase_logit=0.0,  # erase_vector=0.5
-                write_strength=10.0,
-                allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
-                write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
-            )
-            controller_output_tensor = tf.convert_to_tensor(controller_output)
-            inputs = {
-                'inputs': controller_output_tensor,
-                'prev_state': self.initial_state
-            }
-            outputs = self.memory_access(inputs)
-            self.initial_state = outputs['final_state']
-
-        # 定义当前输入主题向量，最相关于最后一个写入
-        current_input = np.tile(write_vectors[2], (batch_size, self.num_reads, 1)).astype(
-            np.float32)  # [batch_size, num_reads, word_size]
-        current_input = current_input.reshape(batch_size, self.num_reads * self.word_size)  # [batch_size, 32]
-
-        related_records = self.memory_access.query_history(
-            query_vector=tf.convert_to_tensor(current_input),
-            top_k=1,  # 调整 top_k 与实际输出一致
-            read_strength=10.0
-        )  # [batch_size, 1, word_size]
-
-        # 预期相关记录应为最后一个写入向量
-        expected_related_records = np.tile(write_vectors[2], (batch_size, 1, 1)).astype(
-            np.float32)  # [batch_size,1,word_size]
-
-        # 断言
-        self.assertAllClose(related_records.numpy(), expected_related_records, atol=1e-5)
-
-    def test_history_query_temporal_order(self):
-        """
-        测试相关历史记录查询结果按时序排列，最相关的记录在前。
-        """
-        batch_size = self.batch_size
-
-        # 定义多个写入向量，后写入的向量更相关
-        write_vectors = np.array([
-            [0.1] * self.word_size,
-            [0.4] * self.word_size,
-            [0.5] * self.word_size
-        ], dtype=np.float32)  # [3, word_size]
-
-        # 执行多个写入操作
-        for i in range(len(write_vectors)):
-            # 确保 write_vector 形状为 (batch_size, num_writes, word_size)
-            write_vector = np.tile(write_vectors[i:i + 1],
-                                   (batch_size, self.num_writes, 1))  # [batch_size, num_writes, word_size]
-            controller_output = self._build_controller_output(
-                write_vector=write_vector,
-                erase_logit=0.0,  # erase_vector=0.5
-                write_strength=10.0,
-                allocation_gate=np.ones((batch_size, self.num_writes), dtype=np.float32),
-                write_gate=np.ones((batch_size, self.num_writes), dtype=np.float32)
-            )
-            controller_output_tensor = tf.convert_to_tensor(controller_output)
-            inputs = {
-                'inputs': controller_output_tensor,
-                'prev_state': self.initial_state
-            }
-            outputs = self.memory_access(inputs)
-            self.initial_state = outputs['final_state']
-
-        # 定义当前输入主题向量，最相关于最后一个写入
-        # 将其形状调整为 [batch_size, num_reads, word_size]，然后重塑为 [batch_size, num_reads * word_size]
-        current_input = np.tile(write_vectors[2], (batch_size, self.num_reads, 1)).astype(
-            np.float32)  # [batch_size, num_reads, word_size]
-        current_input = current_input.reshape(batch_size, self.num_reads * self.word_size)  # [batch_size, 32]
-
-        related_records = self.memory_access.query_history(
-            query_vector=tf.convert_to_tensor(current_input),
-            top_k=1,  # 调整 top_k 与实际输出一致
-            read_strength=10.0
-        )  # [batch_size, 1, word_size]
-
-        # 预期相关记录应为最后一个写入向量
-        expected_related_records = np.tile(write_vectors[2], (batch_size, 1, 1)).astype(
-            np.float32)  # [batch_size,1,word_size]
-
-        # 断言
-        self.assertAllClose(related_records.numpy(), expected_related_records, atol=1e-5)
+    def tearDown(self):
+        # 清理缓存目录
+        self.cache_manager.clear_cache()
+        super(MemoryAccessUserScenarioTest, self).tearDown()
 
 
 if __name__ == '__main__':
