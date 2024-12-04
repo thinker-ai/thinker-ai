@@ -2,7 +2,7 @@ import {
     send_http,
     do_if_plugin_installed,
     get_authorization
-} from "../common";
+} from "../common.js";
 import {RequestMessage} from "../request_sender_background";
 declare var marked: {
     parse: (markdown: string) => string;

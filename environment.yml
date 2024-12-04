@@ -75,7 +75,7 @@ dependencies:
     - Pillow
     - sacrebleu
     - shortuuid
-    - spacy
+#    - spacy
     - tqdm
     - protobuf
     - typing_extensions
@@ -141,3 +141,4 @@ dependencies:
     - redis
     - graphs
     - parameterized
+    - moviepy

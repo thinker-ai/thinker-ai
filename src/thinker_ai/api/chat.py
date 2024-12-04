@@ -6,7 +6,9 @@ from thinker_ai.agent.assistant_api_builder import AssistantApiBuilder
 from thinker_ai.agent.assistant_api_repository import AssistantRepository
 from thinker_ai.agent.provider.llm import LLM
 from thinker_ai.agent.openai_assistant_api import openai
-from thinker_ai.session_manager import get_session
+from thinker_ai.session_manager import SessionManager
+
+session_manager = SessionManager.get_instance()
 from fastapi import Request
 from textwrap import dedent
 
@@ -31,7 +33,7 @@ do not make assumptions about which values to insert into the next function, if 
 
 
 @chat_router.post("/chat", response_model=str)
-async def chat(request: Request, session: dict = Depends(get_session)) -> str:
+async def chat(request: Request, session: dict = Depends(session_manager.get_session)) -> str:
     user_id = session.get("user_id")
     # 获取请求体的 JSON 数据
     data = await request.json()

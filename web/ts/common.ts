@@ -1,6 +1,6 @@
-import { RequestSenderWorkerFront } from "./request_sender_front";
-import { WebSocketWorkerFront } from "./web_socket_front";
-import {RequestMessage} from "./request_sender_background";
+import { RequestSenderWorkerFront } from "./request_sender_front.js";
+import { WebSocketWorkerFront } from "./web_socket_front.js";
+import {RequestMessage} from "./request_sender_background.js";
 export function showContent(frame_id:string,menu_class_name:string,page:string,element:Element):void {
     // Update the iframe's src attribute to load the corresponding page
     const html_element = window.document.getElementById(frame_id)

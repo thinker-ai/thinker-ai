@@ -1,0 +1,24 @@
+<html>
+    <head>
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
+        <title>resources</title>
+        <link rel="stylesheet" type="text/css" href="../../static/design/resources.css">
+    </head>
+    <body>
+        <div id="content">
+            <div id="main-sidebar">
+                <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/resources/tools',this)">工具配置</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/resources/solutions',this);">可重用方案</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/resources/data_sources',this);">数据源</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item', '/design/resources/trains',this)">专项训练模型</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item', '/design/resources/third_parties',this)">第三方服务</button>
+            </div>
+            <div id="main-content">
+                <iframe id="content-frame" src="/design/resources/tools"></iframe>
+            </div>
+        </div>
+        <script type="module" src="../../js/common.js"></script>
+    </body>
+</html>

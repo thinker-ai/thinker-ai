@@ -1,4 +1,4 @@
-import {WebSocketSenderBackgroundWithCallback} from "./web_socket_background";
+import {WebSocketSenderBackgroundWithCallback} from "./web_socket_background.js";
 
 declare let onconnect: (e: MessageEvent) => void;
 onconnect = (e) => {

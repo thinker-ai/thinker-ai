@@ -1,5 +1,4 @@
 // 导入 axios 类型
-import axios, { AxiosRequestConfig, AxiosResponse} from 'axios';
 export type RequestMessage = {
         method: 'get' | 'post',
         url: string,
@@ -14,39 +13,66 @@ export type RequestMessage = {
 export interface RequestSenderInterface {
     send_http(message:RequestMessage): void;
 }
-// 定义 BaseRequestSender 类
 export class RequestSender implements RequestSenderInterface {
-    public send_http(message:RequestMessage): void {
-        let axiosInstance = axios.create();
-        const config: AxiosRequestConfig = {
-            method:message.method,
-            url:message.url,
-            params:message.params,
-            data: message.body,
-            headers: {
-                 'Content-Type': message.content_type,
-            },
-        };
+    public send_http(message: RequestMessage): void {
+        let url = message.url;
 
-        // 如果需要 token，则在请求头中添加 Authorization
+        // 处理查询参数，将 token 添加到 paramsObject
+        const paramsObject = message.params ? Object.fromEntries(message.params.entries()) : {};
         if (message.token) {
-            config.headers = {
-                ...config.headers, // 保留已有 headers
-                Authorization: `Bearer ${message.token}`
-            };
+            paramsObject["token"] = message.token; // 将 token 添加到查询参数
         }
 
-        axiosInstance(config)
-            .then((response: AxiosResponse<any>) => {
-                if (message.on_response_ok) {
-                    message.on_response_ok(response.data);
+        // 构建最终 URL
+        const queryString = new URLSearchParams(paramsObject).toString();
+        if (queryString) {
+            url += (url.includes('?') ? '&' : '?') + queryString;
+        }
+
+        const headers: Record<string, string> = {};
+
+        if (message.content_type) {
+            headers['Content-Type'] = message.content_type;
+        }
+
+        const options: RequestInit = {
+            method: message.method.toUpperCase(),
+            headers: headers,
+        };
+
+        if (message.method.toLowerCase() !== 'get' && message.body) {
+            if (message.content_type && message.content_type.includes('application/json')) {
+                options.body = JSON.stringify(message.body);
+            } else {
+                options.body = message.body;
+            }
+        }
+
+        (async () => {
+            try {
+                const response = await fetch(url, options);
+                let data: any;
+                try {
+                    data = await response.json();
+                } catch (e) {
+                    data = null;
                 }
-            })
-            .catch((error: any) => {
-                const detail = error.response?.data.detail || 'Unknown';
+
+                if (!response.ok) {
+                    const detail = data?.detail || 'Unknown';
+                    if (message.on_response_error) {
+                        message.on_response_error(detail);
+                    }
+                } else {
+                    if (message.on_response_ok) {
+                        message.on_response_ok(data);
+                    }
+                }
+            } catch (error: any) {
                 if (message.on_response_error) {
-                    message.on_response_error(detail);
+                    message.on_response_error(error.message || 'Unknown error');
                 }
-            });
+            }
+        })();
     }
 }

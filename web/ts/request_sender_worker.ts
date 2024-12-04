@@ -1,4 +1,4 @@
-import {RequestMessage, RequestSender} from "./request_sender_background";
+import {RequestMessage,RequestSender} from "./request_sender_background.js";
 
 // 声明 onconnect 是 SharedWorker 的全局事件
 declare let onconnect: (e: MessageEvent) => void;
@@ -55,3 +55,4 @@ onconnect = (e:any) => {
     // 通知页面 SharedWorker 已连接
     port.postMessage({ action: 'request_sender_worker_started' });
 };
+

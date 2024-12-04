@@ -13,7 +13,9 @@ from thinker_ai.api.criterion import criterion_router
 from thinker_ai.api.fast_api_instance import app
 from thinker_ai.api.login import login_router
 from thinker_ai.api.marketing import marketing_router
+from thinker_ai.api.organization import organization_router
 from thinker_ai.api.resources import resources_router
+from thinker_ai.api.role import role_router
 from thinker_ai.api.strategy import strategy_router
 from thinker_ai.api.design import design_router
 from thinker_ai.api.chat import chat_router
@@ -66,6 +68,8 @@ async def startup():
     include_router(chat_router)
     include_router(criterion_router)
     include_router(marketing_router)
+    include_router(organization_router)
+    include_router(role_router)
     include_router(resources_router)
     include_router(strategy_router)
     include_router(train_router)

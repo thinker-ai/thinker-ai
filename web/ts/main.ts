@@ -1,6 +1,5 @@
 // 定义接口类型
-import {send_http} from "./common";
-import {get_authorization} from "./common";
+import {get_authorization,send_http} from "./common.js";
 get_authorization().then((response: { user_id: string; access_token: string } | null) => {
         if (!response || !response.user_id || !response.access_token) {
             console.log('Authorization not found');

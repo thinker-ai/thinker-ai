@@ -1,6 +1,6 @@
-import {get_authorization, registerCallbackWithKey, send_http} from "../../common";
-import { initialize_floating_panel_if_extension_not_install } from "../floating-panel";
-import {RequestMessage} from "../../request_sender_background";
+import {get_authorization, registerCallbackWithKey, send_http} from "../common.js";
+import { initialize_floating_panel_if_extension_not_install } from "./floating-panel.js";
+import {RequestMessage} from "../request_sender_background";
 
 interface ResponseData {
     name: string;
@@ -30,7 +30,7 @@ function submitProblem(): void {
        if (authorization) {
            const request_message: RequestMessage = {
                method: 'post',
-               url: '/design/one/solution/generate_state_machine_def',
+               url: '/design/solution/generate_state_machine_def',
                params: undefined,
                body: data,
                token: authorization.access_token,
@@ -48,7 +48,7 @@ function submitProblem(): void {
             return;
         }
     }).catch(reason => {
-        console.error(`request_message error for /design/one/solution/generate_state_machine_def `,reason);
+        console.error(`request_message error for /design/solution/generate_state_machine_def `,reason);
         return;
     })
 }
@@ -64,7 +64,7 @@ function showData(): void {
         if(authorization){
             const request_message:RequestMessage={
                 method:'get',
-                url:'/design/one/solution/current',
+                url:'/design/solution/current',
                 token:authorization.access_token,
                 on_response_ok:(response_data)=>{
                     showProblem(response_data)
@@ -80,7 +80,7 @@ function showData(): void {
             return;
         }
     }).catch(reason => {
-        console.error(`request_message error for /design/one/solution/current `,reason);
+        console.error(`request_message error for /design/solution/current `,reason);
         return;
     })
 }
@@ -185,6 +185,7 @@ function toggleNode(symbol: HTMLElement): void {
 document.addEventListener('DOMContentLoaded', function() {
     initialize_floating_panel_if_extension_not_install(document.getElementById('content') as HTMLElement);
 });
+
 window.addEventListener('load', showData);
 registerCallbackWithKey('command', ai_executor);
 function ai_executor(data: any): void {

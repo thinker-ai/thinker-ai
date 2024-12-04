@@ -1,4 +1,4 @@
-import {WebSocketSenderInterface} from "./web_socket_background";
+import {WebSocketSenderInterface} from "./web_socket_background.js";
 function  any_to_string(any_object: any): string {
         if (typeof any_object === 'string') {
             return any_object;
@@ -13,7 +13,7 @@ export class WebSocketWorkerFront implements WebSocketSenderInterface {
     private web_socket_worker:SharedWorker;
     private callbackRegistry: { [callbackId: string]: (data: any) => void };
     constructor() {
-        this.web_socket_worker=new SharedWorker('/js/web_socket_worker.js');
+        this.web_socket_worker=new SharedWorker('/js/web_socket_worker.js',{ type: 'module' });
         this.web_socket_worker.port.start();
         this.callbackRegistry = {};  // 存储回调函数的对象
     }

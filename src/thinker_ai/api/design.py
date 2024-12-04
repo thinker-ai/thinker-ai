@@ -6,8 +6,9 @@ from starlette.templating import Jinja2Templates
 from fastapi import Request
 from thinker_ai.app.design.solution.solution_manager import SolutionManager
 from thinker_ai.configs.const import PROJECT_ROOT
-from thinker_ai.session_manager import get_session
+from thinker_ai.session_manager import SessionManager
 
+session_manager = SessionManager.get_instance()
 design_router = APIRouter()
 design_root = os.path.join(PROJECT_ROOT, 'web', 'html', 'design')
 design_dir = Jinja2Templates(directory=design_root)
@@ -18,65 +19,54 @@ solution_manager = SolutionManager()
 async def main(request: Request):
     return design_dir.TemplateResponse("design.html", {"request": request})
 
-
-@design_router.get("/design/list", response_class=HTMLResponse)
-async def design_list(request: Request):
-    return design_dir.TemplateResponse("list.html", {"request": request})
-
-
-@design_router.get("/design/one", response_class=HTMLResponse)
-async def design_one(request: Request):
-    return design_dir.TemplateResponse("one.html", {"request": request})
-
-
-@design_router.get("/design/one/criterion", response_class=HTMLResponse)
+@design_router.get("/design/criterion", response_class=HTMLResponse)
 async def design_one_criterion(request: Request):
-    return design_dir.TemplateResponse("one/criterion.html", {"request": request})
+    return design_dir.TemplateResponse("criterion.html", {"request": request})
 
 
-@design_router.get("/design/one/solution", response_class=HTMLResponse)
+@design_router.get("/design/solution", response_class=HTMLResponse)
 async def design_one_solution(request: Request):
-    return design_dir.TemplateResponse("one/solution.html", {"request": request})
+    return design_dir.TemplateResponse("solution.html", {"request": request})
 
 
-@design_router.get("/design/one/strategy", response_class=HTMLResponse)
+@design_router.get("/design/strategy", response_class=HTMLResponse)
 async def design_one_strategy(request: Request):
-    return design_dir.TemplateResponse("one/strategy.html", {"request": request})
+    return design_dir.TemplateResponse("strategy.html", {"request": request})
 
 
-@design_router.get("/design/one/resources", response_class=HTMLResponse)
+@design_router.get("/design/resources", response_class=HTMLResponse)
 async def design_one_resource(request: Request):
-    return design_dir.TemplateResponse("one/resources.html", {"request": request})
+    return design_dir.TemplateResponse("resources.html", {"request": request})
 
 
-@design_router.get("/design/one/resources/tools", response_class=HTMLResponse)
+@design_router.get("/design/resources/tools", response_class=HTMLResponse)
 async def design_one_resources_tools(request: Request):
-    return design_dir.TemplateResponse("one/resources/tools.html", {"request": request})
+    return design_dir.TemplateResponse("resources/tools.html", {"request": request})
 
 
-@design_router.get("/design/one/resources/solutions", response_class=HTMLResponse)
+@design_router.get("/design/resources/solutions", response_class=HTMLResponse)
 async def design_one_resources_solutions(request: Request):
-    return design_dir.TemplateResponse("one/resources/solutions.html", {"request": request})
+    return design_dir.TemplateResponse("resources/solutions.html", {"request": request})
 
 
-@design_router.get("/design/one/resources/trains", response_class=HTMLResponse)
+@design_router.get("/design/resources/trains", response_class=HTMLResponse)
 async def design_one_resources_trains(request: Request):
-    return design_dir.TemplateResponse("one/resources/trains.html", {"request": request})
+    return design_dir.TemplateResponse("resources/trains.html", {"request": request})
 
 
-@design_router.get("/design/one/resources/data_sources", response_class=HTMLResponse)
+@design_router.get("/design/resources/data_sources", response_class=HTMLResponse)
 async def design_one_resources_data_sources(request: Request):
-    return design_dir.TemplateResponse("one/resources/data_sources.html", {"request": request})
+    return design_dir.TemplateResponse("resources/data_sources.html", {"request": request})
 
 
-@design_router.get("/design/one/resources/third_parties", response_class=HTMLResponse)
+@design_router.get("/design/resources/third_parties", response_class=HTMLResponse)
 async def design_one_resources_third_party(request: Request):
-    return design_dir.TemplateResponse("one/resources/third_parties.html", {"request": request})
+    return design_dir.TemplateResponse("resources/third_parties.html", {"request": request})
 
 
-@design_router.post("/design/one/solution/generate_state_machine_def", response_class=JSONResponse)
+@design_router.post("/design/solution/generate_state_machine_def", response_class=JSONResponse)
 async def design_one_solution_generate_state_machine_def(request: Request,
-                                                         session: dict = Depends(get_session)) -> dict:
+                                                         session: dict = Depends(session_manager.get_session)) -> dict:
     user_id = session.get("user_id")
     solution = solution_manager.get_not_done(user_id)
     if solution:
@@ -95,8 +85,8 @@ async def design_one_solution_generate_state_machine_def(request: Request,
         return {}
 
 
-@design_router.get("/design/one/solution/current", response_class=JSONResponse)
-async def design_one_solution_current(session: dict = Depends(get_session)) -> dict:
+@design_router.get("/design/solution/current", response_class=JSONResponse)
+async def design_one_solution_current(session: dict = Depends(session_manager.get_session)) -> dict:
     user_id = session.get("user_id")
     solution = solution_manager.get_not_done(user_id)
     solution_dict = {}

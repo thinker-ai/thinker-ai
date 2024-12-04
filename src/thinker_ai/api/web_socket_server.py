@@ -4,8 +4,8 @@ from fastapi import WebSocket, APIRouter, WebSocketDisconnect, Depends
 from starlette.websockets import WebSocketState
 from typing import Dict
 
-from thinker_ai.session_manager import get_session_ws
-
+from thinker_ai.session_manager import SessionManager
+session_manager = SessionManager.get_instance()
 # 创建 API 路由器
 socket_router = APIRouter()
 tasks = []
@@ -79,7 +79,7 @@ manager = ConnectionManager()
 
 @socket_router.websocket("/ws")
 async def connect(websocket: WebSocket):
-    session = await get_session_ws(websocket)
+    session = await session_manager.get_session_ws(websocket)
     # 根据会话对象获取 user_id 或其他会话信息
     user_id = session.get("user_id")
     if not user_id:

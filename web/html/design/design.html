@@ -1,76 +1,136 @@
+<!DOCTYPE html>
 <html>
-    <head>
-        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-        <meta http-equiv="Pragma" content="no-cache" />
-        <meta http-equiv="Expires" content="0" />
-        <title>Design</title>
-        <style>
-            html, body {
-                display: flex;
-                flex-direction: row;
-                width: 100vw;
-                height: 100%;
-                min-height: 100vh;
-                margin: 0;
-                padding: 0;
-                overflow: hidden; /* 防止页面出现滚动条 */
-            }
-            #menu {
-                display: flex;
-                flex-direction: column;
-                justify-content: flex-start; /* 将按钮都对齐到左侧 */
-                align-items: center; /* 垂直居中对齐 */
-                gap: 20px; /* 按钮之间的间距，可根据需要调整 */
-                width: 5%;
-                padding: 10px; /* 内边距 */
-                margin: 0; /* 外边距 */
-                background-color: #E7E8E7FF;
-            }
+<head>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
+    <title>Chat</title>
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism-okaidia.css"/>
+    <link rel="stylesheet" type="text/css" href="../../static/design/design.css">
+    <script type="module" src="../../js/common.js"></script>
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left;
+        }
+        tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+        .selected {
+            background-color: #d4edda !important; /* 绿色高亮 */
+        }
+        .delete-btn {
+            color: red;
+            cursor: pointer;
+        }
+    </style>
+    <script>
+        // 示例数据
+        const processes = [
+            { id: 1, description: "流程一标题", active: true },
+            { id: 2, description: "流程二标题", active: false },
+            { id: 3, description: "流程三标题", active: true },
+        ];
 
-            .menu-item {
-                flex-grow: 0; /* 按钮宽度不会随容器变化 */
-                text-align: center; /* 文字居中对齐 */
-                padding: 15px 20px; /* 设置按钮内边距 */
-                font-size: 15px;
-                color: #050505;
-                text-decoration: none;
-                border: none;
-                background-color: #edeab1; /* 按钮的背景色 */
-                cursor: pointer;
-                transition: background-color 0.3s ease;
-            }
+        // 初始化列表
+        function loadProcessList() {
+            const listDiv = document.getElementById('list');
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>流程ID</th>
+                        <th>流程标题</th>
+                        <th>是否激活</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="process-table-body"></tbody>
+            `;
+            listDiv.appendChild(table);
 
-            .tab-container {
-                width: 95%;
-                height: calc(100vh - 30px); /* 例如，减去 header 和 footer 的高度 */
-                padding: 0;
-                margin: 0;
-            }
+            const tbody = table.querySelector('tbody');
+            processes.forEach(process => {
+                const row = document.createElement('tr');
+                row.dataset.id = process.id;
+                row.innerHTML = `
+                    <td>${process.id}</td>
+                    <td>${process.description}</td>
+                    <td>${process.active ? "是" : "否"}</td>
+                    <td><span class="delete-btn" onclick="deleteProcess(${process.id}, event)">删除</span></td>
+                `;
+                row.onclick = (e) => {
+                    if (!e.target.classList.contains('delete-btn')) {
+                        selectRow(row);
+                        loadContent(process.id);
+                    }
+                };
+                tbody.appendChild(row);
+            });
+        }
 
-            .content-frame {
-                width: 100%;
-                height: 100%; /* 这里的高度也可以根据需要调整 */
-                border: none; /* 去除边框 */
-                overflow-y: auto;
-            }
+        // 选中行高亮
+        function selectRow(selectedRow) {
+            const rows = document.querySelectorAll('#process-table-body tr');
+            rows.forEach(row => row.classList.remove('selected')); // 移除所有行的选中状态
+            selectedRow.classList.add('selected'); // 添加选中状态
+        }
 
-            .menu-item:hover {
-                background-color: #5C9DF1FF; /* 鼠标移动到按钮上时背景高亮 */
-            }
+        // 加载内容到iframe
+        function loadContent(id) {
+            const contentFrame = document.getElementById('content-frame');
+            contentFrame.src = `/design/solution?id=${id}`;
 
-            .menu-item.active {
-                background-color: #5C9DF1FF; /* 当前menu的按钮背景高亮 */
+            const sidebarButtons = document.querySelectorAll('.menu-item');
+            sidebarButtons.forEach(button => {
+                // 提取原始 URL（去掉已有的 ?id 参数）
+                const originalPage = button.getAttribute('onclick').split(',')[2].replace(/'/g, '').split('?')[0].trim();
+                // 设置新的 URL 带上当前的 id
+                button.setAttribute('onclick', `showContent('content-frame', 'menu-item', '${originalPage}?id=${id}', this)`);
+            });
+        }
+
+        // 删除流程
+        function deleteProcess(id, event) {
+            event.stopPropagation(); // 阻止事件冒泡到行点击事件
+            const index = processes.findIndex(p => p.id === id);
+            if (index !== -1) {
+                processes.splice(index, 1);
+                document.getElementById('list').innerHTML = '';
+                loadProcessList();
             }
-        </style>
-        <script type="text/javascript" src="../../js/common.js"></script>
-    </head>
-    <body>
-        <div id="menu">
-            <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/one', this)">方案设计</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/list', this)">方案列表</button>
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            loadProcessList();
+            loadContent(1); // 默认加载ID为1的内容
+            const firstRow = document.querySelector('#process-table-body tr');
+            if (firstRow) firstRow.classList.add('selected'); // 默认选中第一行
+        });
+    </script>
+</head>
+<body>
+    <div id="list">
+
+    </div>
+    <div id="content">
+        <div id="main-sidebar">
+            <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/solution?id=1',this);">流程描述</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/resources?id=1',this);">资源配置</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/strategy?id=1',this);">思维模式配置</button>
+            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/criterion?id=1',this);">行动偏好与准则配置</button>
         </div>
-        <div id="container" class="tab-container">
-            <iframe id="content-frame" class="content-frame" src="/design/one"></iframe>
+        <div id="main-content">
+            <iframe id="content-frame" src="/design/solution?id=1"></iframe>
         </div>
-    </body>
+    </div>
+</body>
 </html>

@@ -1,99 +1,127 @@
 import os
 import pickle
-
 import bcrypt
-from fastapi import Depends, HTTPException
-from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+import jwt
+from datetime import datetime, timedelta
+from fastapi import HTTPException, WebSocket, WebSocketDisconnect
 from starlette import status
-from fastapi import WebSocket, WebSocketDisconnect
-from fastapi import Request
+from urllib.parse import urlparse, parse_qs
 from thinker_ai.configs.const import PROJECT_ROOT
 
 
-# async def debug_oauth2_scheme(request: Request):
-#     authorization: str = request.headers.get("Authorization")
-#     if authorization is None or not authorization.startswith("Bearer "):
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Invalid authentication credentials",
-#             headers={"WWW-Authenticate": "Bearer"},
-#         )
-#     token = authorization.split(" ")[1]
-#     print(f"Token extracted: {token}")  # 输出 token 进行调试
-#     return token
+class SessionManager:
+    _instance = None
+    _session_store = {}
+    _user_db = {}
 
+    # 私有常量
+    _SECRET_KEY = os.environ.get("SECRET_KEY", "default_secret_key")
+    _ALGORITHM = "HS256"
+    _ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# 创建 OAuth2 实例，用于解析 token
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-# 会话存储文件路径
-SESSION_STORE_FILE = f"{PROJECT_ROOT}/src/thinker_ai/session_store.pkl"
-# 读取会话存储
-if os.path.exists(SESSION_STORE_FILE):
-    with open(SESSION_STORE_FILE, "rb") as f:
-        session_store = pickle.load(f)
-else:
-    session_store = {}
+    SESSION_STORE_FILE = f"{PROJECT_ROOT}/src/thinker_ai/session_store.pkl"
 
+    def __init__(self):
+        raise RuntimeError("Use get_instance() to access the SessionManager instance.")
 
-# 依赖项，用于解析 token 并获取会话对象
-def get_session(token: str = Depends(oauth2_scheme)) -> dict:
-    token_bytes = token.encode('utf-8')
-    session = session_store.get(token_bytes)
-    if not session:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid authentication credentials",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    return session
+    @classmethod
+    def get_instance(cls):
+        if cls._instance is None:
+            cls._instance = cls.__new__(cls)
+            cls._instance._load_session_store()
+            cls._instance._initialize_user_db()
+        return cls._instance
 
+    def _load_session_store(self):
+        """加载会话存储数据"""
+        if os.path.exists(self.SESSION_STORE_FILE):
+            with open(self.SESSION_STORE_FILE, "rb") as f:
+                self._session_store = pickle.load(f)
+        else:
+            self._session_store = {}
 
-# 针对 WebSocket 连接获取 token 和会话对象
-async def get_session_ws(websocket: WebSocket) -> dict:
-    from urllib.parse import urlparse, parse_qs
-    query_params = parse_qs(urlparse(str(websocket.url)).query)
+    def _initialize_user_db(self):
+        """初始化用户数据库"""
+        self._user_db = {
+            "testuser": {
+                "id": "abc",
+                "username": "testuser",
+                "full_name": "Test User",
+                "hashed_password": self._hash_password("testpassword"),
+                "disabled": False,
+            }
+        }
 
-    token = query_params.get('token', [None])[0]
-    if not token:
-        print("Token not found")
-        raise WebSocketDisconnect(code=4001)  # 自定义错误码
+    def _save_session_store(self):
+        """保存会话存储数据到文件"""
+        with open(self.SESSION_STORE_FILE, "wb") as f:
+            pickle.dump(self._session_store, f)
 
-    # 假设 session_store 是存储会话信息的字典
-    token_bytes = token.encode('utf-8')
-    session = session_store.get(token_bytes)
+    def _hash_password(self, password: str) -> str:
+        """生成密码的哈希值"""
+        salt = bcrypt.gensalt()
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+        return hashed_password
 
-    if not session:
-        print("Session not found for token")
-        raise WebSocketDisconnect(code=4001)  # 自定义错误码
+    def verify_user_password(self, username: str, password: str) -> bool:
+        """验证用户密码"""
+        user = self.get_user(username)
+        hashed_password = user["hashed_password"].encode('utf-8')  # 将存储的 str 转回 bytes
+        return bcrypt.checkpw(password.encode('utf-8'), hashed_password)
 
-    return session
+    def add_session(self, username: str, user_id: str) -> str:
+        """生成会话并返回 JWT Token"""
+        access_token_expires = timedelta(minutes=self._ACCESS_TOKEN_EXPIRE_MINUTES)
+        payload = {
+            "sub": username,
+            "exp": datetime.utcnow() + access_token_expires
+        }
+        access_token = jwt.encode(payload, self._SECRET_KEY, algorithm=self._ALGORITHM)
+        self._session_store[access_token.encode('utf-8')] = {"user_id": user_id}
+        self._save_session_store()
+        return access_token
 
+    async def get_session(self, token: str) -> dict:
+        """获取会话数据"""
+        token_bytes = token.encode('utf-8')
+        session = self._session_store.get(token_bytes)
+        if not session:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid authentication credentials",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        return session
 
-def save_session_store():
-    with open(SESSION_STORE_FILE, "wb") as f:
-        pickle.dump(session_store, f)
+    async def get_session_ws(self, websocket: WebSocket) -> dict:
+        """通过 WebSocket 获取会话数据"""
+        query_params = parse_qs(urlparse(str(websocket.url)).query)
+        token = query_params.get('token', [None])[0]
+        if not token:
+            print("Token not found")
+            raise WebSocketDisconnect(code=4001)
 
+        token_bytes = token.encode('utf-8')
+        session = self._session_store.get(token_bytes)
+        if not session:
+            print("Session not found for token")
+            raise WebSocketDisconnect(code=4001)
 
-# 假设这里有一个用户数据库
-fake_users_db = {
-    "testuser": {
-        "id": "abc",
-        "username": "testuser",
-        "full_name": "Test User",
-        "hashed_password": bcrypt.hashpw("testpassword".encode('utf-8'), bcrypt.gensalt()),
-        "disabled": False,
-    }
-}
+        return session
 
-# 定义一些常量
-SECRET_KEY = os.environ.get("SECRET_KEY")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+    def remove_session(self, token: str):
+        """移除会话数据"""
+        token_bytes = token.encode('utf-8')
+        if token_bytes in self._session_store:
+            del self._session_store[token_bytes]
+            self._save_session_store()
 
-
-def hash_password(password: str):
-    # 生成一个随机的 salt
-    salt = bcrypt.gensalt()
-    # 使用 salt 对密码进行哈希处理
-    hashed_password = bcrypt.hashpw(password.encode('utf-8'), salt)
-    return hashed_password
+    def get_user(self, username: str) -> dict:
+        """通过用户名获取用户信息"""
+        user = self._user_db.get(username)
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found",
+            )
+        return user
