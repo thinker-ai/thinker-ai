@@ -142,6 +142,40 @@ export function do_if_plugin_installed(onInstalled?:() => void, onNotInstalled?:
         }
     }, 500); // 设置合理的延迟时间
 }
+
+export function query(
+    url: string,
+    on_response_ok: (response_data: any) => void,
+    on_response_error: (error: any) => void,
+    method: 'get' | 'post' = 'get', // 默认为 GET 方法
+    body?: any, // 可选 body 数据
+    params?: any, // 可选 params 数据
+    content_type: string = 'application/json' // 默认 content-type 为 JSON
+): void {
+    get_authorization()
+        .then((authorization) => {
+            if (authorization) {
+                const request_message: RequestMessage = {
+                    method: method,
+                    url: url,
+                    token: authorization.access_token,
+                    body: body,
+                    params: params,
+                    content_type: content_type,
+                    on_response_ok: on_response_ok,
+                    on_response_error: on_response_error,
+                };
+                send_http(request_message);
+            } else {
+                console.error("authorization not found.");
+                return;
+            }
+        })
+        .catch((reason) => {
+            console.error(`request_message error for ${url}`, reason);
+            return;
+        });
+}
 do_if_plugin_installed(
     undefined,
     () => web_socket_worker_client.connect()

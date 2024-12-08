@@ -1,6 +1,6 @@
 import json
 import os
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from starlette.responses import HTMLResponse, JSONResponse
 from starlette.templating import Jinja2Templates
 from fastapi import Request
@@ -19,14 +19,16 @@ solution_manager = SolutionManager()
 async def main(request: Request):
     return design_dir.TemplateResponse("design.html", {"request": request})
 
+
 @design_router.get("/design/criterion", response_class=HTMLResponse)
 async def design_one_criterion(request: Request):
     return design_dir.TemplateResponse("criterion.html", {"request": request})
 
 
 @design_router.get("/design/solution", response_class=HTMLResponse)
-async def design_one_solution(request: Request):
-    return design_dir.TemplateResponse("solution.html", {"request": request})
+async def design_one_solution(request: Request,
+                              id: str = Query(..., description="The ID of the solution to retrieve")):
+    return design_dir.TemplateResponse("solution.html", {"request": request, "id": id})
 
 
 @design_router.get("/design/strategy", response_class=HTMLResponse)
@@ -66,9 +68,10 @@ async def design_one_resources_third_party(request: Request):
 
 @design_router.post("/design/solution/generate_state_machine_def", response_class=JSONResponse)
 async def design_one_solution_generate_state_machine_def(request: Request,
+                                                         id: str = Query(..., description="The ID of the solution to retrieve"),
                                                          session: dict = Depends(session_manager.get_session)) -> dict:
     user_id = session.get("user_id")
-    solution = solution_manager.get_not_done(user_id)
+    solution = solution_manager.get_by_id(user_id,id)
     if solution:
         # 获取请求体中的 JSON 数据
         body = await request.json()
@@ -85,10 +88,22 @@ async def design_one_solution_generate_state_machine_def(request: Request,
         return {}
 
 
-@design_router.get("/design/solution/current", response_class=JSONResponse)
-async def design_one_solution_current(session: dict = Depends(session_manager.get_session)) -> dict:
+@design_router.get("/design/solutions", response_class=JSONResponse)
+async def design_solutions(
+        session: dict = Depends(session_manager.get_session)
+) -> list:
     user_id = session.get("user_id")
-    solution = solution_manager.get_not_done(user_id)
+    solutions = solution_manager.get_solutions_list(user_id)
+    return solutions
+
+
+@design_router.get("/design/solution/current", response_class=JSONResponse)
+async def design_one_solution_current(
+        id: str = Query(..., description="The ID of the solution to retrieve"),  # 从查询字符串获取 id
+        session: dict = Depends(session_manager.get_session)
+) -> dict:
+    user_id = session.get("user_id")
+    solution = solution_manager.get_by_id(user_id, id)
     solution_dict = {}
     if solution:
         solution_dict = await solution.to_dict_include_menu_tree()

@@ -7,7 +7,7 @@
     <title>Chat</title>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/prismjs@1.25.0/themes/prism-okaidia.css"/>
     <link rel="stylesheet" type="text/css" href="../../static/design/design.css">
-    <script type="module" src="../../js/common.js"></script>
+    <script type="module" src="../../js/design/design.js"></script> <!-- 使用 TypeScript 编译后的 JavaScript 文件 -->
     <style>
         table {
             width: 100%;
@@ -31,105 +31,30 @@
             cursor: pointer;
         }
     </style>
-    <script>
-        // 示例数据
-        const processes = [
-            { id: 1, description: "流程一标题", active: true },
-            { id: 2, description: "流程二标题", active: false },
-            { id: 3, description: "流程三标题", active: true },
-        ];
-
-        // 初始化列表
-        function loadProcessList() {
-            const listDiv = document.getElementById('list');
-            const table = document.createElement('table');
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>流程ID</th>
-                        <th>流程标题</th>
-                        <th>是否激活</th>
-                        <th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="process-table-body"></tbody>
-            `;
-            listDiv.appendChild(table);
-
-            const tbody = table.querySelector('tbody');
-            processes.forEach(process => {
-                const row = document.createElement('tr');
-                row.dataset.id = process.id;
-                row.innerHTML = `
-                    <td>${process.id}</td>
-                    <td>${process.description}</td>
-                    <td>${process.active ? "是" : "否"}</td>
-                    <td><span class="delete-btn" onclick="deleteProcess(${process.id}, event)">删除</span></td>
-                `;
-                row.onclick = (e) => {
-                    if (!e.target.classList.contains('delete-btn')) {
-                        selectRow(row);
-                        loadContent(process.id);
-                    }
-                };
-                tbody.appendChild(row);
-            });
-        }
-
-        // 选中行高亮
-        function selectRow(selectedRow) {
-            const rows = document.querySelectorAll('#process-table-body tr');
-            rows.forEach(row => row.classList.remove('selected')); // 移除所有行的选中状态
-            selectedRow.classList.add('selected'); // 添加选中状态
-        }
-
-        // 加载内容到iframe
-        function loadContent(id) {
-            const contentFrame = document.getElementById('content-frame');
-            contentFrame.src = `/design/solution?id=${id}`;
-
-            const sidebarButtons = document.querySelectorAll('.menu-item');
-            sidebarButtons.forEach(button => {
-                // 提取原始 URL（去掉已有的 ?id 参数）
-                const originalPage = button.getAttribute('onclick').split(',')[2].replace(/'/g, '').split('?')[0].trim();
-                // 设置新的 URL 带上当前的 id
-                button.setAttribute('onclick', `showContent('content-frame', 'menu-item', '${originalPage}?id=${id}', this)`);
-            });
-        }
-
-        // 删除流程
-        function deleteProcess(id, event) {
-            event.stopPropagation(); // 阻止事件冒泡到行点击事件
-            const index = processes.findIndex(p => p.id === id);
-            if (index !== -1) {
-                processes.splice(index, 1);
-                document.getElementById('list').innerHTML = '';
-                loadProcessList();
-            }
-        }
-
-        // 初始化
-        document.addEventListener('DOMContentLoaded', () => {
-            loadProcessList();
-            loadContent(1); // 默认加载ID为1的内容
-            const firstRow = document.querySelector('#process-table-body tr');
-            if (firstRow) firstRow.classList.add('selected'); // 默认选中第一行
-        });
-    </script>
 </head>
 <body>
     <div id="list">
-
+        <table>
+            <thead>
+                <tr>
+                    <th>流程ID</th>
+                    <th>流程标题</th>
+                    <th>是否完成</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody id="process-table-body"></tbody>
+        </table>
     </div>
     <div id="content">
-        <div id="main-sidebar">
-            <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/solution?id=1',this);">流程描述</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/resources?id=1',this);">资源配置</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/strategy?id=1',this);">思维模式配置</button>
-            <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/criterion?id=1',this);">行动偏好与准则配置</button>
-        </div>
+       <div id="main-sidebar">
+                <button class="menu-item active" onclick="showContent('content-frame','menu-item','/design/solution',this);">流程描述</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/resources',this);">资源配置</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/strategy',this);">思维模式配置</button>
+                <button class="menu-item" onclick="showContent('content-frame','menu-item','/design/criterion',this);">行动偏好与准则配置</button>
+       </div>
         <div id="main-content">
-            <iframe id="content-frame" src="/design/solution?id=1"></iframe>
+            <iframe id="content-frame"></iframe>
         </div>
     </div>
 </body>

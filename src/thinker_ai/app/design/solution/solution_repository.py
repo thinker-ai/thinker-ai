@@ -25,14 +25,20 @@ class SolutionRepository:
             return Solution.from_dict(solution_dict)
         return None
 
+    def get_by_user(self, user_id) -> list:
+        result = []
+        for solution_dict in self.solutions_dict.values():
+            solution = Solution.from_dict(solution_dict)
+            if solution_dict.get("user_id") == user_id:
+                result.append({
+                    "id": solution.id,
+                    "name": solution.name,
+                    "done": solution.done,
+                })
+        return result
+
     def set(self, solution: Solution):
         self.solutions_dict[solution.id] = solution.to_dict()
-
-    def get_not_done(self, user_id) -> Optional[Solution]:
-        for solution_dict in self.solutions_dict.values():
-            if solution_dict.get("user_id") == user_id and not solution_dict.get("done"):
-                return Solution.from_dict(solution_dict)
-        return None
 
     def to_file(self, base_dir: str, file_name: str):
         file_path = os.path.join(base_dir, file_name)

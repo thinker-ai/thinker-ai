@@ -1,10 +1,10 @@
-import {query, registerCallbackWithKey} from "../common.js";
-import { initialize_floating_panel_if_extension_not_install } from "./floating-panel.js";
+import {get_authorization, query, registerCallbackWithKey, send_http} from "../common.js";
+import {RequestMessage} from "../request_sender_background";
 
 interface ResponseData {
     name: string;
     description: string;
-    solution_tree: TreeNode[];
+    organization_tree: TreeNode[];
 }
 
 interface TreeNode {
@@ -13,56 +13,24 @@ interface TreeNode {
     children?: TreeNode[];
 }
 
-
-function submitProblem(): void {
-    const titleElement = document.getElementById('problem-title') as HTMLInputElement;
-    const descriptionElement = document.getElementById('problem-description') as HTMLTextAreaElement;
-    if (titleElement.value === "" || descriptionElement.value === "") {
-        alert("请输入您的问题!");
-        return;
-    }
-    const id = document.getElementById('id-data')?.getAttribute('data-id')
-    const data={
-        name:titleElement.value,
-        description:descriptionElement.value,
-        is_root:true,
-    }
-    query(
-        '/design/solution/generate_state_machine_def',
-        (response_data) => {
-            showProblem(response_data);
-            showSolution(response_data);
-        },
-        (error) => {
-            console.error("response error:", error);
-        },
-        'post', // 指定为 POST 方法
-        data // 传递 body 数据
-    );
-}
-(window as any).submitProblem = submitProblem;
 function updateContent(content: string): void {
     const detailContainer = document.getElementById('detail-container') as HTMLElement;
     detailContainer.style.display = 'block';
     detailContainer.innerHTML = `<div id="detail-content">${content}</div>`;
 }
 (window as any).updateContent = updateContent;
-function showData(): void {
-    const id = document.getElementById('id-data')?.getAttribute('data-id')
-    if (id !== null && id!==undefined&& id!=="") {
-         query(
-            '/design/solution/current?id='+id,
-            (response_data) => {
-                showProblem(response_data);
-                showSolution(response_data);
-            },
-            (error) => {
-                console.error("response error:", error);
-            }
-        );
-    }
-}
 
+function showData(): void {
+    query(
+        '/organization',
+        (response_data) => {
+            showOrganization(response_data)
+        },
+        (error) => {
+            console.error("response error:", error);
+        }
+    );
+}
 (window as any).showData = showData;
 function showProblem(data: { name: string; description: string }): void {
     const problemTitle = document.getElementById('problem-title') as HTMLInputElement;
@@ -72,9 +40,9 @@ function showProblem(data: { name: string; description: string }): void {
     problemDescription.value = data.description;
 }
 (window as any).showProblem = showProblem;
-function showSolution(data: ResponseData): void {
-    const solutionTree = document.getElementById('solution-tree') as HTMLElement;
-    solutionTree.innerHTML = '';
+function showOrganization(data: ResponseData): void {
+    const organizationTree = document.getElementById('organization-tree') as HTMLElement;
+    organizationTree.innerHTML = '';
 
     const rootNode = document.createElement('div');
     rootNode.className = 'tree-node';
@@ -88,7 +56,7 @@ function showSolution(data: ResponseData): void {
     };
 
     rootNode.appendChild(rootNodeText);
-    solutionTree.appendChild(rootNode);
+    organizationTree.appendChild(rootNode);
 
     function createTreeNode(nodeData: TreeNode): HTMLElement {
         const treeNode = document.createElement('div');
@@ -139,14 +107,14 @@ function showSolution(data: ResponseData): void {
         return treeNode;
     }
 
-    data.solution_tree.forEach(item => {
+    data.organization_tree.forEach(item => {
         const treeNode = createTreeNode(item);
         rootNode.appendChild(treeNode);
     });
 
     rootNodeText.click();
 }
-(window as any).showSolution = showSolution;
+(window as any).showOrganization = showOrganization;
 function toggleNode(symbol: HTMLElement): void {
     const node = symbol.parentElement;
     const childNodes = node?.querySelector('.child-nodes') as HTMLElement;
@@ -161,12 +129,4 @@ function toggleNode(symbol: HTMLElement): void {
         }
     }
 }
-document.addEventListener('DOMContentLoaded', function() {
-    initialize_floating_panel_if_extension_not_install(document.getElementById('content') as HTMLElement);
-});
-
 window.addEventListener('load', showData);
-registerCallbackWithKey('command', ai_executor);
-function ai_executor(data: any): void {
-    console.info(data);
-}

@@ -1,5 +1,5 @@
 import {
-    send_http,
+    query,
     do_if_plugin_installed,
     get_authorization
 } from "../common.js";
@@ -72,41 +72,31 @@ function highlightCode(message: string): string {
     }
     return message;
 }
-
+function ask_for(message: string): void {
+    query(
+        '/chat',
+        (response_data) => append_ai_message(response_data), // 成功处理响应
+        (error) => {
+            alert(error);
+            console.error(error);
+        },
+        'post', // 使用 POST 方法
+        {
+            assistant_name: "assistant_1",
+            topic: "default",
+            content: message
+        }, // 传递 body 数据
+        undefined, // 无 params
+        'application/json' // 设置 content-type 为 JSON
+    );
+}
 function chat(): void {
     const inputField = document.getElementById('input') as HTMLTextAreaElement;
     let message = inputField.value;
     inputField.value = '';
     if (message.trim() === '') return;
     append_human_message(message);
-    get_authorization().then(authorization=> {
-           if (authorization) {
-                    const request_message:RequestMessage={
-                            method:'post',
-                            url:'/chat',
-                            params:undefined,
-                            body:{
-                                  assistant_name:"assistant_1",
-                                  topic:"default",
-                                  content:message
-                                },
-                            token: authorization.access_token,
-                            content_type:"application/json",
-                            on_response_ok: (response_data) => append_ai_message(response_data),
-                            on_response_error:(error) => {
-                                    alert(error);
-                                    console.error(error);
-                                }
-                        }
-                    send_http(request_message);
-             }else{
-                console.error("authorization not found.");
-                return;
-             }
-        }).catch(reason => {
-            console.error(`request_message error for /chat `,reason);
-        return;
-        })
+    ask_for(message);
 }
 
 let isDragging = false;
