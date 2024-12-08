@@ -12,8 +12,7 @@ interface TreeNode {
     description: string;
     children?: TreeNode[];
 }
-
-
+const id = document.getElementById('id-data')?.getAttribute('data-id') ?? ''; // 确保 id 不为 null 或 undefined
 function submitProblem(): void {
     const titleElement = document.getElementById('problem-title') as HTMLInputElement;
     const descriptionElement = document.getElementById('problem-description') as HTMLTextAreaElement;
@@ -21,12 +20,12 @@ function submitProblem(): void {
         alert("请输入您的问题!");
         return;
     }
-    const id = document.getElementById('id-data')?.getAttribute('data-id')
     const data={
         name:titleElement.value,
         description:descriptionElement.value,
         is_root:true,
     }
+    const params = new URLSearchParams({ id });
     query(
         '/design/solution/generate_state_machine_def',
         (response_data) => {
@@ -37,7 +36,8 @@ function submitProblem(): void {
             console.error("response error:", error);
         },
         'post', // 指定为 POST 方法
-        data // 传递 body 数据
+        data, // 传递 body 数据
+        params
     );
 }
 (window as any).submitProblem = submitProblem;
@@ -48,7 +48,6 @@ function updateContent(content: string): void {
 }
 (window as any).updateContent = updateContent;
 function showData(): void {
-    const id = document.getElementById('id-data')?.getAttribute('data-id')
     if (id !== null && id!==undefined&& id!=="") {
          query(
             '/design/solution/current?id='+id,
