@@ -20,7 +20,16 @@ export function fetchProcesses(): void {
         }
     );
 }
-
+//TODO：删除流程还未实现
+export function deleteProcess(id: number, event: Event): void {
+    event.stopPropagation(); // 阻止事件冒泡到行点击事件，例如，导致点击后打开所在行的过程加载
+    const index = processes.findIndex(p => p.id === id);
+    if (index !== -1) {
+        processes.splice(index, 1);
+        loadProcessList();
+    }
+}
+(window as any).deleteProcess = deleteProcess;
 // 初始化列表
 export function loadProcessList(): void {
     const tbody = document.getElementById('process-table-body');
@@ -33,7 +42,7 @@ export function loadProcessList(): void {
             <td>${process.id}</td>
             <td>${process.name}</td>
             <td>${process.done ? "是" : "否"}</td>
-            <td><span class="delete-btn" onclick="deleteProcess(${process.id}, event)">删除</span></td>
+            <td><span class="delete-btn" onclick="deleteProcess('${process.id}', event)">删除</span></td>
         `;
     row.onclick = (e) => {
         const target = e.target as HTMLElement | null; // 确保 e.target 的类型
@@ -79,17 +88,6 @@ export function loadContent(id: number): void {
         }
     });
 }
-
-// 删除流程
-export function deleteProcess(id: number, event: MouseEvent): void {
-    event.stopPropagation(); // 阻止事件冒泡到行点击事件
-    const index = processes.findIndex(p => p.id === id);
-    if (index !== -1) {
-        processes.splice(index, 1);
-        loadProcessList();
-    }
-}
-
 // 初始化
 document.addEventListener('DOMContentLoaded', () => {
     fetchProcesses(); // 动态获取数据并初始化列表
